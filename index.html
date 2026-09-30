@@ -180,23 +180,21 @@ function defaultPlayers() {
 }
 
 // Apply a Firebase "put" or "patch" at a path to the local mirror.
+// Patch keys may themselves be paths (e.g. "players/p01").
 function apply(path, value, merge) {
-  const parts = path.split("/").filter(Boolean);
-  const set = (obj, key, v) => (v === null ? delete obj[key] : (obj[key] = v));
-  if (!parts.length) {
-    if (!merge) { root = value || {}; return; }
-    for (const k in value) set(root, k, value[k]);
+  if (merge) {
+    for (const k in value) apply(`${path}/${k}`, value[k], false);
     return;
   }
+  const parts = path.split("/").filter(Boolean);
+  if (!parts.length) { root = value || {}; return; }
   let node = root;
   for (const p of parts.slice(0, -1)) {
     if (typeof node[p] !== "object" || node[p] === null) node[p] = {};
     node = node[p];
   }
   const last = parts[parts.length - 1];
-  if (!merge) { set(node, last, value); return; }
-  if (typeof node[last] !== "object" || node[last] === null) node[last] = {};
-  for (const k in value) set(node[last], k, value[k]);
+  if (value === null) delete node[last]; else node[last] = value;
 }
 
 async function write(path, value) {
@@ -236,11 +234,11 @@ function connect() {
     if (!seeded && path === "/" && !merge) {
       seeded = true;
       if (!root.initialized) {
-        // First visit ever: create the 15 default rows.
-        fetch(`${DB}/.json`, {
-          method: "PATCH",
-          body: JSON.stringify({ initialized: true, players: defaultPlayers() }),
-        });
+        // First visit ever: create the 15 default rows. Rules only allow writes
+        // per player, so use multi-path keys ("players/p01") rather than a nested object.
+        const update = { initialized: true };
+        for (const [id, p] of Object.entries(defaultPlayers())) update[`players/${id}`] = p;
+        fetch(`${DB}/.json`, { method: "PATCH", body: JSON.stringify(update) });
       }
     }
     setStatus("live", "Live");
