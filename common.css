@@ -76,7 +76,9 @@ button:disabled { cursor: default; opacity: .5; }
 [hidden] { display: none !important; }
 
 /* Brand header: cream wordmark on dark green, page tabs underneath */
-.brand { background: var(--brand); color: var(--brand-text); border-bottom: 3px solid var(--pampas); }
+.brand { background: var(--brand); color: var(--brand-text); border-bottom: 3px solid var(--pampas); padding-top: env(safe-area-inset-top); }
+/* Keep content clear of the notch in landscape. */
+.brand-inner, main { padding-left: max(16px, env(safe-area-inset-left)); padding-right: max(16px, env(safe-area-inset-right)); }
 .brand-inner { max-width: 1200px; margin: 0 auto; padding: 18px 16px 0; }
 .brand .logo { display: block; height: 58px; width: auto; }
 .tabs { display: flex; gap: 4px; margin-top: 10px; }

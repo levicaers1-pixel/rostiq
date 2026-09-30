@@ -212,6 +212,9 @@ function injectAuthUI() {
   document.getElementById("gate").addEventListener("submit", onGateSubmit);
 }
 
+// Running as an app from the home screen (it keeps its own login, separate from the browser).
+const standalone = () => matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+
 let gateMsg = { text: "", err: false };
 function gateMessage(text, err) { gateMsg = { text, err }; renderAuth(); }
 
@@ -245,7 +248,9 @@ function renderAuth() {
         <button type="submit">Send link</button>
       </form>
       ${msg}
-      <p class="hint">Opened this from WhatsApp or Instagram? Google sign-in may not work in their built-in browser. Use the email link, or open the page in Safari or Chrome.</p>
+      <p class="hint">${standalone()
+        ? "You're using the home-screen app: please sign in with Google here. An email link opens in your browser instead of this app, so it won't sign you in here."
+        : "Opened this from WhatsApp or Instagram? Google sign-in may not work in their built-in browser. Use the email link, or open the page in Safari or Chrome."}</p>
     </div>`;
   } else if (needClaim) {
     const free = sortedPlayers().filter(p => p.name && !p.uid);
