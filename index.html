@@ -94,6 +94,8 @@
   td.name input:focus { outline: none; border-color: var(--accent); }
   td.name .del { border: none; background: none; color: var(--muted); padding: 4px 6px; visibility: hidden; }
   tr:hover td.name .del { visibility: visible; }
+  td.name .cal { border: none; background: none; padding: 4px 6px; font-size: .95rem; }
+  td.name .cal:disabled { opacity: .25; cursor: default; }
   td.name .del:hover { color: var(--no); }
 
   .cell {
@@ -320,7 +322,19 @@ function render() {
     del.addEventListener("click", () => {
       if (confirm(`Remove ${p.name || "Player " + (i + 1)} for everyone?`)) write(`players/${p.id}`, null);
     });
-    nameTd.append(input, del);
+    const mine = EVENTS.filter(e => p.avail[e.date] === "yes" || p.avail[e.date] === "maybe");
+    const cal = document.createElement("button");
+    cal.className = "cal";
+    cal.textContent = "📅";
+    cal.disabled = !mine.length;
+    cal.title = mine.length
+      ? `Add my ${mine.length} match${mine.length > 1 ? "es" : ""} (✓ and ?) to calendar`
+      : "Mark ✓ or ? on some matches first";
+    cal.addEventListener("click", () => {
+      const who = slug(p.name || `player-${i + 1}`);
+      downloadIcs(mine, `${who}-matches.ics`, e => p.avail[e.date]);
+    });
+    nameTd.append(input, cal, del);
     tr.append(nameTd);
 
     for (const e of EVENTS) {
@@ -389,18 +403,21 @@ const VTIMEZONE = [
 const slug = t => t.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().replace(/[^a-z0-9]+/g, "-");
 const icsText = t => String(t).replace(/[\\;,]/g, c => "\\" + c);
 
-function buildIcs(events) {
+// statusOf(e) may return "maybe" to mark an event as tentative.
+function buildIcs(events, statusOf = () => "") {
   const stamp = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d+/, "");
   const lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//team-availability//EN", "CALSCALE:GREGORIAN", "METHOD:PUBLISH", ...VTIMEZONE];
   for (const e of events) {
     const d = e.date.replace(/-/g, "");
+    const maybe = statusOf(e) === "maybe";
     lines.push(
       "BEGIN:VEVENT",
       `UID:${d}-${slug(e.opp)}@team-availability`,
       `DTSTAMP:${stamp}`,
       `DTSTART;TZID=Europe/Brussels:${d}T${START}`,
       `DTEND;TZID=Europe/Brussels:${d}T${END}`,
-      `SUMMARY:${icsText(e.opp + (e.final ? " (Final)" : ""))}`,
+      `STATUS:${maybe ? "TENTATIVE" : "CONFIRMED"}`,
+      `SUMMARY:${icsText(e.opp + (e.final ? " (Final)" : "") + (maybe ? " (maybe)" : ""))}`,
       `LOCATION:${icsText(e.opp)}`,
       `DESCRIPTION:${icsText("Mark your availability: " + location.href.split("#")[0])}`,
       "END:VEVENT");
@@ -409,9 +426,9 @@ function buildIcs(events) {
   return lines.join("\r\n") + "\r\n";
 }
 
-function downloadIcs(events, filename) {
+function downloadIcs(events, filename, statusOf) {
   const a = document.createElement("a");
-  a.href = URL.createObjectURL(new Blob([buildIcs(events)], { type: "text/calendar;charset=utf-8" }));
+  a.href = URL.createObjectURL(new Blob([buildIcs(events, statusOf)], { type: "text/calendar;charset=utf-8" }));
   a.download = filename;
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
