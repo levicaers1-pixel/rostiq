@@ -56,6 +56,10 @@
   .month ul { list-style: none; margin: 0; padding: 0; }
   .month li { display: flex; gap: 10px; padding: 4px 0; align-items: baseline; }
   .month .d { font-variant-numeric: tabular-nums; color: var(--muted); min-width: 52px; }
+  .month .opp-name { flex: 1; }
+  .ics { font-size: .75rem; padding: 2px 8px; color: var(--accent); white-space: nowrap; }
+  .section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+  .section-head h2 { margin-bottom: 12px; }
   .tag { font-size: .7rem; font-weight: 600; color: var(--final); border: 1px solid var(--final); border-radius: 999px; padding: 0 6px; margin-left: 4px; }
 
   /* Toolbar */
@@ -123,7 +127,10 @@
   <p class="sub">Season 2026–2027 · tap a cell to set availability · <span class="status" id="status">Connecting…</span></p>
   <p class="banner" id="banner" hidden>Not connected to a database yet. Changes are kept only until you reload. Set <code>FIREBASE_DB_URL</code> in <code>config.js</code> (see README).</p>
 
-  <h2>Schedule</h2>
+  <div class="section-head">
+    <h2>Schedule</h2>
+    <button class="ics" id="ics-all" title="Add all matches to your calendar">📅 Add all to calendar</button>
+  </div>
   <div class="months" id="months"></div>
 
   <h2>Availability</h2>
@@ -268,8 +275,14 @@ function renderSchedule() {
   document.getElementById("months").innerHTML = Object.entries(byMonth).map(([m, evs]) => `
     <div class="month"><h3>${m}</h3><ul>${evs.map(e => `
       <li><span class="d">${fmt(e.date, { weekday: "short", day: "numeric" })}</span>
-      <span>${e.opp}${e.final ? '<span class="tag">FINAL</span>' : ""}</span></li>`).join("")}
+      <span class="opp-name">${e.opp}${e.final ? '<span class="tag">FINAL</span>' : ""}</span>
+      <button class="ics" data-date="${e.date}" title="Add to calendar (.ics)">📅 .ics</button></li>`).join("")}
     </ul></div>`).join("");
+  document.querySelectorAll(".month .ics").forEach(b =>
+    b.addEventListener("click", () => {
+      const e = EVENTS.find(x => x.date === b.dataset.date);
+      downloadIcs([e], `${e.date}-${slug(e.opp)}.ics`);
+    }));
   document.getElementById("head").innerHTML =
     `<th class="name">Player</th>` +
     EVENTS.map(e => `<th class="${e.final ? "final" : ""}">
@@ -362,6 +375,48 @@ document.getElementById("export").onclick = () => {
   a.click();
   URL.revokeObjectURL(a.href);
 };
+
+// ---- Calendar (.ics) export: every match 09:00–17:00 Brussels time ----
+const START = "090000", END = "170000";
+const VTIMEZONE = [
+  "BEGIN:VTIMEZONE", "TZID:Europe/Brussels",
+  "BEGIN:DAYLIGHT", "TZOFFSETFROM:+0100", "TZOFFSETTO:+0200", "TZNAME:CEST",
+  "DTSTART:19700329T020000", "RRULE:FREQ=YEARLY;BYMONTH=3;BYDAY=-1SU", "END:DAYLIGHT",
+  "BEGIN:STANDARD", "TZOFFSETFROM:+0200", "TZOFFSETTO:+0100", "TZNAME:CET",
+  "DTSTART:19701025T030000", "RRULE:FREQ=YEARLY;BYMONTH=10;BYDAY=-1SU", "END:STANDARD",
+  "END:VTIMEZONE",
+];
+const slug = t => t.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().replace(/[^a-z0-9]+/g, "-");
+const icsText = t => String(t).replace(/[\\;,]/g, c => "\\" + c);
+
+function buildIcs(events) {
+  const stamp = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d+/, "");
+  const lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//team-availability//EN", "CALSCALE:GREGORIAN", "METHOD:PUBLISH", ...VTIMEZONE];
+  for (const e of events) {
+    const d = e.date.replace(/-/g, "");
+    lines.push(
+      "BEGIN:VEVENT",
+      `UID:${d}-${slug(e.opp)}@team-availability`,
+      `DTSTAMP:${stamp}`,
+      `DTSTART;TZID=Europe/Brussels:${d}T${START}`,
+      `DTEND;TZID=Europe/Brussels:${d}T${END}`,
+      `SUMMARY:${icsText(e.opp + (e.final ? " (Final)" : ""))}`,
+      `LOCATION:${icsText(e.opp)}`,
+      `DESCRIPTION:${icsText("Mark your availability: " + location.href.split("#")[0])}`,
+      "END:VEVENT");
+  }
+  lines.push("END:VCALENDAR");
+  return lines.join("\r\n") + "\r\n";
+}
+
+function downloadIcs(events, filename) {
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([buildIcs(events)], { type: "text/calendar;charset=utf-8" }));
+  a.download = filename;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+document.getElementById("ics-all").onclick = () => downloadIcs(EVENTS, "team-schedule-2026-2027.ics");
 
 renderSchedule();
 connect();
