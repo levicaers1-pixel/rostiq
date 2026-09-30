@@ -7,6 +7,7 @@
         ".write": true,
         "order": { ".validate": "newData.isNumber()" },
         "name": { ".validate": "newData.isString() && newData.val().length <= 60" },
+        "gemeente": { ".validate": "newData.isString() && newData.val().length <= 60" },
         "avail": {
           "$date": { ".validate": "newData.val() === 'yes' || newData.val() === 'maybe' || newData.val() === 'no'" }
         },
@@ -16,6 +17,19 @@
     "settings": {
       "minPlayers": { ".write": true, ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 50" },
       "$other": { ".validate": false }
+    },
+    "carpool": {
+      "$date": {
+        "$pid": {
+          ".write": true,
+          ".validate": "newData.hasChild('role')",
+          "role": { ".validate": "newData.val() === 'driver' || newData.val() === 'rider'" },
+          "seats": { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 8" },
+          "note": { ".validate": "newData.isString() && newData.val().length <= 120" },
+          "with": { ".validate": "newData.isString() && newData.val().length <= 40" },
+          "$other": { ".validate": false }
+        }
+      }
     },
     "$other": { ".validate": false }
   }

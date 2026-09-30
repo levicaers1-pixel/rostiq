@@ -9,7 +9,16 @@ A shared schedule and availability grid for the 2026–2027 season (15 players b
 - Everything is stored in a Firebase Realtime Database and updates live for everyone with the page open
 - **Export CSV** downloads the full grid
 
-To change the schedule, edit the `EVENTS` array in `index.html`.
+### Carpool page (`carpool.html`)
+
+- Pick your name once (remembered on that device) and fill in your **gemeente**
+- Per upcoming match: offer a car with a number of seats and a departure note, or ask for a ride
+- Riders can join a car; drivers can take waiting riders in their car
+- Drivers and riders are sorted by distance from your gemeente (approximate, as the crow flies,
+  looked up via OpenStreetMap Nominatim and cached in your browser)
+- "Where everyone lives" groups the team by gemeente
+
+To change the schedule, edit the `EVENTS` array in `common.js`.
 
 ## One-time setup: Firebase (free, ~5 minutes)
 

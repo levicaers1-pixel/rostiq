@@ -4,50 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Team Availability</title>
+<link rel="stylesheet" href="common.css">
 <style>
-  :root {
-    --bg: #f6f7f9;
-    --surface: #ffffff;
-    --text: #1b1f24;
-    --muted: #5f6b7a;
-    --border: #dde2e8;
-    --accent: #2457d6;
-    --yes: #1f9d55;
-    --yes-bg: #e3f5ea;
-    --maybe: #b7791f;
-    --maybe-bg: #fdf1dc;
-    --no: #c53030;
-    --no-bg: #fbe4e4;
-    --final: #7a3fd1;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: #111418;
-      --surface: #1a1e24;
-      --text: #e8ebef;
-      --muted: #9aa5b3;
-      --border: #2d333c;
-      --accent: #6f95ff;
-      --yes: #4ccb82;
-      --yes-bg: #173826;
-      --maybe: #f0b44c;
-      --maybe-bg: #3b2e14;
-      --no: #f07171;
-      --no-bg: #3f1d1d;
-      --final: #b18cff;
-    }
-  }
-  * { box-sizing: border-box; }
-  body {
-    margin: 0;
-    background: var(--bg);
-    color: var(--text);
-    font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  }
-  main { max-width: 1200px; margin: 0 auto; padding: 24px 16px 48px; }
-  h1 { font-size: 1.6rem; margin: 0 0 4px; }
-  h2 { font-size: 1.15rem; margin: 32px 0 12px; }
-  .sub { color: var(--muted); margin: 0; }
 
   /* Schedule */
   .months { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
@@ -66,12 +24,6 @@
   .toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 12px; }
   .legend { display: flex; flex-wrap: wrap; gap: 12px; color: var(--muted); font-size: .85rem; margin-right: auto; }
   .legend span { display: inline-flex; align-items: center; gap: 6px; }
-  button {
-    font: inherit; font-size: .85rem; cursor: pointer;
-    background: var(--surface); color: var(--text);
-    border: 1px solid var(--border); border-radius: 8px; padding: 6px 12px;
-  }
-  button:hover { border-color: var(--accent); }
 
   /* Grid */
   .grid-wrap { overflow-x: auto; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; }
@@ -115,12 +67,6 @@
   tfoot .n { color: var(--no); }
 
   .note { color: var(--muted); font-size: .8rem; margin-top: 10px; }
-  .status { font-size: .8rem; color: var(--muted); display: inline-flex; align-items: center; gap: 6px; }
-  .status::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
-  .status.live::before { background: var(--yes); }
-  .status.err::before { background: var(--no); }
-  .banner { background: var(--maybe-bg); color: var(--text); border: 1px solid var(--maybe); border-radius: 10px; padding: 10px 14px; margin: 16px 0 0; font-size: .9rem; }
-  .banner[hidden] { display: none; }
 
   /* Past matches */
   .month li.past { opacity: .45; }
@@ -132,7 +78,6 @@
   .seg button[aria-pressed="true"] { background: var(--accent); color: #fff; }
   .min { display: inline-flex; align-items: center; gap: 6px; font-size: .85rem; color: var(--muted); }
   .min input { width: 56px; font: inherit; padding: 5px 6px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text); }
-  button:disabled { cursor: default; opacity: .5; }
 
   /* Totals colored against the minimum */
   tfoot td.ok, .badge.ok       { background: var(--yes-bg); }
@@ -154,7 +99,6 @@
   .chip[data-s="yes"]   { background: var(--yes-bg);   color: var(--yes);   border-color: var(--yes); }
   .chip[data-s="maybe"] { background: var(--maybe-bg); color: var(--maybe); border-color: var(--maybe); }
   .chip[data-s="no"]    { background: var(--no-bg);    color: var(--no);    border-color: var(--no); }
-  [hidden] { display: none !important; }
 
   /* Reminder dialog */
   dialog { border: 1px solid var(--border); border-radius: 12px; background: var(--surface); color: var(--text); width: min(480px, calc(100vw - 32px)); padding: 16px; }
@@ -167,6 +111,7 @@
 </head>
 <body>
 <main>
+  <nav class="tabs"><a href="./" aria-current="page">Availability</a><a href="carpool.html">🚗 Carpool</a></nav>
   <h1>Team Availability</h1>
   <p class="sub">Season 2026–2027 · tap a cell to set availability · <span class="status" id="status">Connecting…</span></p>
   <p class="banner" id="banner" hidden>Not connected to a database yet. Changes are kept only until you reload. Set <code>FIREBASE_DB_URL</code> in <code>config.js</code> (see README).</p>
@@ -216,130 +161,15 @@
 </dialog>
 
 <script src="config.js"></script>
+<script src="common.js"></script>
 <script>
-const EVENTS = [
-  { date: "2026-11-14", opp: "Mormal" },
-  { date: "2026-11-21", opp: "Hainaut" },
-  { date: "2026-12-13", opp: "Lille Métropole" },
-  { date: "2026-12-19", opp: "Hainaut" },
-  { date: "2027-01-17", opp: "Kapellen" },
-  { date: "2027-01-23", opp: "Hainaut" },
-  { date: "2027-02-13", opp: "Lille Métropole" },
-  { date: "2027-02-21", opp: "Mormal" },
-  { date: "2027-02-27", opp: "Hainaut" },
-  { date: "2027-03-06", opp: "Keerbergen" },
-  { date: "2027-03-13", opp: "Rigenée", final: true },
-];
-const TEAM_SIZE = 15;
 const CYCLE = ["", "yes", "maybe", "no"];
 const SYMBOL = { "": "–", yes: "✓", maybe: "?", no: "✗" };
 const LABEL = { "": "", yes: "Available", maybe: "Maybe", no: "Not available" };
-const DB = (window.FIREBASE_DB_URL || "").trim().replace(/\/+$/, "");
 
 const DEFAULT_MIN = 3;
-const TODAY = new Date().toLocaleDateString("sv-SE"); // YYYY-MM-DD, local time
-const isPast = e => e.date < TODAY;
-
-const parse = d => new Date(d + "T12:00:00");
-const fmt = (d, opts) => parse(d).toLocaleDateString("en-GB", opts);
-const esc = t => String(t).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
-
-// Per-viewer UI preferences (not shared).
-const pref = {
-  get(k, d) { try { return localStorage.getItem(k) ?? d; } catch { return d; } },
-  set(k, v) { try { localStorage.setItem(k, v); } catch {} },
-};
 let view = pref.get("view", matchMedia("(max-width: 700px)").matches ? "cards" : "table");
 let showPast = pref.get("showPast", "0") === "1";
-
-// ---- Shared state (mirror of the database root) ----
-let root = {};
-
-function defaultPlayers() {
-  const players = {};
-  for (let i = 1; i <= TEAM_SIZE; i++) players["p" + String(i).padStart(2, "0")] = { order: i };
-  return players;
-}
-
-// Apply a Firebase "put" or "patch" at a path to the local mirror.
-// Patch keys may themselves be paths (e.g. "players/p01").
-function apply(path, value, merge) {
-  if (merge) {
-    for (const k in value) apply(`${path}/${k}`, value[k], false);
-    return;
-  }
-  const parts = path.split("/").filter(Boolean);
-  if (!parts.length) { root = value || {}; return; }
-  let node = root;
-  for (const p of parts.slice(0, -1)) {
-    if (typeof node[p] !== "object" || node[p] === null) node[p] = {};
-    node = node[p];
-  }
-  const last = parts[parts.length - 1];
-  if (value === null) delete node[last]; else node[last] = value;
-}
-
-async function write(path, value) {
-  apply(path, value, false);
-  render();
-  if (!DB) return;
-  try {
-    const res = await fetch(`${DB}/${path}.json`, {
-      method: value === null ? "DELETE" : "PUT",
-      body: value === null ? undefined : JSON.stringify(value),
-    });
-    if (!res.ok) throw new Error(res.status);
-  } catch (e) {
-    setStatus("err", "Save failed – check your connection");
-  }
-}
-
-function setStatus(cls, text) {
-  const el = document.getElementById("status");
-  el.className = "status " + cls;
-  el.textContent = text;
-}
-
-function connect() {
-  if (!DB) {
-    root = { players: defaultPlayers() };
-    document.getElementById("banner").hidden = false;
-    setStatus("err", "Not connected");
-    render();
-    return;
-  }
-  let seeded = false;
-  const es = new EventSource(`${DB}/.json`);
-  const onEvent = merge => e => {
-    const { path, data } = JSON.parse(e.data);
-    apply(path, data, merge);
-    if (!seeded && path === "/" && !merge) {
-      seeded = true;
-      if (!root.initialized) {
-        // First visit ever: create the 15 default rows. Rules only allow writes
-        // per player, so use multi-path keys ("players/p01") rather than a nested object.
-        const update = { initialized: true };
-        for (const [id, p] of Object.entries(defaultPlayers())) update[`players/${id}`] = p;
-        fetch(`${DB}/.json`, { method: "PATCH", body: JSON.stringify(update) });
-      }
-    }
-    setStatus("live", "Live");
-    render();
-  };
-  es.addEventListener("put", onEvent(false));
-  es.addEventListener("patch", onEvent(true));
-  es.addEventListener("cancel", () => setStatus("err", "Access denied – check database rules"));
-  es.onopen = () => setStatus("live", "Live");
-  es.onerror = () => setStatus("err", "Reconnecting…");
-}
-
-// ---- Rendering ----
-function sortedPlayers() {
-  const players = root.players || {};
-  return Object.keys(players)
-    .map(id => ({ id, ...players[id], avail: players[id].avail || {} }))
-    .sort((a, b) => (a.order || 0) - (b.order || 0) || a.id.localeCompare(b.id));
-}
 
 function renderSchedule() {
   const byMonth = {};
@@ -362,7 +192,6 @@ function renderSchedule() {
 
 const minPlayers = () => (root.settings && root.settings.minPlayers) || DEFAULT_MIN;
 const shownEvents = () => EVENTS.filter(e => showPast || !isPast(e));
-const displayName = (p, i) => p.name || `Player ${i + 1}`;
 
 function tally(e, players) {
   const c = { yes: 0, maybe: 0, no: 0, missing: [] };
@@ -580,7 +409,6 @@ const VTIMEZONE = [
   "DTSTART:19701025T030000", "RRULE:FREQ=YEARLY;BYMONTH=10;BYDAY=-1SU", "END:STANDARD",
   "END:VTIMEZONE",
 ];
-const slug = t => t.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().replace(/[^a-z0-9]+/g, "-");
 const icsText = t => String(t).replace(/[\\;,]/g, c => "\\" + c);
 
 // statusOf(e) may return "maybe" to mark an event as tentative.

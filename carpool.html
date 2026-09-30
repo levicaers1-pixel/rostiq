@@ -1,0 +1,339 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Team Carpool</title>
+<link rel="stylesheet" href="common.css">
+<style>
+  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px; margin-top: 16px; }
+  .panel .row { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; }
+  .field { display: flex; flex-direction: column; gap: 4px; font-size: .8rem; color: var(--muted); }
+  .field select, .field input, .car input, .car select {
+    font: inherit; font-size: .9rem; color: var(--text); background: var(--bg);
+    border: 1px solid var(--border); border-radius: 8px; padding: 7px 8px; min-width: 180px;
+  }
+  .hint { color: var(--muted); font-size: .8rem; margin: 8px 0 0; }
+  .warn { color: var(--maybe); }
+
+  details.panel summary { cursor: pointer; font-weight: 600; }
+  .places { display: grid; gap: 6px 16px; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); margin-top: 10px; font-size: .9rem; }
+  .places b { font-weight: 600; }
+  .places span { color: var(--muted); }
+
+  .matches { display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); }
+  @media (max-width: 400px) { .matches { grid-template-columns: 1fr; } }
+  .match { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; }
+  .match.final { border-color: var(--final); }
+  .match .when { color: var(--muted); font-size: .8rem; }
+  .match .title { font-weight: 600; font-size: 1.05rem; }
+  .tag { font-size: .7rem; font-weight: 600; color: var(--final); border: 1px solid var(--final); border-radius: 999px; padding: 0 6px; margin-left: 4px; }
+  .summary { color: var(--muted); font-size: .8rem; margin: 4px 0 10px; }
+
+  .mine { background: var(--bg); border-radius: 8px; padding: 8px; margin-bottom: 10px; }
+  .seg { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; flex-wrap: wrap; }
+  .seg button { border: none; border-radius: 0; }
+  .seg button[aria-pressed="true"] { background: var(--accent); color: #fff; }
+  .mine .seg { display: flex; }
+  .mine .seg button { flex: 1 1 0; padding: 7px 4px; white-space: nowrap; }
+  .mine .extra { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; align-items: center; font-size: .85rem; }
+  .mine .extra input { flex: 1; min-width: 160px; }
+  .mine .extra select, .mine .extra input {
+    font: inherit; font-size: .85rem; color: var(--text); background: var(--surface);
+    border: 1px solid var(--border); border-radius: 8px; padding: 5px 8px;
+  }
+
+  h4 { margin: 12px 0 6px; font-size: .75rem; letter-spacing: .06em; color: var(--muted); text-transform: uppercase; }
+  .car { border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; margin-bottom: 8px; }
+  .car.me { border-color: var(--accent); }
+  .car .top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .car .who { font-weight: 600; flex: 1; }
+  .seats { font-size: .8rem; font-weight: 700; border-radius: 999px; padding: 2px 8px; background: var(--yes-bg); color: var(--yes); white-space: nowrap; }
+  .seats.full { background: var(--no-bg); color: var(--no); }
+  .car .note { font-size: .85rem; margin-top: 4px; }
+  .place { color: var(--muted); font-size: .85rem; font-weight: 400; }
+  .km { font-size: .75rem; color: var(--accent); white-space: nowrap; }
+  .riders { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+  .rider { font-size: .8rem; background: var(--bg); border-radius: 999px; padding: 3px 10px; }
+  .list { list-style: none; margin: 0; padding: 0; font-size: .9rem; }
+  .list li { display: flex; align-items: center; gap: 8px; padding: 4px 0; flex-wrap: wrap; }
+  .list li .who { flex: 1; }
+  .small { font-size: .8rem; padding: 3px 10px; }
+  .empty { color: var(--muted); font-size: .85rem; }
+</style>
+</head>
+<body>
+<main>
+  <nav class="tabs"><a href="./">Availability</a><a href="carpool.html" aria-current="page">🚗 Carpool</a></nav>
+  <h1>Carpool</h1>
+  <p class="sub">Offer seats or ask for a ride per match · <span class="status" id="status">Connecting…</span></p>
+  <p class="banner" id="banner" hidden>Not connected to a database yet. Set <code>FIREBASE_DB_URL</code> in <code>config.js</code>.</p>
+
+  <section class="panel">
+    <div class="row">
+      <label class="field">I am
+        <select id="me"><option value="">– choose your name –</option></select></label>
+      <label class="field">My gemeente
+        <input id="gemeente" placeholder="e.g. Leuven" autocomplete="address-level2" maxlength="60"></label>
+    </div>
+    <p class="hint" id="me-hint">Pick your name once; this device remembers it. Your gemeente is shown to the team so people living close to each other can ride together. Distances are approximate, as the crow flies.</p>
+  </section>
+
+  <details class="panel" id="places-panel">
+    <summary>Where everyone lives</summary>
+    <div class="places" id="places"></div>
+  </details>
+
+  <h2>Upcoming matches</h2>
+  <div class="matches" id="matches"></div>
+</main>
+
+<script src="config.js"></script>
+<script src="common.js"></script>
+<script>
+let me = pref.get("me", "");
+
+// ---- Gemeente → coordinates (OpenStreetMap Nominatim), cached per device ----
+const geo = {};
+const geoQueue = [];
+let geoBusy = false;
+const geoKey = g => g.trim().toLowerCase();
+
+function coords(g) {
+  if (!g) return null;
+  const k = geoKey(g);
+  if (k in geo) return geo[k];
+  const cached = pref.get("geo:" + k, null);
+  if (cached !== null) return (geo[k] = cached ? cached.split(",").map(Number) : null);
+  geo[k] = null;
+  geoQueue.push(g);
+  pumpGeo();
+  return null;
+}
+
+async function pumpGeo() {
+  if (geoBusy || !geoQueue.length) return;
+  geoBusy = true;
+  const g = geoQueue.shift();
+  const k = geoKey(g);
+  try {
+    const url = "https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&countrycodes=be,nl,fr,lu,de&q=" + encodeURIComponent(g);
+    const [hit] = await fetch(url, { headers: { "Accept-Language": "nl,en" } }).then(r => r.json());
+    geo[k] = hit ? [Number(hit.lat), Number(hit.lon)] : null;
+    pref.set("geo:" + k, hit ? `${hit.lat},${hit.lon}` : "");
+    render();
+  } catch {
+    delete geo[k]; // retry on a later render
+  }
+  setTimeout(() => { geoBusy = false; pumpGeo(); }, 1100); // Nominatim allows 1 request/second
+}
+
+function km(g1, g2) {
+  const a = coords(g1), b = coords(g2);
+  if (!a || !b) return null;
+  const rad = x => x * Math.PI / 180;
+  const h = Math.sin(rad(b[0] - a[0]) / 2) ** 2 +
+    Math.cos(rad(a[0])) * Math.cos(rad(b[0])) * Math.sin(rad(b[1] - a[1]) / 2) ** 2;
+  return 2 * 6371 * Math.asin(Math.sqrt(h));
+}
+
+// ---- Data helpers ----
+const named = () => sortedPlayers().filter(p => p.name);
+const player = id => (root.players && root.players[id]) ? { id, ...root.players[id] } : null;
+const nameOf = id => (player(id) || {}).name || "?";
+const placeOf = id => (player(id) || {}).gemeente || "";
+const entries = e => (root.carpool && root.carpool[e.date]) || {};
+
+function distLabel(otherId) {
+  if (!me || otherId === me) return "";
+  const d = km(placeOf(me), placeOf(otherId));
+  if (d === null) return "";
+  return `<span class="km">${d < 1 ? "same area" : "~" + Math.round(d) + " km from you"}</span>`;
+}
+const placeLabel = id => placeOf(id) ? `<span class="place">📍 ${esc(placeOf(id))}</span>` : `<span class="place warn">📍 gemeente unknown</span>`;
+const byDistance = (a, b) => (km(placeOf(me), placeOf(a)) ?? 1e9) - (km(placeOf(me), placeOf(b)) ?? 1e9);
+
+function matchState(e) {
+  const all = entries(e);
+  const drivers = Object.keys(all).filter(id => all[id].role === "driver" && player(id));
+  const cars = drivers.map(id => ({
+    id,
+    seats: all[id].seats || 1,
+    note: all[id].note || "",
+    riders: Object.keys(all).filter(r => all[r].role === "rider" && all[r].with === id && player(r)),
+  }));
+  const waiting = Object.keys(all).filter(id =>
+    all[id].role === "rider" && player(id) && !drivers.includes(all[id].with));
+  const open = named().filter(p =>
+    !all[p.id] && (p.avail || {})[e.date] && ["yes", "maybe"].includes(p.avail[e.date])).map(p => p.id);
+  return { all, cars, waiting, open };
+}
+
+// ---- Actions (all write straight to the shared database) ----
+function setRole(e, role) {
+  const path = `carpool/${e.date}/${me}`;
+  const mineNow = entries(e)[me];
+  if (mineNow && mineNow.role === "driver" && role !== "driver") {
+    // Riders in my car go back to the waiting list.
+    for (const [id, x] of Object.entries(entries(e))) if (x.with === me) write(`carpool/${e.date}/${id}/with`, null);
+  }
+  if (!role) return write(path, null);
+  if (role === "driver") return write(path, { role, seats: (mineNow && mineNow.seats) || 3, ...(mineNow && mineNow.note ? { note: mineNow.note } : {}) });
+  return write(path, { role });
+}
+const join = (e, driverId) => write(`carpool/${e.date}/${me}`, { role: "rider", with: driverId });
+const leave = e => write(`carpool/${e.date}/${me}/with`, null);
+const take = (e, riderId) => write(`carpool/${e.date}/${riderId}/with`, me);
+const drop = (e, riderId) => write(`carpool/${e.date}/${riderId}/with`, null);
+
+// ---- Rendering ----
+function renderMe() {
+  const sel = document.getElementById("me");
+  const people = named();
+  sel.innerHTML = `<option value="">– choose your name –</option>` +
+    people.map(p => `<option value="${p.id}" ${p.id === me ? "selected" : ""}>${esc(p.name)}</option>`).join("");
+  const g = document.getElementById("gemeente");
+  g.disabled = !me;
+  if (document.activeElement !== g) g.value = placeOf(me);
+  document.getElementById("me-hint").innerHTML = !me
+    ? "Pick your name once; this device remembers it. Your gemeente is shown to the team so people living close to each other can ride together. Distances are approximate, as the crow flies."
+    : placeOf(me)
+      ? `Hi ${esc(nameOf(me))}! Distances below are from <b>${esc(placeOf(me))}</b>, as the crow flies.`
+      : `<span class="warn">Hi ${esc(nameOf(me))}, add your gemeente so teammates can see who lives nearby.</span>`;
+}
+
+function renderPlaces() {
+  const groups = {};
+  for (const p of named()) {
+    const k = (p.gemeente || "").trim() || "Unknown";
+    (groups[k] ||= []).push(p.name);
+  }
+  const keys = Object.keys(groups).sort((a, b) =>
+    (a === "Unknown") - (b === "Unknown") || groups[b].length - groups[a].length || a.localeCompare(b));
+  document.getElementById("places").innerHTML = keys.length
+    ? keys.map(k => `<div><b>${esc(k)}</b> (${groups[k].length}) <span>${groups[k].map(esc).join(", ")}</span></div>`).join("")
+    : `<div class="empty">No names filled in yet on the Availability page.</div>`;
+}
+
+function renderMatch(e) {
+  const st = matchState(e);
+  const my = st.all[me];
+  const myRole = my ? my.role : "";
+  const freeSeats = st.cars.reduce((n, c) => n + Math.max(0, c.seats - c.riders.length), 0);
+  const el = document.createElement("section");
+  el.className = "match" + (e.final ? " final" : "");
+
+  let html = `
+    <div class="when">${fmt(e.date, { weekday: "long", day: "numeric", month: "long" })}</div>
+    <div class="title">${esc(e.opp)}${e.final ? '<span class="tag">FINAL</span>' : ""}</div>
+    <div class="summary">🚗 ${st.cars.length} car${st.cars.length === 1 ? "" : "s"} · ${freeSeats} free seat${freeSeats === 1 ? "" : "s"} · 🙋 ${st.waiting.length} waiting for a car</div>`;
+
+  if (me) {
+    html += `<div class="mine">
+      <div class="seg" role="group" aria-label="My plan">
+        <button data-act="role" data-role="driver" aria-pressed="${myRole === "driver"}">🚗 I drive</button>
+        <button data-act="role" data-role="rider" aria-pressed="${myRole === "rider"}">🙋 Need a ride</button>
+        <button data-act="role" data-role="" aria-pressed="${!myRole}">Not needed</button>
+      </div>`;
+    if (myRole === "driver") {
+      html += `<div class="extra">Seats for teammates
+        <select data-act="seats">${[1, 2, 3, 4, 5, 6, 7, 8].map(n => `<option ${n === (my.seats || 1) ? "selected" : ""}>${n}</option>`).join("")}</select>
+        <input data-act="note" data-key="note-${e.date}" maxlength="120" placeholder="Departure time / meeting point" value="${esc(my.note || "")}"></div>`;
+    } else if (myRole === "rider") {
+      const car = st.cars.find(c => c.id === my.with);
+      html += `<div class="extra">${car
+        ? `You ride with <b>${esc(nameOf(car.id))}</b> ${placeLabel(car.id)} <button class="small" data-act="leave">Leave car</button>`
+        : `<span class="warn">Pick a car below, or wait for a driver to add you.</span>`}</div>`;
+    }
+    html += `</div>`;
+  }
+
+  // Cars: nearest to me first.
+  const cars = [...st.cars].sort((a, b) => (b.id === me) - (a.id === me) || byDistance(a.id, b.id));
+  html += `<h4>Cars</h4>` + (cars.length ? cars.map(c => {
+    const free = c.seats - c.riders.length;
+    const canJoin = me && c.id !== me && free > 0 && !(myRole === "rider" && my.with === c.id) && myRole !== "driver";
+    return `<div class="car ${c.id === me ? "me" : ""}">
+      <div class="top"><span class="who">🚗 ${esc(nameOf(c.id))} ${placeLabel(c.id)}</span> ${distLabel(c.id)}
+        <span class="seats ${free <= 0 ? "full" : ""}">${free > 0 ? `${free} of ${c.seats} free` : "full"}</span>
+        ${canJoin ? `<button class="small" data-act="join" data-id="${c.id}">Join</button>` : ""}</div>
+      ${c.note ? `<div class="note">🕘 ${esc(c.note)}</div>` : ""}
+      ${c.riders.length ? `<div class="riders">${c.riders.map(r => `<span class="rider">${esc(nameOf(r))} · ${esc(placeOf(r) || "?")}${
+        c.id === me ? ` <button class="small" data-act="drop" data-id="${r}" title="Remove from my car">✕</button>` : ""}</span>`).join("")}</div>` : ""}
+    </div>`;
+  }).join("") : `<div class="empty">No drivers yet.</div>`);
+
+  // Riders without a car: nearest to me first, so drivers can pick them up.
+  const myCar = st.cars.find(c => c.id === me);
+  const iHaveRoom = myCar && myCar.seats - myCar.riders.length > 0;
+  if (st.waiting.length) {
+    html += `<h4>Waiting for a car</h4><ul class="list">` + [...st.waiting].sort(byDistance).map(id => `
+      <li><span class="who">🙋 ${esc(nameOf(id))} ${placeLabel(id)}</span> ${distLabel(id)}
+        ${iHaveRoom ? `<button class="small" data-act="take" data-id="${id}">Take in my car</button>` : ""}</li>`).join("") + `</ul>`;
+  }
+
+  // Available players who haven't said anything about transport yet.
+  if (st.open.length) {
+    html += `<h4>Playing, transport not arranged</h4><ul class="list">` + [...st.open].sort(byDistance).map(id => `
+      <li><span class="who">${esc(nameOf(id))} ${placeLabel(id)}</span> ${distLabel(id)}</li>`).join("") + `</ul>`;
+  }
+
+  el.innerHTML = html;
+  el.addEventListener("click", ev => {
+    const b = ev.target.closest("button[data-act]");
+    if (!b) return;
+    ({
+      role: () => setRole(e, b.dataset.role || null),
+      join: () => join(e, b.dataset.id),
+      leave: () => leave(e),
+      take: () => take(e, b.dataset.id),
+      drop: () => drop(e, b.dataset.id),
+    })[b.dataset.act]();
+  });
+  el.addEventListener("change", ev => {
+    if (ev.target.dataset.act === "seats") write(`carpool/${e.date}/${me}/seats`, Number(ev.target.value));
+  });
+  el.addEventListener("input", ev => {
+    if (ev.target.dataset.act !== "note") return;
+    clearTimeout(noteTimers[e.date]);
+    const v = ev.target.value.trim();
+    noteTimers[e.date] = setTimeout(() => write(`carpool/${e.date}/${me}/note`, v || null), 500);
+  });
+  return el;
+}
+const noteTimers = {};
+
+function render() {
+  // Keep a text field someone is typing in intact across live updates.
+  const a = document.activeElement;
+  const key = a && a.dataset && a.dataset.key;
+  const saved = key ? { value: a.value, sel: [a.selectionStart, a.selectionEnd] } : null;
+
+  renderMe();
+  renderPlaces();
+  const wrap = document.getElementById("matches");
+  wrap.innerHTML = "";
+  const upcoming = EVENTS.filter(e => !isPast(e));
+  upcoming.forEach(e => wrap.append(renderMatch(e)));
+  if (!upcoming.length) wrap.innerHTML = `<div class="empty">No upcoming matches.</div>`;
+
+  if (key) {
+    const el = document.querySelector(`[data-key="${key}"]`);
+    if (el) { el.value = saved.value; el.focus(); el.setSelectionRange(...saved.sel); }
+  }
+}
+
+document.getElementById("me").addEventListener("change", ev => {
+  me = ev.target.value; pref.set("me", me); render();
+});
+let gemTimer;
+document.getElementById("gemeente").addEventListener("input", ev => {
+  clearTimeout(gemTimer);
+  const v = ev.target.value.trim();
+  gemTimer = setTimeout(() => me && write(`players/${me}/gemeente`, v || null), 600);
+});
+
+connect();
+</script>
+</body>
+</html>

@@ -1,0 +1,70 @@
+:root {
+  --bg: #f6f7f9;
+  --surface: #ffffff;
+  --text: #1b1f24;
+  --muted: #5f6b7a;
+  --border: #dde2e8;
+  --accent: #2457d6;
+  --yes: #1f9d55;
+  --yes-bg: #e3f5ea;
+  --maybe: #b7791f;
+  --maybe-bg: #fdf1dc;
+  --no: #c53030;
+  --no-bg: #fbe4e4;
+  --final: #7a3fd1;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #111418;
+    --surface: #1a1e24;
+    --text: #e8ebef;
+    --muted: #9aa5b3;
+    --border: #2d333c;
+    --accent: #6f95ff;
+    --yes: #4ccb82;
+    --yes-bg: #173826;
+    --maybe: #f0b44c;
+    --maybe-bg: #3b2e14;
+    --no: #f07171;
+    --no-bg: #3f1d1d;
+    --final: #b18cff;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+main { max-width: 1200px; margin: 0 auto; padding: 24px 16px 48px; }
+h1 { font-size: 1.6rem; margin: 0 0 4px; }
+h2 { font-size: 1.15rem; margin: 32px 0 12px; }
+.sub { color: var(--muted); margin: 0; }
+
+button {
+  font: inherit; font-size: .85rem; cursor: pointer;
+  background: var(--surface); color: var(--text);
+  border: 1px solid var(--border); border-radius: 8px; padding: 6px 12px;
+}
+button:hover { border-color: var(--accent); }
+
+.status { font-size: .8rem; color: var(--muted); display: inline-flex; align-items: center; gap: 6px; }
+.status::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+.status.live::before { background: var(--yes); }
+.status.err::before { background: var(--no); }
+.banner { background: var(--maybe-bg); color: var(--text); border: 1px solid var(--maybe); border-radius: 10px; padding: 10px 14px; margin: 16px 0 0; font-size: .9rem; }
+.banner[hidden] { display: none; }
+
+button:disabled { cursor: default; opacity: .5; }
+
+[hidden] { display: none !important; }
+
+/* Page tabs */
+.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); margin: 0 0 20px; }
+.tabs a {
+  padding: 8px 14px; color: var(--muted); text-decoration: none; font-weight: 600;
+  border-bottom: 2px solid transparent; margin-bottom: -1px;
+}
+.tabs a:hover { color: var(--text); }
+.tabs a[aria-current="page"] { color: var(--accent); border-bottom-color: var(--accent); }
