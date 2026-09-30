@@ -1,0 +1,18 @@
+{
+  "rules": {
+    ".read": true,
+    "initialized": { ".write": true },
+    "players": {
+      "$pid": {
+        ".write": true,
+        "order": { ".validate": "newData.isNumber()" },
+        "name": { ".validate": "newData.isString() && newData.val().length <= 60" },
+        "avail": {
+          "$date": { ".validate": "newData.val() === 'yes' || newData.val() === 'maybe' || newData.val() === 'no'" }
+        },
+        "$other": { ".validate": false }
+      }
+    },
+    "$other": { ".validate": false }
+  }
+}

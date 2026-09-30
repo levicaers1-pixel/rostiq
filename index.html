@@ -109,13 +109,19 @@
   tfoot .n { color: var(--no); }
 
   .note { color: var(--muted); font-size: .8rem; margin-top: 10px; }
-  input[type=file] { display: none; }
+  .status { font-size: .8rem; color: var(--muted); display: inline-flex; align-items: center; gap: 6px; }
+  .status::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+  .status.live::before { background: var(--yes); }
+  .status.err::before { background: var(--no); }
+  .banner { background: var(--maybe-bg); color: var(--text); border: 1px solid var(--maybe); border-radius: 10px; padding: 10px 14px; margin: 16px 0 0; font-size: .9rem; }
+  .banner[hidden] { display: none; }
 </style>
 </head>
 <body>
 <main>
   <h1>Team Availability</h1>
-  <p class="sub">Season 2026–2027 · tap a cell to set availability</p>
+  <p class="sub">Season 2026–2027 · tap a cell to set availability · <span class="status" id="status">Connecting…</span></p>
+  <p class="banner" id="banner" hidden>Not connected to a database yet. Changes are kept only until you reload. Set <code>FIREBASE_DB_URL</code> in <code>config.js</code> (see README).</p>
 
   <h2>Schedule</h2>
   <div class="months" id="months"></div>
@@ -128,10 +134,7 @@
       <span><i class="swatch" style="background:var(--no-bg);border:1px solid var(--no)"></i>✗ Not available</span>
     </div>
     <button id="add">+ Add player</button>
-    <button id="export">Export</button>
-    <button id="import">Import</button>
-    <button id="reset">Reset</button>
-    <input type="file" id="file" accept="application/json">
+    <button id="export">Export CSV</button>
   </div>
   <div class="grid-wrap">
     <table>
@@ -140,9 +143,10 @@
       <tfoot><tr id="foot"></tr></tfoot>
     </table>
   </div>
-  <p class="note">Your choices are saved in this browser only. Use Export / Import to move them between devices or share a file with the team.</p>
+  <p class="note">Shared with the whole team. Changes save instantly and appear live for everyone who has the page open.</p>
 </main>
 
+<script src="config.js"></script>
 <script>
 const EVENTS = [
   { date: "2026-11-14", opp: "Mormal" },
@@ -158,27 +162,104 @@ const EVENTS = [
   { date: "2027-03-13", opp: "Rigenée", final: true },
 ];
 const TEAM_SIZE = 15;
-const KEY = "team-availability-v1";
 const CYCLE = ["", "yes", "maybe", "no"];
 const SYMBOL = { "": "–", yes: "✓", maybe: "?", no: "✗" };
+const LABEL = { "": "", yes: "Available", maybe: "Maybe", no: "Not available" };
+const DB = (window.FIREBASE_DB_URL || "").trim().replace(/\/+$/, "");
 
 const parse = d => new Date(d + "T12:00:00");
 const fmt = (d, opts) => parse(d).toLocaleDateString("en-GB", opts);
 
-function blankState() {
-  return { players: Array.from({ length: TEAM_SIZE }, () => ({ name: "", avail: {} })) };
+// ---- Shared state (mirror of the database root) ----
+let root = {};
+
+function defaultPlayers() {
+  const players = {};
+  for (let i = 1; i <= TEAM_SIZE; i++) players["p" + String(i).padStart(2, "0")] = { order: i };
+  return players;
 }
-function load() {
+
+// Apply a Firebase "put" or "patch" at a path to the local mirror.
+function apply(path, value, merge) {
+  const parts = path.split("/").filter(Boolean);
+  const set = (obj, key, v) => (v === null ? delete obj[key] : (obj[key] = v));
+  if (!parts.length) {
+    if (!merge) { root = value || {}; return; }
+    for (const k in value) set(root, k, value[k]);
+    return;
+  }
+  let node = root;
+  for (const p of parts.slice(0, -1)) {
+    if (typeof node[p] !== "object" || node[p] === null) node[p] = {};
+    node = node[p];
+  }
+  const last = parts[parts.length - 1];
+  if (!merge) { set(node, last, value); return; }
+  if (typeof node[last] !== "object" || node[last] === null) node[last] = {};
+  for (const k in value) set(node[last], k, value[k]);
+}
+
+async function write(path, value) {
+  apply(path, value, false);
+  render();
+  if (!DB) return;
   try {
-    const s = JSON.parse(localStorage.getItem(KEY));
-    if (s && Array.isArray(s.players)) return s;
-  } catch {}
-  return blankState();
+    const res = await fetch(`${DB}/${path}.json`, {
+      method: value === null ? "DELETE" : "PUT",
+      body: value === null ? undefined : JSON.stringify(value),
+    });
+    if (!res.ok) throw new Error(res.status);
+  } catch (e) {
+    setStatus("err", "Save failed – check your connection");
+  }
 }
-function save() {
-  try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {}
+
+function setStatus(cls, text) {
+  const el = document.getElementById("status");
+  el.className = "status " + cls;
+  el.textContent = text;
 }
-let state = load();
+
+function connect() {
+  if (!DB) {
+    root = { players: defaultPlayers() };
+    document.getElementById("banner").hidden = false;
+    setStatus("err", "Not connected");
+    render();
+    return;
+  }
+  let seeded = false;
+  const es = new EventSource(`${DB}/.json`);
+  const onEvent = merge => e => {
+    const { path, data } = JSON.parse(e.data);
+    apply(path, data, merge);
+    if (!seeded && path === "/" && !merge) {
+      seeded = true;
+      if (!root.initialized) {
+        // First visit ever: create the 15 default rows.
+        fetch(`${DB}/.json`, {
+          method: "PATCH",
+          body: JSON.stringify({ initialized: true, players: defaultPlayers() }),
+        });
+      }
+    }
+    setStatus("live", "Live");
+    render();
+  };
+  es.addEventListener("put", onEvent(false));
+  es.addEventListener("patch", onEvent(true));
+  es.addEventListener("cancel", () => setStatus("err", "Access denied – check database rules"));
+  es.onopen = () => setStatus("live", "Live");
+  es.onerror = () => setStatus("err", "Reconnecting…");
+}
+
+// ---- Rendering ----
+function sortedPlayers() {
+  const players = root.players || {};
+  return Object.keys(players)
+    .map(id => ({ id, ...players[id], avail: players[id].avail || {} }))
+    .sort((a, b) => (a.order || 0) - (b.order || 0) || a.id.localeCompare(b.id));
+}
 
 function renderSchedule() {
   const byMonth = {};
@@ -191,32 +272,42 @@ function renderSchedule() {
       <li><span class="d">${fmt(e.date, { weekday: "short", day: "numeric" })}</span>
       <span>${e.opp}${e.final ? '<span class="tag">FINAL</span>' : ""}</span></li>`).join("")}
     </ul></div>`).join("");
-}
-
-function renderGrid() {
   document.getElementById("head").innerHTML =
     `<th class="name">Player</th>` +
     EVENTS.map(e => `<th class="${e.final ? "final" : ""}">
       ${fmt(e.date, { weekday: "short", day: "numeric", month: "short" })}
       <span class="opp">${e.opp}${e.final ? " 🏆" : ""}</span></th>`).join("");
+}
 
+const nameTimers = {};
+
+function render() {
+  // Keep whatever someone is typing (and the caret) intact across live updates.
+  const active = document.activeElement;
+  const focusId = active && active.dataset && active.dataset.pid;
+  const focusVal = focusId ? active.value : null;
+  const caret = focusId ? [active.selectionStart, active.selectionEnd] : null;
+
+  const players = sortedPlayers();
   const body = document.getElementById("body");
   body.innerHTML = "";
-  state.players.forEach((p, i) => {
+  players.forEach((p, i) => {
     const tr = document.createElement("tr");
     const nameTd = document.createElement("td");
     nameTd.className = "name";
     nameTd.innerHTML = `<span class="num">${i + 1}</span>`;
     const input = document.createElement("input");
+    input.dataset.pid = p.id;
     input.placeholder = `Player ${i + 1}`;
-    input.value = p.name;
-    input.addEventListener("input", () => { p.name = input.value; save(); });
+    input.value = p.id === focusId ? focusVal : p.name || "";
+    input.addEventListener("input", () => {
+      clearTimeout(nameTimers[p.id]);
+      nameTimers[p.id] = setTimeout(() => write(`players/${p.id}/name`, input.value || null), 400);
+    });
     const del = document.createElement("button");
     del.className = "del"; del.title = "Remove player"; del.textContent = "✕";
     del.addEventListener("click", () => {
-      if (confirm(`Remove ${p.name || "Player " + (i + 1)}?`)) {
-        state.players.splice(i, 1); save(); renderGrid();
-      }
+      if (confirm(`Remove ${p.name || "Player " + (i + 1)} for everyone?`)) write(`players/${p.id}`, null);
     });
     nameTd.append(input, del);
     tr.append(nameTd);
@@ -226,60 +317,57 @@ function renderGrid() {
       const btn = document.createElement("button");
       btn.className = "cell";
       const s = p.avail[e.date] || "";
-      btn.dataset.s = s; btn.textContent = SYMBOL[s];
+      btn.dataset.s = s;
+      btn.textContent = SYMBOL[s];
+      btn.title = LABEL[s];
       btn.addEventListener("click", () => {
         const next = CYCLE[(CYCLE.indexOf(p.avail[e.date] || "") + 1) % CYCLE.length];
-        if (next) p.avail[e.date] = next; else delete p.avail[e.date];
-        btn.dataset.s = next; btn.textContent = SYMBOL[next];
-        save(); renderTotals();
+        write(`players/${p.id}/avail/${e.date}`, next || null);
       });
       td.append(btn);
       tr.append(td);
     }
     body.append(tr);
-  });
-  renderTotals();
-}
 
-function renderTotals() {
+    if (p.id === focusId) {
+      input.focus();
+      input.setSelectionRange(caret[0], caret[1]);
+    }
+  });
+
   document.getElementById("foot").innerHTML =
     `<td class="name">Available</td>` +
     EVENTS.map(e => {
       const c = { yes: 0, maybe: 0, no: 0 };
-      for (const p of state.players) { const s = p.avail[e.date]; if (s) c[s]++; }
+      for (const p of players) { const s = p.avail[e.date]; if (s) c[s]++; }
       return `<td><div class="y">${c.yes}</div><div><span class="m">${c.maybe}?</span> · <span class="n">${c.no}✗</span></div></td>`;
     }).join("");
 }
 
-document.getElementById("add").onclick = () => {
-  state.players.push({ name: "", avail: {} }); save(); renderGrid();
+document.getElementById("add").onclick = async () => {
+  const players = sortedPlayers();
+  const order = players.reduce((m, p) => Math.max(m, p.order || 0), 0) + 1;
+  const id = "p" + Date.now().toString(36);
+  await write(`players/${id}`, { order });
   const inputs = document.querySelectorAll("td.name input");
   inputs[inputs.length - 1].focus();
 };
-document.getElementById("reset").onclick = () => {
-  if (confirm("Clear all names and availability?")) { state = blankState(); save(); renderGrid(); }
-};
+
 document.getElementById("export").onclick = () => {
-  const blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
+  const rows = [["Player", ...EVENTS.map(e => `${e.date} ${e.opp}`)]];
+  sortedPlayers().forEach((p, i) =>
+    rows.push([p.name || `Player ${i + 1}`, ...EVENTS.map(e => LABEL[p.avail[e.date] || ""])]));
+  const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\r\n");
   const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = "team-availability.json";
+  a.href = URL.createObjectURL(new Blob(["﻿" + csv], { type: "text/csv" }));
+  a.download = "team-availability.csv";
   a.click();
   URL.revokeObjectURL(a.href);
 };
-document.getElementById("import").onclick = () => document.getElementById("file").click();
-document.getElementById("file").onchange = async ev => {
-  const f = ev.target.files[0]; if (!f) return;
-  try {
-    const s = JSON.parse(await f.text());
-    if (!Array.isArray(s.players)) throw new Error();
-    state = s; save(); renderGrid();
-  } catch { alert("That file isn't a valid availability export."); }
-  ev.target.value = "";
-};
 
 renderSchedule();
-renderGrid();
+connect();
 </script>
+
 </body>
 </html>
