@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Team Availability</title>
+<style>
+  :root {
+    --bg: #f6f7f9;
+    --surface: #ffffff;
+    --text: #1b1f24;
+    --muted: #5f6b7a;
+    --border: #dde2e8;
+    --accent: #2457d6;
+    --yes: #1f9d55;
+    --yes-bg: #e3f5ea;
+    --maybe: #b7791f;
+    --maybe-bg: #fdf1dc;
+    --no: #c53030;
+    --no-bg: #fbe4e4;
+    --final: #7a3fd1;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #111418;
+      --surface: #1a1e24;
+      --text: #e8ebef;
+      --muted: #9aa5b3;
+      --border: #2d333c;
+      --accent: #6f95ff;
+      --yes: #4ccb82;
+      --yes-bg: #173826;
+      --maybe: #f0b44c;
+      --maybe-bg: #3b2e14;
+      --no: #f07171;
+      --no-bg: #3f1d1d;
+      --final: #b18cff;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  main { max-width: 1200px; margin: 0 auto; padding: 24px 16px 48px; }
+  h1 { font-size: 1.6rem; margin: 0 0 4px; }
+  h2 { font-size: 1.15rem; margin: 32px 0 12px; }
+  .sub { color: var(--muted); margin: 0; }
+
+  /* Schedule */
+  .months { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
+  .month { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; }
+  .month h3 { margin: 0 0 8px; font-size: .8rem; letter-spacing: .08em; color: var(--muted); }
+  .month ul { list-style: none; margin: 0; padding: 0; }
+  .month li { display: flex; gap: 10px; padding: 4px 0; align-items: baseline; }
+  .month .d { font-variant-numeric: tabular-nums; color: var(--muted); min-width: 52px; }
+  .tag { font-size: .7rem; font-weight: 600; color: var(--final); border: 1px solid var(--final); border-radius: 999px; padding: 0 6px; margin-left: 4px; }
+
+  /* Toolbar */
+  .toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 12px; }
+  .legend { display: flex; flex-wrap: wrap; gap: 12px; color: var(--muted); font-size: .85rem; margin-right: auto; }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  button {
+    font: inherit; font-size: .85rem; cursor: pointer;
+    background: var(--surface); color: var(--text);
+    border: 1px solid var(--border); border-radius: 8px; padding: 6px 12px;
+  }
+  button:hover { border-color: var(--accent); }
+
+  /* Grid */
+  .grid-wrap { overflow-x: auto; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; }
+  table { border-collapse: collapse; width: 100%; min-width: 900px; }
+  th, td { border-bottom: 1px solid var(--border); text-align: center; padding: 0; }
+  thead th { font-size: .75rem; font-weight: 600; color: var(--muted); padding: 8px 4px; vertical-align: bottom; line-height: 1.25; }
+  thead th .opp { display: block; color: var(--text); font-size: .78rem; }
+  thead th.final .opp { color: var(--final); }
+  th.name, td.name {
+    position: sticky; left: 0; z-index: 1; background: var(--surface);
+    text-align: left; min-width: 170px; border-right: 1px solid var(--border);
+  }
+  td.name { display: flex; align-items: center; gap: 4px; padding: 2px 4px 2px 8px; }
+  td.name .num { color: var(--muted); font-size: .75rem; width: 18px; font-variant-numeric: tabular-nums; }
+  td.name input {
+    flex: 1; min-width: 0; font: inherit; color: var(--text); background: transparent;
+    border: 1px solid transparent; border-radius: 6px; padding: 6px;
+  }
+  td.name input:hover { border-color: var(--border); }
+  td.name input:focus { outline: none; border-color: var(--accent); }
+  td.name .del { border: none; background: none; color: var(--muted); padding: 4px 6px; visibility: hidden; }
+  tr:hover td.name .del { visibility: visible; }
+  td.name .del:hover { color: var(--no); }
+
+  .cell {
+    width: 100%; min-width: 64px; height: 38px; border: none; border-radius: 0;
+    background: transparent; font-size: 1rem; font-weight: 700; color: var(--muted);
+  }
+  .cell:hover { background: var(--bg); }
+  .cell[data-s="yes"]   { background: var(--yes-bg);   color: var(--yes); }
+  .cell[data-s="maybe"] { background: var(--maybe-bg); color: var(--maybe); }
+  .cell[data-s="no"]    { background: var(--no-bg);    color: var(--no); }
+  .swatch { width: 14px; height: 14px; border-radius: 4px; display: inline-block; }
+
+  tfoot td { font-size: .8rem; padding: 8px 4px; font-variant-numeric: tabular-nums; border-bottom: none; }
+  tfoot td.name { font-weight: 600; }
+  tfoot .y { color: var(--yes); font-weight: 700; font-size: .95rem; }
+  tfoot .m { color: var(--maybe); }
+  tfoot .n { color: var(--no); }
+
+  .note { color: var(--muted); font-size: .8rem; margin-top: 10px; }
+  input[type=file] { display: none; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Team Availability</h1>
+  <p class="sub">Season 2026–2027 · tap a cell to set availability</p>
+
+  <h2>Schedule</h2>
+  <div class="months" id="months"></div>
+
+  <h2>Availability</h2>
+  <div class="toolbar">
+    <div class="legend">
+      <span><i class="swatch" style="background:var(--yes-bg);border:1px solid var(--yes)"></i>✓ Available</span>
+      <span><i class="swatch" style="background:var(--maybe-bg);border:1px solid var(--maybe)"></i>? Maybe</span>
+      <span><i class="swatch" style="background:var(--no-bg);border:1px solid var(--no)"></i>✗ Not available</span>
+    </div>
+    <button id="add">+ Add player</button>
+    <button id="export">Export</button>
+    <button id="import">Import</button>
+    <button id="reset">Reset</button>
+    <input type="file" id="file" accept="application/json">
+  </div>
+  <div class="grid-wrap">
+    <table>
+      <thead><tr id="head"></tr></thead>
+      <tbody id="body"></tbody>
+      <tfoot><tr id="foot"></tr></tfoot>
+    </table>
+  </div>
+  <p class="note">Your choices are saved in this browser only. Use Export / Import to move them between devices or share a file with the team.</p>
+</main>
+
+<script>
+const EVENTS = [
+  { date: "2026-11-14", opp: "Mormal" },
+  { date: "2026-11-21", opp: "Hainaut" },
+  { date: "2026-12-13", opp: "Lille Métropole" },
+  { date: "2026-12-19", opp: "Hainaut" },
+  { date: "2027-01-17", opp: "Kapellen" },
+  { date: "2027-01-23", opp: "Hainaut" },
+  { date: "2027-02-13", opp: "Lille Métropole" },
+  { date: "2027-02-21", opp: "Mormal" },
+  { date: "2027-02-27", opp: "Hainaut" },
+  { date: "2027-03-06", opp: "Keerbergen" },
+  { date: "2027-03-13", opp: "Rigenée", final: true },
+];
+const TEAM_SIZE = 15;
+const KEY = "team-availability-v1";
+const CYCLE = ["", "yes", "maybe", "no"];
+const SYMBOL = { "": "–", yes: "✓", maybe: "?", no: "✗" };
+
+const parse = d => new Date(d + "T12:00:00");
+const fmt = (d, opts) => parse(d).toLocaleDateString("en-GB", opts);
+
+function blankState() {
+  return { players: Array.from({ length: TEAM_SIZE }, () => ({ name: "", avail: {} })) };
+}
+function load() {
+  try {
+    const s = JSON.parse(localStorage.getItem(KEY));
+    if (s && Array.isArray(s.players)) return s;
+  } catch {}
+  return blankState();
+}
+function save() {
+  try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {}
+}
+let state = load();
+
+function renderSchedule() {
+  const byMonth = {};
+  for (const e of EVENTS) {
+    const m = fmt(e.date, { month: "long", year: "numeric" }).toUpperCase();
+    (byMonth[m] ||= []).push(e);
+  }
+  document.getElementById("months").innerHTML = Object.entries(byMonth).map(([m, evs]) => `
+    <div class="month"><h3>${m}</h3><ul>${evs.map(e => `
+      <li><span class="d">${fmt(e.date, { weekday: "short", day: "numeric" })}</span>
+      <span>${e.opp}${e.final ? '<span class="tag">FINAL</span>' : ""}</span></li>`).join("")}
+    </ul></div>`).join("");
+}
+
+function renderGrid() {
+  document.getElementById("head").innerHTML =
+    `<th class="name">Player</th>` +
+    EVENTS.map(e => `<th class="${e.final ? "final" : ""}">
+      ${fmt(e.date, { weekday: "short", day: "numeric", month: "short" })}
+      <span class="opp">${e.opp}${e.final ? " 🏆" : ""}</span></th>`).join("");
+
+  const body = document.getElementById("body");
+  body.innerHTML = "";
+  state.players.forEach((p, i) => {
+    const tr = document.createElement("tr");
+    const nameTd = document.createElement("td");
+    nameTd.className = "name";
+    nameTd.innerHTML = `<span class="num">${i + 1}</span>`;
+    const input = document.createElement("input");
+    input.placeholder = `Player ${i + 1}`;
+    input.value = p.name;
+    input.addEventListener("input", () => { p.name = input.value; save(); });
+    const del = document.createElement("button");
+    del.className = "del"; del.title = "Remove player"; del.textContent = "✕";
+    del.addEventListener("click", () => {
+      if (confirm(`Remove ${p.name || "Player " + (i + 1)}?`)) {
+        state.players.splice(i, 1); save(); renderGrid();
+      }
+    });
+    nameTd.append(input, del);
+    tr.append(nameTd);
+
+    for (const e of EVENTS) {
+      const td = document.createElement("td");
+      const btn = document.createElement("button");
+      btn.className = "cell";
+      const s = p.avail[e.date] || "";
+      btn.dataset.s = s; btn.textContent = SYMBOL[s];
+      btn.addEventListener("click", () => {
+        const next = CYCLE[(CYCLE.indexOf(p.avail[e.date] || "") + 1) % CYCLE.length];
+        if (next) p.avail[e.date] = next; else delete p.avail[e.date];
+        btn.dataset.s = next; btn.textContent = SYMBOL[next];
+        save(); renderTotals();
+      });
+      td.append(btn);
+      tr.append(td);
+    }
+    body.append(tr);
+  });
+  renderTotals();
+}
+
+function renderTotals() {
+  document.getElementById("foot").innerHTML =
+    `<td class="name">Available</td>` +
+    EVENTS.map(e => {
+      const c = { yes: 0, maybe: 0, no: 0 };
+      for (const p of state.players) { const s = p.avail[e.date]; if (s) c[s]++; }
+      return `<td><div class="y">${c.yes}</div><div><span class="m">${c.maybe}?</span> · <span class="n">${c.no}✗</span></div></td>`;
+    }).join("");
+}
+
+document.getElementById("add").onclick = () => {
+  state.players.push({ name: "", avail: {} }); save(); renderGrid();
+  const inputs = document.querySelectorAll("td.name input");
+  inputs[inputs.length - 1].focus();
+};
+document.getElementById("reset").onclick = () => {
+  if (confirm("Clear all names and availability?")) { state = blankState(); save(); renderGrid(); }
+};
+document.getElementById("export").onclick = () => {
+  const blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "team-availability.json";
+  a.click();
+  URL.revokeObjectURL(a.href);
+};
+document.getElementById("import").onclick = () => document.getElementById("file").click();
+document.getElementById("file").onchange = async ev => {
+  const f = ev.target.files[0]; if (!f) return;
+  try {
+    const s = JSON.parse(await f.text());
+    if (!Array.isArray(s.players)) throw new Error();
+    state = s; save(); renderGrid();
+  } catch { alert("That file isn't a valid availability export."); }
+  ev.target.value = "";
+};
+
+renderSchedule();
+renderGrid();
+</script>
+</body>
+</html>
