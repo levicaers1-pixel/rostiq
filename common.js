@@ -189,6 +189,9 @@ async function initAuth() {
     }
     history.replaceState(null, "", location.pathname);
   }
+  // Coming back from a Google redirect: success arrives via onAuthStateChanged; surface failures.
+  A.getRedirectResult(fbAuth).catch(() =>
+    gateMessage("Google sign-in didn't complete. Try again, or use the email link.", true));
   A.onAuthStateChanged(fbAuth, user => {
     session.user = user;
     session.admin = !!user && user.emailVerified && (user.email || "").toLowerCase() === ADMIN_EMAIL;
@@ -268,8 +271,14 @@ function renderAuth() {
 
 async function onGateClick(ev) {
   if (ev.target.closest("[data-google]")) {
-    try { await A.signInWithPopup(fbAuth, new A.GoogleAuthProvider()); gateMsg = { text: "", err: false }; }
-    catch (e) {
+    try {
+      // Phones handle a full-page redirect better than a popup tab; the home-screen
+      // app and desktops keep the popup so the page itself isn't navigated away.
+      const phoneBrowser = matchMedia("(pointer: coarse)").matches && !standalone();
+      if (phoneBrowser) return await A.signInWithRedirect(fbAuth, new A.GoogleAuthProvider());
+      await A.signInWithPopup(fbAuth, new A.GoogleAuthProvider());
+      gateMsg = { text: "", err: false };
+    } catch (e) {
       if (e.code !== "auth/popup-closed-by-user" && e.code !== "auth/cancelled-popup-request")
         gateMessage("Google sign-in didn't work here. Try the email link instead.", true);
     }
