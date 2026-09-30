@@ -121,6 +121,48 @@
   .status.err::before { background: var(--no); }
   .banner { background: var(--maybe-bg); color: var(--text); border: 1px solid var(--maybe); border-radius: 10px; padding: 10px 14px; margin: 16px 0 0; font-size: .9rem; }
   .banner[hidden] { display: none; }
+
+  /* Past matches */
+  .month li.past { opacity: .45; }
+  .month li.past .opp-name { text-decoration: line-through; }
+
+  /* Toolbar controls */
+  .seg { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  .seg button { border: none; border-radius: 0; }
+  .seg button[aria-pressed="true"] { background: var(--accent); color: #fff; }
+  .min { display: inline-flex; align-items: center; gap: 6px; font-size: .85rem; color: var(--muted); }
+  .min input { width: 56px; font: inherit; padding: 5px 6px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text); }
+  button:disabled { cursor: default; opacity: .5; }
+
+  /* Totals colored against the minimum */
+  tfoot td.ok, .badge.ok       { background: var(--yes-bg); }
+  tfoot td.low, .badge.low     { background: var(--maybe-bg); }
+  tfoot td.short, .badge.short { background: var(--no-bg); }
+  .remind { border: none; background: none; padding: 2px 4px; font-size: .9rem; }
+
+  /* Cards view */
+  .cards { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; }
+  .card.final { border-color: var(--final); }
+  .card header { display: flex; align-items: center; gap: 8px; }
+  .card .when { color: var(--muted); font-size: .8rem; }
+  .card .title { font-weight: 600; flex: 1; }
+  .badge { font-size: .8rem; font-weight: 700; border-radius: 999px; padding: 2px 10px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .card .counts { color: var(--muted); font-size: .8rem; margin: 6px 0 10px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip { font-size: .85rem; padding: 6px 10px; border-radius: 999px; color: var(--muted); }
+  .chip[data-s="yes"]   { background: var(--yes-bg);   color: var(--yes);   border-color: var(--yes); }
+  .chip[data-s="maybe"] { background: var(--maybe-bg); color: var(--maybe); border-color: var(--maybe); }
+  .chip[data-s="no"]    { background: var(--no-bg);    color: var(--no);    border-color: var(--no); }
+  [hidden] { display: none !important; }
+
+  /* Reminder dialog */
+  dialog { border: 1px solid var(--border); border-radius: 12px; background: var(--surface); color: var(--text); width: min(480px, calc(100vw - 32px)); padding: 16px; }
+  dialog::backdrop { background: rgba(0, 0, 0, .4); }
+  dialog h3 { margin: 0 0 10px; font-size: 1rem; }
+  dialog textarea { width: 100%; font: inherit; font-size: .9rem; padding: 8px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text); resize: vertical; }
+  dialog .row { display: flex; gap: 8px; justify-content: flex-end; margin-top: 10px; flex-wrap: wrap; }
+  dialog a.btn { font-size: .85rem; text-decoration: none; background: #25d366; color: #fff; border-radius: 8px; padding: 6px 12px; }
 </style>
 </head>
 <body>
@@ -142,18 +184,36 @@
       <span><i class="swatch" style="background:var(--maybe-bg);border:1px solid var(--maybe)"></i>? Maybe</span>
       <span><i class="swatch" style="background:var(--no-bg);border:1px solid var(--no)"></i>✗ Not available</span>
     </div>
+    <label class="min" title="Totals turn green when at least this many players are available">Min. players
+      <input type="number" id="min" min="1" max="50" inputmode="numeric"></label>
+    <button id="past" hidden></button>
+    <div class="seg" role="group" aria-label="View">
+      <button data-view="table">Table</button><button data-view="cards">Cards</button>
+    </div>
     <button id="add">+ Add player</button>
     <button id="export">Export CSV</button>
   </div>
-  <div class="grid-wrap">
+  <div class="cards" id="cards" hidden></div>
+  <div class="grid-wrap" id="table-view">
     <table>
       <thead><tr id="head"></tr></thead>
       <tbody id="body"></tbody>
       <tfoot><tr id="foot"></tr></tfoot>
     </table>
   </div>
-  <p class="note">Shared with the whole team. Changes save instantly and appear live for everyone who has the page open.</p>
+  <p class="note">Shared with the whole team. Changes save instantly and appear live for everyone who has the page open.
+    Totals are green when the minimum is reached, orange when it's reached only by counting the maybes, red otherwise. 📣 prepares a reminder for players who haven't answered.</p>
 </main>
+
+<dialog id="remind">
+  <h3 id="remind-title"></h3>
+  <textarea id="remind-text" rows="7"></textarea>
+  <div class="row">
+    <button id="remind-close">Close</button>
+    <button id="remind-copy">Copy</button>
+    <a class="btn" id="remind-wa" target="_blank" rel="noopener">Share on WhatsApp</a>
+  </div>
+</dialog>
 
 <script src="config.js"></script>
 <script>
@@ -176,8 +236,21 @@ const SYMBOL = { "": "–", yes: "✓", maybe: "?", no: "✗" };
 const LABEL = { "": "", yes: "Available", maybe: "Maybe", no: "Not available" };
 const DB = (window.FIREBASE_DB_URL || "").trim().replace(/\/+$/, "");
 
+const DEFAULT_MIN = 10;
+const TODAY = new Date().toLocaleDateString("sv-SE"); // YYYY-MM-DD, local time
+const isPast = e => e.date < TODAY;
+
 const parse = d => new Date(d + "T12:00:00");
 const fmt = (d, opts) => parse(d).toLocaleDateString("en-GB", opts);
+const esc = t => String(t).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+
+// Per-viewer UI preferences (not shared).
+const pref = {
+  get(k, d) { try { return localStorage.getItem(k) ?? d; } catch { return d; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch {} },
+};
+let view = pref.get("view", matchMedia("(max-width: 700px)").matches ? "cards" : "table");
+let showPast = pref.get("showPast", "0") === "1";
 
 // ---- Shared state (mirror of the database root) ----
 let root = {};
@@ -276,7 +349,7 @@ function renderSchedule() {
   }
   document.getElementById("months").innerHTML = Object.entries(byMonth).map(([m, evs]) => `
     <div class="month"><h3>${m}</h3><ul>${evs.map(e => `
-      <li><span class="d">${fmt(e.date, { weekday: "short", day: "numeric" })}</span>
+      <li class="${isPast(e) ? "past" : ""}"><span class="d">${fmt(e.date, { weekday: "short", day: "numeric" })}</span>
       <span class="opp-name">${e.opp}${e.final ? '<span class="tag">FINAL</span>' : ""}</span>
       <button class="ics" data-date="${e.date}" title="Add to calendar (.ics)">📅 .ics</button></li>`).join("")}
     </ul></div>`).join("");
@@ -285,11 +358,27 @@ function renderSchedule() {
       const e = EVENTS.find(x => x.date === b.dataset.date);
       downloadIcs([e], `${e.date}-${slug(e.opp)}.ics`);
     }));
-  document.getElementById("head").innerHTML =
-    `<th class="name">Player</th>` +
-    EVENTS.map(e => `<th class="${e.final ? "final" : ""}">
-      ${fmt(e.date, { weekday: "short", day: "numeric", month: "short" })}
-      <span class="opp">${e.opp}${e.final ? " 🏆" : ""}</span></th>`).join("");
+}
+
+const minPlayers = () => (root.settings && root.settings.minPlayers) || DEFAULT_MIN;
+const shownEvents = () => EVENTS.filter(e => showPast || !isPast(e));
+const displayName = (p, i) => p.name || `Player ${i + 1}`;
+
+function tally(e, players) {
+  const c = { yes: 0, maybe: 0, no: 0, missing: [] };
+  for (const p of players) {
+    const s = p.avail[e.date];
+    if (s) c[s]++;
+    else if (p.name) c.missing.push(p.name); // unnamed rows are empty slots
+  }
+  const min = minPlayers();
+  c.level = c.yes >= min ? "ok" : c.yes + c.maybe >= min ? "low" : "short";
+  return c;
+}
+
+function cycle(p, e) {
+  const next = CYCLE[(CYCLE.indexOf(p.avail[e.date] || "") + 1) % CYCLE.length];
+  write(`players/${p.id}/avail/${e.date}`, next || null);
 }
 
 const nameTimers = {};
@@ -302,6 +391,17 @@ function render() {
   const caret = focusId ? [active.selectionStart, active.selectionEnd] : null;
 
   const players = sortedPlayers();
+  const events = shownEvents();
+  renderControls();
+  renderCards(players, events);
+
+  document.querySelector("#table-view table").style.minWidth = `${180 + events.length * 72}px`;
+  document.getElementById("head").innerHTML =
+    `<th class="name">Player</th>` +
+    events.map(e => `<th class="${e.final ? "final" : ""}">
+      ${fmt(e.date, { weekday: "short", day: "numeric", month: "short" })}
+      <span class="opp">${e.opp}${e.final ? " 🏆" : ""}</span></th>`).join("");
+
   const body = document.getElementById("body");
   body.innerHTML = "";
   players.forEach((p, i) => {
@@ -322,7 +422,7 @@ function render() {
     del.addEventListener("click", () => {
       if (confirm(`Remove ${p.name || "Player " + (i + 1)} for everyone?`)) write(`players/${p.id}`, null);
     });
-    const mine = EVENTS.filter(e => p.avail[e.date] === "yes" || p.avail[e.date] === "maybe");
+    const mine = events.filter(e => p.avail[e.date] === "yes" || p.avail[e.date] === "maybe");
     const cal = document.createElement("button");
     cal.className = "cal";
     cal.textContent = "📅";
@@ -337,7 +437,7 @@ function render() {
     nameTd.append(input, cal, del);
     tr.append(nameTd);
 
-    for (const e of EVENTS) {
+    for (const e of events) {
       const td = document.createElement("td");
       const btn = document.createElement("button");
       btn.className = "cell";
@@ -345,10 +445,7 @@ function render() {
       btn.dataset.s = s;
       btn.textContent = SYMBOL[s];
       btn.title = LABEL[s];
-      btn.addEventListener("click", () => {
-        const next = CYCLE[(CYCLE.indexOf(p.avail[e.date] || "") + 1) % CYCLE.length];
-        write(`players/${p.id}/avail/${e.date}`, next || null);
-      });
+      btn.addEventListener("click", () => cycle(p, e));
       td.append(btn);
       tr.append(td);
     }
@@ -361,18 +458,101 @@ function render() {
   });
 
   document.getElementById("foot").innerHTML =
-    `<td class="name">Available</td>` +
-    EVENTS.map(e => {
-      const c = { yes: 0, maybe: 0, no: 0 };
-      for (const p of players) { const s = p.avail[e.date]; if (s) c[s]++; }
-      return `<td><div class="y">${c.yes}</div><div><span class="m">${c.maybe}?</span> · <span class="n">${c.no}✗</span></div></td>`;
+    `<td class="name">Available (min. ${minPlayers()})</td>` +
+    events.map(e => {
+      const c = tally(e, players);
+      return `<td class="${c.level}"><div class="y">${c.yes}</div>
+        <div><span class="m">${c.maybe}?</span> · <span class="n">${c.no}✗</span></div>
+        <button class="remind" data-date="${e.date}" title="${c.missing.length} without answer – prepare reminder"
+          ${c.missing.length ? "" : "disabled"}>📣${c.missing.length ? " " + c.missing.length : ""}</button></td>`;
     }).join("");
 }
+
+function renderCards(players, events) {
+  const wrap = document.getElementById("cards");
+  wrap.innerHTML = "";
+  for (const e of events) {
+    const c = tally(e, players);
+    const card = document.createElement("section");
+    card.className = "card" + (e.final ? " final" : "");
+    card.innerHTML = `
+      <header>
+        <div class="title"><div class="when">${fmt(e.date, { weekday: "long", day: "numeric", month: "long" })}</div>
+          ${esc(e.opp)}${e.final ? ' <span class="tag">FINAL</span>' : ""}</div>
+        <span class="badge ${c.level}" title="Available / minimum">${c.yes}/${minPlayers()}</span>
+        <button class="remind" data-date="${e.date}" title="Prepare reminder" ${c.missing.length ? "" : "disabled"}>📣</button>
+      </header>
+      <div class="counts">${c.yes} ✓ · ${c.maybe} ? · ${c.no} ✗ · ${c.missing.length} no answer — tap a name to change</div>
+      <div class="chips"></div>`;
+    const chips = card.querySelector(".chips");
+    players.forEach((p, i) => {
+      const s = p.avail[e.date] || "";
+      const chip = document.createElement("button");
+      chip.className = "chip";
+      chip.dataset.s = s;
+      chip.textContent = `${SYMBOL[s]} ${displayName(p, i)}`;
+      chip.addEventListener("click", () => cycle(p, e));
+      chips.append(chip);
+    });
+    wrap.append(card);
+  }
+}
+
+function renderControls() {
+  const minInput = document.getElementById("min");
+  if (document.activeElement !== minInput) minInput.value = minPlayers();
+  const pastCount = EVENTS.filter(isPast).length;
+  const pastBtn = document.getElementById("past");
+  pastBtn.hidden = !pastCount;
+  pastBtn.textContent = showPast ? "Hide past matches" : `Show past matches (${pastCount})`;
+  document.querySelectorAll(".seg button").forEach(b => b.setAttribute("aria-pressed", b.dataset.view === view));
+  document.getElementById("cards").hidden = view !== "cards";
+  document.getElementById("table-view").hidden = view !== "table";
+}
+
+document.getElementById("min").addEventListener("change", ev => {
+  const n = Math.round(Number(ev.target.value));
+  if (n >= 1 && n <= 50) write("settings/minPlayers", n);
+  else ev.target.value = minPlayers();
+});
+document.getElementById("past").onclick = () => {
+  showPast = !showPast; pref.set("showPast", showPast ? "1" : "0"); render();
+};
+document.querySelectorAll(".seg button").forEach(b => b.onclick = () => {
+  view = b.dataset.view; pref.set("view", view); render();
+});
+
+// Reminder for players who haven't answered a match.
+const dlg = document.getElementById("remind");
+document.addEventListener("click", ev => {
+  const b = ev.target.closest(".remind");
+  if (!b) return;
+  const e = EVENTS.find(x => x.date === b.dataset.date);
+  const c = tally(e, sortedPlayers());
+  const when = fmt(e.date, { weekday: "long", day: "numeric", month: "long" });
+  const text = `Reminder: ${e.opp}${e.final ? " (Final)" : ""} on ${when}.\n` +
+    `Please fill in your availability 👉 ${location.href.split("#")[0]}\n\n` +
+    `No answer yet: ${c.missing.join(", ")}`;
+  document.getElementById("remind-title").textContent =
+    `${c.missing.length} player${c.missing.length > 1 ? "s" : ""} without answer – ${e.opp}, ${when}`;
+  document.getElementById("remind-text").value = text;
+  document.getElementById("remind-wa").href = "https://wa.me/?text=" + encodeURIComponent(text);
+  document.getElementById("remind-copy").textContent = "Copy";
+  dlg.showModal();
+});
+document.getElementById("remind-close").onclick = () => dlg.close();
+document.getElementById("remind-copy").onclick = async ev => {
+  const ta = document.getElementById("remind-text");
+  try { await navigator.clipboard.writeText(ta.value); }
+  catch { ta.select(); document.execCommand("copy"); }
+  ev.target.textContent = "Copied ✓";
+};
 
 document.getElementById("add").onclick = async () => {
   const players = sortedPlayers();
   const order = players.reduce((m, p) => Math.max(m, p.order || 0), 0) + 1;
   const id = "p" + Date.now().toString(36);
+  if (view !== "table") { view = "table"; pref.set("view", view); }
   await write(`players/${id}`, { order });
   const inputs = document.querySelectorAll("td.name input");
   inputs[inputs.length - 1].focus();
