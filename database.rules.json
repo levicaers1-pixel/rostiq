@@ -1,14 +1,33 @@
 {
   "rules": {
-    ".read": true,
-    "initialized": { ".write": true },
+    ".read": "auth != null",
+    "initialized": { ".write": "auth.token.email === 'levicaers1@gmail.com' && auth.token.email_verified === true" },
+    "users": {
+      "$uid": {
+        ".write": "(auth.token.email === 'levicaers1@gmail.com' && auth.token.email_verified === true) || (auth.uid === $uid && !data.exists())",
+        ".validate": "newData.hasChild('pid') && newData.parent().parent().child('players').child(newData.child('pid').val()).child('uid').val() === $uid",
+        "pid": { ".validate": "newData.isString()" },
+        "$other": { ".validate": false }
+      }
+    },
     "players": {
       "$pid": {
-        ".write": true,
+        ".write": "auth.token.email === 'levicaers1@gmail.com' && auth.token.email_verified === true",
+        "uid": {
+          ".write": "auth != null && !data.exists() && newData.val() === auth.uid && !root.child('users').child(auth.uid).exists()",
+          ".validate": "newData.isString()"
+        },
         "order": { ".validate": "newData.isNumber()" },
-        "name": { ".validate": "newData.isString() && newData.val().length <= 60" },
-        "gemeente": { ".validate": "newData.isString() && newData.val().length <= 60" },
+        "name": {
+          ".write": "auth != null && root.child('players').child($pid).child('uid').val() === auth.uid",
+          ".validate": "newData.isString() && newData.val().length <= 60"
+        },
+        "gemeente": {
+          ".write": "auth != null && root.child('players').child($pid).child('uid').val() === auth.uid",
+          ".validate": "newData.isString() && newData.val().length <= 60"
+        },
         "geo": {
+          ".write": "auth != null && root.child('players').child($pid).child('uid').val() === auth.uid",
           ".validate": "newData.hasChildren(['lat', 'lon', 'label'])",
           "lat": { ".validate": "newData.isNumber() && newData.val() >= -90 && newData.val() <= 90" },
           "lon": { ".validate": "newData.isNumber() && newData.val() >= -180 && newData.val() <= 180" },
@@ -16,24 +35,29 @@
           "$other": { ".validate": false }
         },
         "avail": {
+          ".write": "auth != null && root.child('players').child($pid).child('uid').val() === auth.uid",
           "$date": { ".validate": "newData.val() === 'yes' || newData.val() === 'maybe' || newData.val() === 'no'" }
         },
         "$other": { ".validate": false }
       }
     },
     "settings": {
-      "minPlayers": { ".write": true, ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 50" },
+      ".write": "auth.token.email === 'levicaers1@gmail.com' && auth.token.email_verified === true",
+      "minPlayers": { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 50" },
       "$other": { ".validate": false }
     },
     "carpool": {
       "$date": {
         "$pid": {
-          ".write": true,
+          ".write": "(auth.token.email === 'levicaers1@gmail.com' && auth.token.email_verified === true) || (auth != null && root.child('players').child($pid).child('uid').val() === auth.uid)",
           ".validate": "newData.hasChild('role')",
           "role": { ".validate": "newData.val() === 'driver' || newData.val() === 'rider'" },
           "seats": { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 8" },
           "note": { ".validate": "newData.isString() && newData.val().length <= 120" },
-          "with": { ".validate": "newData.isString() && newData.val().length <= 40" },
+          "with": {
+            ".write": "auth != null && root.child('users').child(auth.uid).child('pid').exists() && (newData.val() === root.child('users').child(auth.uid).child('pid').val() || (!newData.exists() && data.val() === root.child('users').child(auth.uid).child('pid').val()))",
+            ".validate": "newData.isString() && newData.val().length <= 40"
+          },
           "$other": { ".validate": false }
         }
       }

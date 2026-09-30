@@ -58,19 +58,48 @@ function apply(path, value, merge) {
   if (value === null) delete node[last]; else node[last] = value;
 }
 
-async function write(path, value) {
-  apply(path, value, false);
-  render();
+// ---- Login (Firebase Authentication) ----
+// Login is switched on by putting FIREBASE_CONFIG in config.js. Without it the
+// page works as before: no accounts, everyone can edit everything.
+const ADMIN_EMAIL = "levicaers1@gmail.com";
+const AUTH_ON = !!window.FIREBASE_CONFIG;
+const SDK = "https://www.gstatic.com/firebasejs/12.12.0/";
+// user: Firebase user; pid: the player row this account has claimed.
+const session = { user: null, admin: !AUTH_ON, pid: null, ready: !AUTH_ON };
+let fbAuth = null, A = null;
+
+// Only the admin and a row's own player may change it (the database rules enforce the same).
+const canEdit = pid => session.admin || (!!pid && pid === session.pid);
+
+async function dbUrl(path, forceRefresh) {
+  const t = AUTH_ON && session.user ? await session.user.getIdToken(forceRefresh) : null;
+  return `${DB}/${path}.json` + (t ? `?auth=${encodeURIComponent(t)}` : "");
+}
+
+async function send(method, path, value) {
   if (!DB) return;
   try {
-    const res = await fetch(`${DB}/${path}.json`, {
-      method: value === null ? "DELETE" : "PUT",
-      body: value === null ? undefined : JSON.stringify(value),
+    const res = await fetch(await dbUrl(path), {
+      method,
+      body: value === undefined ? undefined : JSON.stringify(value),
     });
     if (!res.ok) throw new Error(res.status);
   } catch (e) {
-    setStatus("err", "Save failed – check your connection");
+    setStatus("err", AUTH_ON ? "Not saved – you can only change your own row" : "Save failed – check your connection");
   }
+}
+
+async function write(path, value) {
+  apply(path, value, false);
+  render();
+  return send(value === null ? "DELETE" : "PUT", path, value === null ? undefined : value);
+}
+
+// Several paths in one atomic update, e.g. { "players/p01/uid": "...", "users/abc/pid": "p01" }.
+async function update(changes) {
+  for (const [path, value] of Object.entries(changes)) apply(path, value, false);
+  render();
+  return send("PATCH", "", changes);
 }
 
 function setStatus(cls, text) {
@@ -79,7 +108,8 @@ function setStatus(cls, text) {
   el.textContent = text;
 }
 
-function connect() {
+let es = null;
+async function connect(forceRefresh) {
   if (!DB) {
     root = { players: defaultPlayers() };
     document.getElementById("banner").hidden = false;
@@ -87,29 +117,180 @@ function connect() {
     render();
     return;
   }
+  if (es) es.close();
   let seeded = false;
-  const es = new EventSource(`${DB}/.json`);
+  const stream = es = new EventSource(await dbUrl("", forceRefresh));
   const onEvent = merge => e => {
+    if (stream !== es) return;
     const { path, data } = JSON.parse(e.data);
     apply(path, data, merge);
     if (!seeded && path === "/" && !merge) {
       seeded = true;
-      if (!root.initialized) {
+      if (!root.initialized && session.admin) {
         // First visit ever: create the 15 default rows. Rules only allow writes
         // per player, so use multi-path keys ("players/p01") rather than a nested object.
-        const update = { initialized: true };
-        for (const [id, p] of Object.entries(defaultPlayers())) update[`players/${id}`] = p;
-        fetch(`${DB}/.json`, { method: "PATCH", body: JSON.stringify(update) });
+        const changes = { initialized: true };
+        for (const [id, p] of Object.entries(defaultPlayers())) changes[`players/${id}`] = p;
+        update(changes);
       }
     }
     setStatus("live", "Live");
-    render();
+    syncSession();
   };
-  es.addEventListener("put", onEvent(false));
-  es.addEventListener("patch", onEvent(true));
-  es.addEventListener("cancel", () => setStatus("err", "Access denied – check database rules"));
-  es.onopen = () => setStatus("live", "Live");
-  es.onerror = () => setStatus("err", "Reconnecting…");
+  stream.addEventListener("put", onEvent(false));
+  stream.addEventListener("patch", onEvent(true));
+  stream.addEventListener("cancel", () => setStatus("err", "Access denied"));
+  // Login tokens expire after an hour; reconnect with a fresh one.
+  stream.addEventListener("auth_revoked", () => { if (stream === es) connect(true); });
+  stream.onopen = () => setStatus("live", "Live");
+  stream.onerror = () => setStatus("err", "Reconnecting…");
+}
+
+function disconnect() {
+  if (es) es.close();
+  es = null;
+  root = {};
+}
+
+function syncSession() {
+  if (AUTH_ON) {
+    const uid = session.user && session.user.uid;
+    const pid = uid && root.users && root.users[uid] && root.users[uid].pid;
+    session.pid = pid && root.players && root.players[pid] ? pid : null;
+    session.ready = true;
+  }
+  renderAuth();
+  render();
+}
+
+// Kick off: with login, wait for the user; otherwise connect straight away.
+function start() {
+  injectAuthUI();
+  if (AUTH_ON) initAuth(); else connect();
+}
+
+async function initAuth() {
+  try {
+    const [appMod, authMod] = await Promise.all([import(SDK + "firebase-app.js"), import(SDK + "firebase-auth.js")]);
+    A = authMod;
+    fbAuth = A.getAuth(appMod.initializeApp(window.FIREBASE_CONFIG));
+  } catch (e) {
+    gateMessage("Could not load the login. Check your connection and reload.", true);
+    return;
+  }
+  // Coming back from the link in a sign-in email.
+  if (A.isSignInWithEmailLink(fbAuth, location.href)) {
+    let email = pref.get("signinEmail", "");
+    if (!email) email = prompt("To finish signing in, enter the email address you used:") || "";
+    try {
+      if (email) await A.signInWithEmailLink(fbAuth, email.trim(), location.href);
+    } catch (e) {
+      gateMessage("That sign-in link is expired or was already used. Request a new one.", true);
+    }
+    history.replaceState(null, "", location.pathname);
+  }
+  A.onAuthStateChanged(fbAuth, user => {
+    session.user = user;
+    session.admin = !!user && user.emailVerified && (user.email || "").toLowerCase() === ADMIN_EMAIL;
+    session.pid = null;
+    session.ready = !user; // with a user, wait for the data before deciding on the claim screen
+    if (user) connect(); else disconnect();
+    renderAuth();
+    render();
+  });
+}
+
+// ---- Login UI (shared by both pages) ----
+function injectAuthUI() {
+  const brand = document.querySelector(".brand-inner");
+  brand.insertAdjacentHTML("beforeend", `<div class="account" id="account" hidden></div>`);
+  document.querySelector("main").insertAdjacentHTML("beforebegin", `<section class="gate" id="gate" hidden></section>`);
+  document.getElementById("account").addEventListener("click", ev => {
+    if (ev.target.closest("[data-signout]")) A.signOut(fbAuth);
+  });
+  document.getElementById("gate").addEventListener("click", onGateClick);
+  document.getElementById("gate").addEventListener("submit", onGateSubmit);
+}
+
+let gateMsg = { text: "", err: false };
+function gateMessage(text, err) { gateMsg = { text, err }; renderAuth(); }
+
+function renderAuth() {
+  if (!AUTH_ON) return;
+  const gate = document.getElementById("gate"), main = document.querySelector("main"), acct = document.getElementById("account");
+  const u = session.user;
+  const needClaim = u && session.ready && !session.pid && !session.admin;
+  const showGate = !u || needClaim;
+  gate.hidden = !showGate;
+  main.hidden = showGate || (u && !session.ready);
+
+  acct.hidden = !u;
+  if (u) {
+    const who = session.pid ? esc(root.players[session.pid].name || "") : esc(u.email || "");
+    acct.innerHTML = `<span>${who}${session.admin ? ' <span class="admin-tag">admin</span>' : ""}</span>
+      <button data-signout class="link">Sign out</button>`;
+  }
+
+  const msg = gateMsg.text ? `<p class="gate-msg ${gateMsg.err ? "err" : ""}">${esc(gateMsg.text)}</p>` : "";
+  if (!u) {
+    gate.innerHTML = `<div class="gate-card">
+      <h1>Sign in</h1>
+      <p class="sub">Sign in once on this device to see and edit the team's availability and carpools.</p>
+      <button class="google" data-google>
+        <svg viewBox="0 0 48 48" width="18" height="18" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>
+        Continue with Google</button>
+      <div class="or">or get a sign-in link by email</div>
+      <form class="email-form">
+        <input type="email" name="email" required placeholder="you@example.com" autocomplete="email" value="${esc(pref.get("signinEmail", ""))}">
+        <button type="submit">Send link</button>
+      </form>
+      ${msg}
+      <p class="hint">Opened this from WhatsApp or Instagram? Google sign-in may not work in their built-in browser. Use the email link, or open the page in Safari or Chrome.</p>
+    </div>`;
+  } else if (needClaim) {
+    const free = sortedPlayers().filter(p => p.name && !p.uid);
+    gate.innerHTML = `<div class="gate-card">
+      <h1>Which player are you?</h1>
+      <p class="sub">Signed in as ${esc(u.email || "")}. Pick your name once; after that you can only change your own answers.</p>
+      <div class="claim-list">${free.length
+        ? free.map(p => `<button data-claim="${p.id}">${esc(p.name)}</button>`).join("")
+        : `<p class="hint">No free names. Ask Levi to add you to the team.</p>`}</div>
+      ${msg}
+      <p class="hint">Not in the list, or picked the wrong name? Ask Levi to fix it. <button class="link" data-signout-gate>Sign out</button></p>
+    </div>`;
+  }
+}
+
+async function onGateClick(ev) {
+  if (ev.target.closest("[data-google]")) {
+    try { await A.signInWithPopup(fbAuth, new A.GoogleAuthProvider()); gateMsg = { text: "", err: false }; }
+    catch (e) {
+      if (e.code !== "auth/popup-closed-by-user" && e.code !== "auth/cancelled-popup-request")
+        gateMessage("Google sign-in didn't work here. Try the email link instead.", true);
+    }
+  }
+  const c = ev.target.closest("[data-claim]");
+  if (c) {
+    const pid = c.dataset.claim, uid = session.user.uid;
+    gateMsg = { text: "", err: false };
+    await update({ [`players/${pid}/uid`]: uid, [`users/${uid}/pid`]: pid });
+    syncSession();
+  }
+  if (ev.target.closest("[data-signout-gate]")) A.signOut(fbAuth);
+}
+
+async function onGateSubmit(ev) {
+  ev.preventDefault();
+  const email = ev.target.email.value.trim();
+  try {
+    await A.sendSignInLinkToEmail(fbAuth, email, { url: location.origin + location.pathname, handleCodeInApp: true });
+    pref.set("signinEmail", email);
+    gateMessage(`Check ${email} for a sign-in link (also look in spam). Open it on this device.`, false);
+  } catch (e) {
+    gateMessage(e.code === "auth/quota-exceeded"
+      ? "Too many sign-in emails today. Try Google sign-in, or try again tomorrow."
+      : "Couldn't send the email. Check the address and try again.", true);
+  }
 }
 
 function sortedPlayers() {

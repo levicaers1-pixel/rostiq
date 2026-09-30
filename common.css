@@ -89,3 +89,27 @@ button:disabled { cursor: default; opacity: .5; }
 @media (max-width: 480px) {
   .brand .logo { height: 42px; }
 }
+
+/* Account bar in the header */
+.brand-inner { position: relative; }
+.account { position: absolute; top: 18px; right: 16px; display: flex; gap: 10px; align-items: center; font-size: .85rem; color: var(--brand-text); }
+.account .link { color: var(--brand-text); opacity: .8; }
+.admin-tag { font-size: .7rem; font-weight: 700; background: var(--pampas); color: var(--brand); border-radius: 999px; padding: 1px 8px; margin-left: 4px; }
+button.link { background: none; border: none; padding: 0; text-decoration: underline; color: inherit; font-size: inherit; }
+@media (max-width: 480px) {
+  .account { position: static; margin-top: 8px; }
+}
+
+/* Sign-in / claim screen */
+.gate { max-width: 440px; margin: 32px auto; padding: 0 16px; }
+.gate-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
+.gate-card .sub { margin-bottom: 16px; }
+.gate-card button.google { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; padding: 10px; font-size: .95rem; font-weight: 600; }
+.gate-card .or { text-align: center; color: var(--muted); font-size: .8rem; margin: 16px 0 8px; }
+.email-form { display: flex; gap: 8px; }
+.email-form input { flex: 1; min-width: 0; font: inherit; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text); }
+.gate-msg { font-size: .85rem; color: var(--yes); margin: 10px 0 0; }
+.gate-msg.err { color: var(--no); }
+.gate .hint { color: var(--muted); font-size: .8rem; margin: 14px 0 0; }
+.claim-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }
+.claim-list button { padding: 10px; font-size: .95rem; }

@@ -230,6 +230,7 @@ function renderMe() {
   const sel = document.getElementById("me");
   sel.innerHTML = `<option value="">– choose your name –</option>` +
     named().map(p => `<option value="${p.id}" ${p.id === me ? "selected" : ""}>${esc(p.name)}</option>`).join("");
+  sel.disabled = AUTH_ON && !session.admin;
   const g = document.getElementById("gemeente");
   g.disabled = !me;
   document.getElementById("geo-find").disabled = !me;
@@ -244,7 +245,7 @@ function renderMe() {
       `<button data-pick="${i}">📍 ${esc(r.label)}${r.country ? ` <span class="country">${esc(r.country)}</span>` : ""}</button>`).join("") : "";
 
   document.getElementById("me-hint").innerHTML = !me
-    ? "Pick your name once; this device remembers it. Then find your gemeente so teammates living nearby can ride together."
+    ? (AUTH_ON ? "Pick a player to arrange transport for." : "Pick your name once; this device remembers it. Then find your gemeente so teammates living nearby can ride together.")
     : geoOf(me)
       ? `<span class="ok">✓</span> Hi ${esc(nameOf(me))}! Your location: <b>${esc(placeText(me))}</b>. Distances are as the crow flies.`
       : placeOf(me)
@@ -354,6 +355,10 @@ function renderMatch(e) {
 const noteTimers = {};
 
 function render() {
+  if (AUTH_ON) {
+    if (!session.admin) me = session.pid || "";
+    else if (!me || !player(me)) me = session.pid || "";
+  }
   // Keep a text field someone is typing in intact across live updates.
   const a = document.activeElement;
   const key = a && a.dataset && a.dataset.key;
@@ -391,7 +396,7 @@ document.getElementById("geo-results").addEventListener("click", ev => {
   if (b) pickPlace(Number(b.dataset.pick));
 });
 
-connect();
+start();
 </script>
 </body>
 </html>

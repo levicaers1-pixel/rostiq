@@ -106,6 +106,23 @@
   .chip[data-s="maybe"] { background: var(--maybe-bg); color: var(--maybe); border-color: var(--maybe); }
   .chip[data-s="no"]    { background: var(--no-bg);    color: var(--no);    border-color: var(--no); }
 
+  /* Read-only (other players' answers when logged in) */
+  .cell:disabled, .chip:disabled { opacity: 1; cursor: default; }
+  .cell:disabled:hover { background: inherit; }
+  td.name input[readonly] { cursor: default; }
+  td.name input[readonly]:hover { border-color: transparent; }
+  tr.me td.name { box-shadow: inset 3px 0 0 var(--accent); }
+  tr.me td.name input { font-weight: 700; }
+  .chip.me { font-weight: 700; outline: 2px solid var(--accent); outline-offset: 1px; }
+
+  /* Admin: accounts */
+  .accounts { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; margin-top: 24px; }
+  .accounts h2 { margin-top: 0; }
+  .accounts ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px 16px; grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr)); }
+  .accounts li { display: flex; align-items: center; gap: 8px; font-size: .9rem; padding: 3px 0; }
+  .accounts li .who { flex: 1; }
+  .accounts .muted { color: var(--muted); font-size: .8rem; }
+
   /* Reminder dialog */
   dialog { border: 1px solid var(--border); border-radius: 12px; background: var(--surface); color: var(--text); width: min(480px, calc(100vw - 32px)); padding: 16px; }
   dialog::backdrop { background: rgba(0, 0, 0, .4); }
@@ -159,6 +176,12 @@
   </div>
   <p class="note">Shared with the whole team. Changes save instantly and appear live for everyone who has the page open.
     Totals are green when the minimum is reached, orange when it's reached only by counting the maybes, red otherwise. 📣 prepares a reminder for players who haven't answered.</p>
+
+  <section class="accounts" id="accounts" hidden>
+    <h2>Accounts <span class="muted">(only you see this)</span></h2>
+    <p class="muted">Which players have linked their login. Reset a link if someone picked the wrong name; they can then choose again.</p>
+    <ul id="accounts-list"></ul>
+  </section>
 </main>
 
 <dialog id="remind">
@@ -246,6 +269,8 @@ function render() {
   body.innerHTML = "";
   players.forEach((p, i) => {
     const tr = document.createElement("tr");
+    const editable = canEdit(p.id);
+    if (AUTH_ON && p.id === session.pid) tr.className = "me";
     const nameTd = document.createElement("td");
     nameTd.className = "name";
     nameTd.innerHTML = `<span class="num">${i + 1}</span>`;
@@ -253,6 +278,7 @@ function render() {
     input.dataset.pid = p.id;
     input.placeholder = `Player ${i + 1}`;
     input.value = p.id === focusId ? focusVal : p.name || "";
+    input.readOnly = !editable;
     input.addEventListener("input", () => {
       clearTimeout(nameTimers[p.id]);
       nameTimers[p.id] = setTimeout(() => write(`players/${p.id}/name`, input.value || null), 400);
@@ -260,8 +286,10 @@ function render() {
     const del = document.createElement("button");
     del.className = "del"; del.title = "Remove player"; del.textContent = "✕";
     del.addEventListener("click", () => {
-      if (confirm(`Remove ${p.name || "Player " + (i + 1)} for everyone?`)) write(`players/${p.id}`, null);
+      if (!confirm(`Remove ${p.name || "Player " + (i + 1)} for everyone?`)) return;
+      update({ [`players/${p.id}`]: null, ...(p.uid ? { [`users/${p.uid}`]: null } : {}) });
     });
+    del.hidden = !session.admin;
     const mine = events.filter(e => p.avail[e.date] === "yes" || p.avail[e.date] === "maybe");
     const cal = document.createElement("button");
     cal.className = "cal";
@@ -285,6 +313,7 @@ function render() {
       btn.dataset.s = s;
       btn.textContent = SYMBOL[s];
       btn.title = LABEL[s];
+      btn.disabled = !editable;
       btn.addEventListener("click", () => cycle(p, e));
       td.append(btn);
       tr.append(td);
@@ -322,14 +351,15 @@ function renderCards(players, events) {
         <span class="badge ${c.level}" title="Available / minimum">${c.yes}/${minPlayers()}</span>
         <button class="remind" data-date="${e.date}" title="Prepare reminder" ${c.missing.length ? "" : "disabled"}>📣</button>
       </header>
-      <div class="counts">${c.yes} ✓ · ${c.maybe} ? · ${c.no} ✗ · ${c.missing.length} no answer — tap a name to change</div>
+      <div class="counts">${c.yes} ✓ · ${c.maybe} ? · ${c.no} ✗ · ${c.missing.length} no answer — tap ${session.admin ? "a" : "your"} name to change</div>
       <div class="chips"></div>`;
     const chips = card.querySelector(".chips");
     players.forEach((p, i) => {
       const s = p.avail[e.date] || "";
       const chip = document.createElement("button");
-      chip.className = "chip";
+      chip.className = "chip" + (AUTH_ON && p.id === session.pid ? " me" : "");
       chip.dataset.s = s;
+      chip.disabled = !canEdit(p.id);
       chip.textContent = `${SYMBOL[s]} ${displayName(p, i)}`;
       chip.addEventListener("click", () => cycle(p, e));
       chips.append(chip);
@@ -341,6 +371,9 @@ function renderCards(players, events) {
 function renderControls() {
   const minInput = document.getElementById("min");
   if (document.activeElement !== minInput) minInput.value = minPlayers();
+  minInput.disabled = !session.admin;
+  document.getElementById("add").hidden = !session.admin;
+  renderAccounts();
   const pastCount = EVENTS.filter(isPast).length;
   const pastBtn = document.getElementById("past");
   pastBtn.hidden = !pastCount;
@@ -349,6 +382,29 @@ function renderControls() {
   document.getElementById("cards").hidden = view !== "cards";
   document.getElementById("table-view").hidden = view !== "table";
 }
+
+function renderAccounts() {
+  const box = document.getElementById("accounts");
+  box.hidden = !(AUTH_ON && session.admin);
+  if (box.hidden) return;
+  document.getElementById("accounts-list").innerHTML = sortedPlayers().filter(p => p.name).map(p => `
+    <li><span class="who">${esc(p.name)}</span>
+      ${p.uid ? `<span class="muted">linked${p.uid === session.user.uid ? " (you)" : ""}</span>
+        <button class="link" data-reset="${p.id}">Reset</button>` : `<span class="muted">not linked yet</span>
+        ${session.pid ? "" : `<button class="link" data-mine="${p.id}">That's me</button>`}`}</li>`).join("");
+}
+document.getElementById("accounts-list").addEventListener("click", ev => {
+  const mine = ev.target.closest("[data-mine]");
+  if (mine) {
+    const uid = session.user.uid;
+    return update({ [`players/${mine.dataset.mine}/uid`]: uid, [`users/${uid}/pid`]: mine.dataset.mine }).then(syncSession);
+  }
+  const b = ev.target.closest("[data-reset]");
+  if (!b) return;
+  const p = root.players[b.dataset.reset];
+  if (!confirm(`Unlink the login from ${p.name}? They'll be asked to pick their name again.`)) return;
+  update({ [`players/${b.dataset.reset}/uid`]: null, [`users/${p.uid}`]: null });
+});
 
 document.getElementById("min").addEventListener("change", ev => {
   const n = Math.round(Number(ev.target.value));
@@ -456,7 +512,7 @@ function downloadIcs(events, filename, statusOf, player) {
 document.getElementById("ics-all").onclick = () => downloadIcs(EVENTS, "team-schedule-2026-2027.ics");
 
 renderSchedule();
-connect();
+start();
 </script>
 
 </body>
