@@ -272,7 +272,7 @@ function render() {
       : "Mark ✓ or ? on some matches first";
     cal.addEventListener("click", () => {
       const who = slug(p.name || `player-${i + 1}`);
-      downloadIcs(mine, `${who}-matches.ics`, e => p.avail[e.date]);
+      downloadIcs(mine, `${who}-matches.ics`, e => p.avail[e.date], p.name);
     });
     nameTd.append(input, cal, del);
     tr.append(nameTd);
@@ -422,8 +422,9 @@ const VTIMEZONE = [
 ];
 const icsText = t => String(t).replace(/[\\;,]/g, c => "\\" + c);
 
+// Titles read "{player} Wintermidam {location}"; the player is left out for team-wide exports.
 // statusOf(e) may return "maybe" to mark an event as tentative.
-function buildIcs(events, statusOf = () => "") {
+function buildIcs(events, statusOf = () => "", player = "") {
   const stamp = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d+/, "");
   const lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//team-availability//EN", "CALSCALE:GREGORIAN", "METHOD:PUBLISH", ...VTIMEZONE];
   for (const e of events) {
@@ -436,7 +437,7 @@ function buildIcs(events, statusOf = () => "") {
       `DTSTART;TZID=Europe/Brussels:${d}T${START}`,
       `DTEND;TZID=Europe/Brussels:${d}T${END}`,
       `STATUS:${maybe ? "TENTATIVE" : "CONFIRMED"}`,
-      `SUMMARY:${icsText(e.opp + (e.final ? " (Final)" : "") + (maybe ? " (maybe)" : ""))}`,
+      `SUMMARY:${icsText([player, "Wintermidam", e.opp].filter(Boolean).join(" ") + (e.final ? " (Final)" : "") + (maybe ? " (maybe)" : ""))}`,
       `LOCATION:${icsText(e.opp)}`,
       `DESCRIPTION:${icsText("Mark your availability: " + location.href.split("#")[0])}`,
       "END:VEVENT");
@@ -445,9 +446,9 @@ function buildIcs(events, statusOf = () => "") {
   return lines.join("\r\n") + "\r\n";
 }
 
-function downloadIcs(events, filename, statusOf) {
+function downloadIcs(events, filename, statusOf, player) {
   const a = document.createElement("a");
-  a.href = URL.createObjectURL(new Blob([buildIcs(events, statusOf)], { type: "text/calendar;charset=utf-8" }));
+  a.href = URL.createObjectURL(new Blob([buildIcs(events, statusOf, player)], { type: "text/calendar;charset=utf-8" }));
   a.download = filename;
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
