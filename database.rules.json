@@ -8,6 +8,13 @@
         "order": { ".validate": "newData.isNumber()" },
         "name": { ".validate": "newData.isString() && newData.val().length <= 60" },
         "gemeente": { ".validate": "newData.isString() && newData.val().length <= 60" },
+        "geo": {
+          ".validate": "newData.hasChildren(['lat', 'lon', 'label'])",
+          "lat": { ".validate": "newData.isNumber() && newData.val() >= -90 && newData.val() <= 90" },
+          "lon": { ".validate": "newData.isNumber() && newData.val() >= -180 && newData.val() <= 180" },
+          "label": { ".validate": "newData.isString() && newData.val().length <= 120" },
+          "$other": { ".validate": false }
+        },
         "avail": {
           "$date": { ".validate": "newData.val() === 'yes' || newData.val() === 'maybe' || newData.val() === 'no'" }
         },

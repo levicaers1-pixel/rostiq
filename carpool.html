@@ -14,21 +14,27 @@
 <style>
   .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px; margin-top: 16px; }
   .panel .row { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; }
-  .field { display: flex; flex-direction: column; gap: 4px; font-size: .8rem; color: var(--muted); }
-  .field select, .field input, .car input, .car select {
+  .field { display: flex; flex-direction: column; gap: 4px; font-size: .8rem; color: var(--muted); flex: 1 1 200px; min-width: 0; max-width: 360px; }
+  .field select, .field input {
     font: inherit; font-size: .9rem; color: var(--text); background: var(--bg);
-    border: 1px solid var(--border); border-radius: 8px; padding: 7px 8px; min-width: 180px;
+    border: 1px solid var(--border); border-radius: 8px; padding: 7px 8px; width: 100%;
   }
+  .geo-row { display: flex; gap: 6px; }
+  .geo-row input { flex: 1; min-width: 0; }
+  .geo-results { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+  .geo-results button { text-align: left; font-size: .9rem; padding: 8px 10px; }
+  .geo-results .country { color: var(--muted); font-size: .75rem; }
+  .ok { color: var(--yes); }
   .hint { color: var(--muted); font-size: .8rem; margin: 8px 0 0; }
   .warn { color: var(--maybe); }
 
   details.panel summary { cursor: pointer; font-weight: 600; }
-  .places { display: grid; gap: 6px 16px; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); margin-top: 10px; font-size: .9rem; }
+  .places { display: grid; gap: 6px 16px; grid-template-columns: repeat(auto-fill, minmax(min(240px, 100%), 1fr)); margin-top: 10px; font-size: .9rem; }
   .places b { font-weight: 600; }
   .places span { color: var(--muted); }
 
-  .matches { display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); }
-  @media (max-width: 400px) { .matches { grid-template-columns: 1fr; } }
+  .matches { display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(min(340px, 100%), 1fr)); }
+  .match, .panel { min-width: 0; overflow-wrap: anywhere; }
   .match { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; }
   .match.final { border-color: var(--final); }
   .match .when { color: var(--muted); font-size: .8rem; }
@@ -41,9 +47,9 @@
   .seg button { border: none; border-radius: 0; }
   .seg button[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); }
   .mine .seg { display: flex; }
-  .mine .seg button { flex: 1 1 0; padding: 7px 4px; white-space: nowrap; }
+  .mine .seg button { flex: 1 1 0; min-width: 0; padding: 7px 4px; }
   .mine .extra { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; align-items: center; font-size: .85rem; }
-  .mine .extra input { flex: 1; min-width: 160px; }
+  .mine .extra input { flex: 1 1 160px; min-width: 0; }
   .mine .extra select, .mine .extra input {
     font: inherit; font-size: .85rem; color: var(--text); background: var(--surface);
     border: 1px solid var(--border); border-radius: 8px; padding: 5px 8px;
@@ -84,9 +90,15 @@
     <div class="row">
       <label class="field">I am
         <select id="me"><option value="">– choose your name –</option></select></label>
-      <label class="field">My gemeente
-        <input id="gemeente" placeholder="e.g. Leuven" autocomplete="address-level2" maxlength="60"></label>
+      <div class="field">
+        <label for="gemeente">My gemeente</label>
+        <div class="geo-row">
+          <input id="gemeente" placeholder="e.g. Berchem" autocomplete="address-level2" maxlength="60" enterkeyhint="search">
+          <button id="geo-find">Find</button>
+        </div>
+      </div>
     </div>
+    <div class="geo-results" id="geo-results"></div>
     <p class="hint" id="me-hint">Pick your name once; this device remembers it. Your gemeente is shown to the team so people living close to each other can ride together. Distances are approximate, as the crow flies.</p>
   </section>
 
@@ -104,48 +116,59 @@
 <script>
 let me = pref.get("me", "");
 
-// ---- Gemeente → coordinates (OpenStreetMap Nominatim), cached per device ----
-const geo = {};
-const geoQueue = [];
-let geoBusy = false;
-const geoKey = g => g.trim().toLowerCase();
-
-function coords(g) {
-  if (!g) return null;
-  const k = geoKey(g);
-  if (k in geo) return geo[k];
-  const cached = pref.get("geo:" + k, null);
-  if (cached !== null) return (geo[k] = cached ? cached.split(",").map(Number) : null);
-  geo[k] = null;
-  geoQueue.push(g);
-  pumpGeo();
-  return null;
-}
-
-async function pumpGeo() {
-  if (geoBusy || !geoQueue.length) return;
-  geoBusy = true;
-  const g = geoQueue.shift();
-  const k = geoKey(g);
-  try {
-    const url = "https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&countrycodes=be,nl,fr,lu,de&q=" + encodeURIComponent(g);
-    const [hit] = await fetch(url, { headers: { "Accept-Language": "nl,en" } }).then(r => r.json());
-    geo[k] = hit ? [Number(hit.lat), Number(hit.lon)] : null;
-    pref.set("geo:" + k, hit ? `${hit.lat},${hit.lon}` : "");
-    render();
-  } catch {
-    delete geo[k]; // retry on a later render
-  }
-  setTimeout(() => { geoBusy = false; pumpGeo(); }, 1100); // Nominatim allows 1 request/second
-}
-
-function km(g1, g2) {
-  const a = coords(g1), b = coords(g2);
+// ---- Locations ----
+// Each player confirms their own place from a list of matches (OpenStreetMap
+// Nominatim), and the chosen coordinates are stored with the player, so
+// everyone's distances use the same, correct location.
+function km(idA, idB) {
+  const a = geoOf(idA), b = geoOf(idB);
   if (!a || !b) return null;
   const rad = x => x * Math.PI / 180;
-  const h = Math.sin(rad(b[0] - a[0]) / 2) ** 2 +
-    Math.cos(rad(a[0])) * Math.cos(rad(b[0])) * Math.sin(rad(b[1] - a[1]) / 2) ** 2;
+  const h = Math.sin(rad(b.lat - a.lat) / 2) ** 2 +
+    Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(rad(b.lon - a.lon) / 2) ** 2;
   return 2 * 6371 * Math.asin(Math.sqrt(h));
+}
+
+const COUNTRY = { be: "", nl: "Netherlands", fr: "France", lu: "Luxembourg" };
+let search = { status: "idle", results: [] }; // idle | loading | results | none | error
+
+function describe(r) {
+  const a = r.address || {};
+  const name = r.name || (r.display_name || "").split(",")[0];
+  const town = a.city || a.town || a.village || a.municipality;
+  const region = a.county || a.state;
+  const extra = [...new Set([town, region].filter(x => x && x !== name))];
+  return { name, label: extra.length ? `${name} (${extra.join(", ")})` : name, country: COUNTRY[a.country_code] || "" };
+}
+
+async function findPlace(q) {
+  q = q.trim();
+  if (q.length < 2) { search = { status: "idle", results: [] }; return render(); }
+  search = { status: "loading", results: [] };
+  render();
+  try {
+    const url = "https://nominatim.openstreetmap.org/search?format=jsonv2&limit=10&addressdetails=1" +
+      "&countrycodes=be,nl,fr,lu&q=" + encodeURIComponent(q);
+    const hits = await fetch(url, { headers: { "Accept-Language": "nl,en" } }).then(r => r.json());
+    const seen = new Set();
+    const results = hits
+      .filter(r => ["boundary", "place"].includes(r.category))
+      .map(r => ({ ...describe(r), lat: Number(r.lat), lon: Number(r.lon), be: (r.address || {}).country_code === "be" }))
+      .filter(r => !seen.has(r.label) && seen.add(r.label))
+      .sort((a, b) => b.be - a.be)
+      .slice(0, 6);
+    search = { status: results.length ? "results" : "none", results };
+  } catch {
+    search = { status: "error", results: [] };
+  }
+  render();
+}
+
+function pickPlace(i) {
+  const r = search.results[i];
+  search = { status: "idle", results: [] };
+  write(`players/${me}/gemeente`, r.name.slice(0, 60));
+  write(`players/${me}/geo`, { lat: r.lat, lon: r.lon, label: r.label.slice(0, 120) });
 }
 
 // ---- Data helpers ----
@@ -153,16 +176,21 @@ const named = () => sortedPlayers().filter(p => p.name);
 const player = id => (root.players && root.players[id]) ? { id, ...root.players[id] } : null;
 const nameOf = id => (player(id) || {}).name || "?";
 const placeOf = id => (player(id) || {}).gemeente || "";
+const geoOf = id => (player(id) || {}).geo || null;
+const placeText = id => (geoOf(id) && geoOf(id).label) || placeOf(id);
 const entries = e => (root.carpool && root.carpool[e.date]) || {};
 
 function distLabel(otherId) {
   if (!me || otherId === me) return "";
-  const d = km(placeOf(me), placeOf(otherId));
+  const d = km(me, otherId);
   if (d === null) return "";
   return `<span class="km">${d < 1 ? "same area" : "~" + Math.round(d) + " km from you"}</span>`;
 }
-const placeLabel = id => placeOf(id) ? `<span class="place">📍 ${esc(placeOf(id))}</span>` : `<span class="place warn">📍 gemeente unknown</span>`;
-const byDistance = (a, b) => (km(placeOf(me), placeOf(a)) ?? 1e9) - (km(placeOf(me), placeOf(b)) ?? 1e9);
+const placeLabel = id =>
+  geoOf(id) ? `<span class="place">📍 ${esc(placeText(id))}</span>`
+  : placeOf(id) ? `<span class="place">📍 ${esc(placeOf(id))} <span class="warn">(not confirmed)</span></span>`
+  : `<span class="place warn">📍 gemeente unknown</span>`;
+const byDistance = (a, b) => (km(me, a) ?? 1e9) - (km(me, b) ?? 1e9);
 
 function matchState(e) {
   const all = entries(e);
@@ -200,23 +228,34 @@ const drop = (e, riderId) => write(`carpool/${e.date}/${riderId}/with`, null);
 // ---- Rendering ----
 function renderMe() {
   const sel = document.getElementById("me");
-  const people = named();
   sel.innerHTML = `<option value="">– choose your name –</option>` +
-    people.map(p => `<option value="${p.id}" ${p.id === me ? "selected" : ""}>${esc(p.name)}</option>`).join("");
+    named().map(p => `<option value="${p.id}" ${p.id === me ? "selected" : ""}>${esc(p.name)}</option>`).join("");
   const g = document.getElementById("gemeente");
   g.disabled = !me;
-  if (document.activeElement !== g) g.value = placeOf(me);
+  document.getElementById("geo-find").disabled = !me;
+  if (document.activeElement !== g && search.status === "idle") g.value = placeOf(me);
+
+  const box = document.getElementById("geo-results");
+  box.innerHTML =
+    search.status === "loading" ? `<div class="hint">Searching…</div>` :
+    search.status === "none" ? `<div class="hint warn">No place found. Try the official gemeente name or a postcode (e.g. 2600).</div>` :
+    search.status === "error" ? `<div class="hint warn">Search failed, please try again.</div>` :
+    search.status === "results" ? `<div class="hint">Which one do you mean?</div>` + search.results.map((r, i) =>
+      `<button data-pick="${i}">📍 ${esc(r.label)}${r.country ? ` <span class="country">${esc(r.country)}</span>` : ""}</button>`).join("") : "";
+
   document.getElementById("me-hint").innerHTML = !me
-    ? "Pick your name once; this device remembers it. Your gemeente is shown to the team so people living close to each other can ride together. Distances are approximate, as the crow flies."
-    : placeOf(me)
-      ? `Hi ${esc(nameOf(me))}! Distances below are from <b>${esc(placeOf(me))}</b>, as the crow flies.`
-      : `<span class="warn">Hi ${esc(nameOf(me))}, add your gemeente so teammates can see who lives nearby.</span>`;
+    ? "Pick your name once; this device remembers it. Then find your gemeente so teammates living nearby can ride together."
+    : geoOf(me)
+      ? `<span class="ok">✓</span> Hi ${esc(nameOf(me))}! Your location: <b>${esc(placeText(me))}</b>. Distances are as the crow flies.`
+      : placeOf(me)
+        ? `<span class="warn">Hi ${esc(nameOf(me))}, please confirm your gemeente: press <b>Find</b> and choose the right place, so distances are correct.</span>`
+        : `<span class="warn">Hi ${esc(nameOf(me))}, add your gemeente (press Find) so teammates can see who lives nearby.</span>`;
 }
 
 function renderPlaces() {
   const groups = {};
   for (const p of named()) {
-    const k = (p.gemeente || "").trim() || "Unknown";
+    const k = (p.geo && p.geo.label) || (p.gemeente || "").trim() || "Unknown";
     (groups[k] ||= []).push(p.name);
   }
   const keys = Object.keys(groups).sort((a, b) =>
@@ -269,7 +308,7 @@ function renderMatch(e) {
         <span class="seats ${free <= 0 ? "full" : ""}">${free > 0 ? `${free} of ${c.seats} free` : "full"}</span>
         ${canJoin ? `<button class="small" data-act="join" data-id="${c.id}">Join</button>` : ""}</div>
       ${c.note ? `<div class="note">🕘 ${esc(c.note)}</div>` : ""}
-      ${c.riders.length ? `<div class="riders">${c.riders.map(r => `<span class="rider">${esc(nameOf(r))} · ${esc(placeOf(r) || "?")}${
+      ${c.riders.length ? `<div class="riders">${c.riders.map(r => `<span class="rider">${esc(nameOf(r))} · ${esc(placeOf(r) || "?")}${distLabel(r) ? " " + distLabel(r) : ""}${
         c.id === me ? ` <button class="small" data-act="drop" data-id="${r}" title="Remove from my car">✕</button>` : ""}</span>`).join("")}</div>` : ""}
     </div>`;
   }).join("") : `<div class="empty">No drivers yet.</div>`);
@@ -335,13 +374,21 @@ function render() {
 }
 
 document.getElementById("me").addEventListener("change", ev => {
-  me = ev.target.value; pref.set("me", me); render();
+  me = ev.target.value; pref.set("me", me); search = { status: "idle", results: [] }; render();
 });
 let gemTimer;
-document.getElementById("gemeente").addEventListener("input", ev => {
+const gemInput = document.getElementById("gemeente");
+gemInput.addEventListener("input", () => {
   clearTimeout(gemTimer);
-  const v = ev.target.value.trim();
-  gemTimer = setTimeout(() => me && write(`players/${me}/gemeente`, v || null), 600);
+  gemTimer = setTimeout(() => findPlace(gemInput.value), 800);
+});
+gemInput.addEventListener("keydown", ev => {
+  if (ev.key === "Enter") { clearTimeout(gemTimer); findPlace(gemInput.value); }
+});
+document.getElementById("geo-find").onclick = () => { clearTimeout(gemTimer); findPlace(gemInput.value); };
+document.getElementById("geo-results").addEventListener("click", ev => {
+  const b = ev.target.closest("[data-pick]");
+  if (b) pickPlace(Number(b.dataset.pick));
 });
 
 connect();

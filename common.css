@@ -40,6 +40,13 @@
   }
 }
 * { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+/* Safety net: nothing may widen the page (the table scrolls inside its own box). */
+html, body { overflow-x: clip; }
+/* iOS Safari zooms in on fields with text under 16px and stays zoomed. */
+@media (pointer: coarse) {
+  input, select, textarea { font-size: 16px !important; }
+}
 body {
   margin: 0;
   background: var(--bg);
