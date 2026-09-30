@@ -3,7 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Team Carpool</title>
+<title>Pampas · Carpool</title>
+<meta name="theme-color" content="#1f3a2e">
+<link rel="icon" type="image/png" href="assets/favicon.png">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600&display=swap">
 <link rel="stylesheet" href="common.css">
 <style>
   .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px; margin-top: 16px; }
@@ -33,7 +39,7 @@
   .mine { background: var(--bg); border-radius: 8px; padding: 8px; margin-bottom: 10px; }
   .seg { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; flex-wrap: wrap; }
   .seg button { border: none; border-radius: 0; }
-  .seg button[aria-pressed="true"] { background: var(--accent); color: #fff; }
+  .seg button[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); }
   .mine .seg { display: flex; }
   .mine .seg button { flex: 1 1 0; padding: 7px 4px; white-space: nowrap; }
   .mine .extra { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; align-items: center; font-size: .85rem; }
@@ -63,8 +69,13 @@
 </style>
 </head>
 <body>
+<header class="brand">
+  <div class="brand-inner">
+    <a href="./"><img class="logo" src="assets/wordmark-light.png" alt="Pampas" width="720" height="213"></a>
+    <nav class="tabs"><a href="./">Availability</a><a href="carpool.html" aria-current="page">🚗 Carpool</a></nav>
+  </div>
+</header>
 <main>
-  <nav class="tabs"><a href="./">Availability</a><a href="carpool.html" aria-current="page">🚗 Carpool</a></nav>
   <h1>Carpool</h1>
   <p class="sub">Offer seats or ask for a ride per match · <span class="status" id="status">Connecting…</span></p>
   <p class="banner" id="banner" hidden>Not connected to a database yet. Set <code>FIREBASE_DB_URL</code> in <code>config.js</code>.</p>

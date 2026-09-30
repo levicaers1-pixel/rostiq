@@ -3,7 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Team Availability</title>
+<title>Pampas · Availability</title>
+<meta name="theme-color" content="#1f3a2e">
+<link rel="icon" type="image/png" href="assets/favicon.png">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600&display=swap">
 <link rel="stylesheet" href="common.css">
 <style>
 
@@ -75,7 +81,7 @@
   /* Toolbar controls */
   .seg { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
   .seg button { border: none; border-radius: 0; }
-  .seg button[aria-pressed="true"] { background: var(--accent); color: #fff; }
+  .seg button[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); }
   .min { display: inline-flex; align-items: center; gap: 6px; font-size: .85rem; color: var(--muted); }
   .min input { width: 56px; font: inherit; padding: 5px 6px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text); }
 
@@ -110,8 +116,13 @@
 </style>
 </head>
 <body>
+<header class="brand">
+  <div class="brand-inner">
+    <a href="./"><img class="logo" src="assets/wordmark-light.png" alt="Pampas" width="720" height="213"></a>
+    <nav class="tabs"><a href="./" aria-current="page">Availability</a><a href="carpool.html">🚗 Carpool</a></nav>
+  </div>
+</header>
 <main>
-  <nav class="tabs"><a href="./" aria-current="page">Availability</a><a href="carpool.html">🚗 Carpool</a></nav>
   <h1>Team Availability</h1>
   <p class="sub">Season 2026–2027 · tap a cell to set availability · <span class="status" id="status">Connecting…</span></p>
   <p class="banner" id="banner" hidden>Not connected to a database yet. Changes are kept only until you reload. Set <code>FIREBASE_DB_URL</code> in <code>config.js</code> (see README).</p>
