@@ -236,7 +236,7 @@ const SYMBOL = { "": "–", yes: "✓", maybe: "?", no: "✗" };
 const LABEL = { "": "", yes: "Available", maybe: "Maybe", no: "Not available" };
 const DB = (window.FIREBASE_DB_URL || "").trim().replace(/\/+$/, "");
 
-const DEFAULT_MIN = 10;
+const DEFAULT_MIN = 3;
 const TODAY = new Date().toLocaleDateString("sv-SE"); // YYYY-MM-DD, local time
 const isPast = e => e.date < TODAY;
 
