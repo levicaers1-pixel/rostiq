@@ -22,7 +22,7 @@ const TODAY = new Date().toLocaleDateString("sv-SE"); // YYYY-MM-DD, local time
 const isPast = e => e.date < TODAY;
 
 const parse = d => new Date(d + "T12:00:00");
-const fmt = (d, opts) => parse(d).toLocaleDateString("en-GB", opts);
+const fmt = (d, opts) => parse(d).toLocaleDateString(LOCALE, opts);
 const esc = t => String(t).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 
 // Per-viewer UI preferences (not shared).
@@ -30,6 +30,42 @@ const pref = {
   get(k, d) { try { return localStorage.getItem(k) ?? d; } catch { return d; } },
   set(k, v) { try { localStorage.setItem(k, v); } catch {} },
 };
+
+// ---- Match details (time, venue, meeting point), set by the admin ----
+// Stored at matches/{date}: { start, end, venue: { name, address, lat, lon }, meet, info }.
+const matchInfo = e => (root.matches && root.matches[e.date]) || {};
+const timeText = e => {
+  const m = matchInfo(e);
+  return m.start ? m.start + (m.end ? "–" + m.end : "") : "";
+};
+const venueText = v => (v ? [v.name, v.address].filter(Boolean).join(", ") : "");
+const mapsUrl = v => "https://www.google.com/maps/search/?api=1&query=" +
+  encodeURIComponent(venueText(v) || (v.lat != null ? `${v.lat},${v.lon}` : ""));
+
+function kmBetween(a, b) {
+  if (!a || !b || a.lat == null || b.lat == null) return null;
+  const rad = x => x * Math.PI / 180;
+  const h = Math.sin(rad(b.lat - a.lat) / 2) ** 2 +
+    Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(rad(b.lon - a.lon) / 2) ** 2;
+  return 2 * 6371 * Math.asin(Math.sqrt(h));
+}
+
+// Venue name + town only (last part of the address), for compact lists.
+const venueShort = v => (v ? [v.name, (v.address || "").split(", ").pop()].filter(Boolean).join(", ") : "");
+
+// One or two lines with time, venue (+ Maps link), meeting point and info.
+// extra = HTML after the venue; compact = venue name + town instead of the full address.
+function detailsHtml(e, extra = "", compact = false) {
+  const m = matchInfo(e), v = m.venue;
+  const bits = [];
+  const line1 = [timeText(e) && `🕘 ${esc(timeText(e))}`,
+    v && `📍 ${esc(compact ? venueShort(v) : venueText(v))} <a href="${mapsUrl(v)}" target="_blank" rel="noopener">${t("maps")} ↗</a>${extra}`]
+    .filter(Boolean).join(" · ");
+  if (line1) bits.push(`<div>${line1}</div>`);
+  if (m.meet) bits.push(`<div>🚩 ${t("meet")}: ${esc(m.meet)}</div>`);
+  if (m.info) bits.push(`<div>ℹ️ ${esc(m.info)}</div>`);
+  return bits.length ? `<div class="details">${bits.join("")}</div>` : "";
+}
 
 // ---- Shared state (mirror of the database root) ----
 let root = {};
@@ -85,7 +121,7 @@ async function send(method, path, value) {
     });
     if (!res.ok) throw new Error(res.status);
   } catch (e) {
-    setStatus("err", AUTH_ON ? "Not saved – you can only change your own row" : "Save failed – check your connection");
+    setStatus("err", t(AUTH_ON ? "status.notSavedOwnRow" : "status.saveFailed"));
   }
 }
 
@@ -113,7 +149,7 @@ async function connect(forceRefresh) {
   if (!DB) {
     root = { players: defaultPlayers() };
     document.getElementById("banner").hidden = false;
-    setStatus("err", "Not connected");
+    setStatus("err", t("status.notConnected"));
     render();
     return;
   }
@@ -134,16 +170,16 @@ async function connect(forceRefresh) {
         update(changes);
       }
     }
-    setStatus("live", "Live");
+    setStatus("live", t("status.live"));
     syncSession();
   };
   stream.addEventListener("put", onEvent(false));
   stream.addEventListener("patch", onEvent(true));
-  stream.addEventListener("cancel", () => setStatus("err", "Access denied"));
+  stream.addEventListener("cancel", () => setStatus("err", t("status.denied")));
   // Login tokens expire after an hour; reconnect with a fresh one.
   stream.addEventListener("auth_revoked", () => { if (stream === es) connect(true); });
-  stream.onopen = () => setStatus("live", "Live");
-  stream.onerror = () => setStatus("err", "Reconnecting…");
+  stream.onopen = () => setStatus("live", t("status.live"));
+  stream.onerror = () => setStatus("err", t("status.reconnecting"));
 }
 
 function disconnect() {
@@ -165,6 +201,7 @@ function syncSession() {
 
 // Kick off: with login, wait for the user; otherwise connect straight away.
 function start() {
+  applyStaticTexts();
   injectAuthUI();
   if (AUTH_ON) initAuth(); else connect();
 }
@@ -175,23 +212,23 @@ async function initAuth() {
     A = authMod;
     fbAuth = A.getAuth(appMod.initializeApp(window.FIREBASE_CONFIG));
   } catch (e) {
-    gateMessage("Could not load the login. Check your connection and reload.", true);
+    gateMessage(t("auth.loadFailed"), true);
     return;
   }
   // Coming back from the link in a sign-in email.
   if (A.isSignInWithEmailLink(fbAuth, location.href)) {
     let email = pref.get("signinEmail", "");
-    if (!email) email = prompt("To finish signing in, enter the email address you used:") || "";
+    if (!email) email = prompt(t("auth.emailPrompt")) || "";
     try {
       if (email) await A.signInWithEmailLink(fbAuth, email.trim(), location.href);
     } catch (e) {
-      gateMessage("That sign-in link is expired or was already used. Request a new one.", true);
+      gateMessage(t("auth.linkExpired"), true);
     }
     history.replaceState(null, "", location.pathname);
   }
   // Coming back from a Google redirect: success arrives via onAuthStateChanged; surface failures.
   A.getRedirectResult(fbAuth).catch(() =>
-    gateMessage("Google sign-in didn't complete. Try again, or use the email link.", true));
+    gateMessage(t("auth.redirectFailed"), true));
   A.onAuthStateChanged(fbAuth, user => {
     session.user = user;
     session.admin = !!user && user.emailVerified && (user.email || "").toLowerCase() === ADMIN_EMAIL;
@@ -206,7 +243,17 @@ async function initAuth() {
 // ---- Login UI (shared by both pages) ----
 function injectAuthUI() {
   const brand = document.querySelector(".brand-inner");
-  brand.insertAdjacentHTML("beforeend", `<div class="account" id="account" hidden></div>`);
+  brand.insertAdjacentHTML("beforeend", `<div class="corner">
+    <div class="account" id="account" hidden></div>
+    <div class="lang" role="group" aria-label="Language">
+      <button data-lang="nl" aria-pressed="${LANG === "nl"}">NL</button><button data-lang="en" aria-pressed="${LANG === "en"}">EN</button>
+    </div></div>`);
+  brand.querySelector(".lang").addEventListener("click", ev => {
+    const b = ev.target.closest("[data-lang]");
+    if (!b || b.dataset.lang === LANG) return;
+    pref.set("lang", b.dataset.lang);
+    location.reload();
+  });
   document.querySelector("main").insertAdjacentHTML("beforebegin", `<section class="gate" id="gate" hidden></section>`);
   document.getElementById("account").addEventListener("click", ev => {
     if (ev.target.closest("[data-signout]")) A.signOut(fbAuth);
@@ -234,37 +281,35 @@ function renderAuth() {
   if (u) {
     const who = session.pid ? esc(root.players[session.pid].name || "") : esc(u.email || "");
     acct.innerHTML = `<span>${who}${session.admin ? ' <span class="admin-tag">admin</span>' : ""}</span>
-      <button data-signout class="link">Sign out</button>`;
+      <button data-signout class="link">${t("auth.signOut")}</button>`;
   }
 
   const msg = gateMsg.text ? `<p class="gate-msg ${gateMsg.err ? "err" : ""}">${esc(gateMsg.text)}</p>` : "";
   if (!u) {
     gate.innerHTML = `<div class="gate-card">
-      <h1>Sign in</h1>
-      <p class="sub">Sign in once on this device to see and edit the team's availability and carpools.</p>
+      <h1>${t("auth.signIn")}</h1>
+      <p class="sub">${t("auth.signInSub")}</p>
       <button class="google" data-google>
         <svg viewBox="0 0 48 48" width="18" height="18" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>
-        Continue with Google</button>
-      <div class="or">or get a sign-in link by email</div>
+        ${t("auth.google")}</button>
+      <div class="or">${t("auth.orEmail")}</div>
       <form class="email-form">
         <input type="email" name="email" required placeholder="you@example.com" autocomplete="email" value="${esc(pref.get("signinEmail", ""))}">
-        <button type="submit">Send link</button>
+        <button type="submit">${t("auth.sendLink")}</button>
       </form>
       ${msg}
-      <p class="hint">${standalone()
-        ? "You're using the home-screen app: please sign in with Google here. An email link opens in your browser instead of this app, so it won't sign you in here."
-        : "Opened this from WhatsApp or Instagram? Google sign-in may not work in their built-in browser. Use the email link, or open the page in Safari or Chrome."}</p>
+      <p class="hint">${t(standalone() ? "auth.hintApp" : "auth.hintBrowser")}</p>
     </div>`;
   } else if (needClaim) {
     const free = sortedPlayers().filter(p => p.name && !p.uid);
     gate.innerHTML = `<div class="gate-card">
-      <h1>Which player are you?</h1>
-      <p class="sub">Signed in as ${esc(u.email || "")}. Pick your name once; after that you can only change your own answers.</p>
+      <h1>${t("auth.whichPlayer")}</h1>
+      <p class="sub">${t("auth.claimSub", { email: esc(u.email || "") })}</p>
       <div class="claim-list">${free.length
         ? free.map(p => `<button data-claim="${p.id}">${esc(p.name)}</button>`).join("")
-        : `<p class="hint">No free names. Ask Levi to add you to the team.</p>`}</div>
+        : `<p class="hint">${t("auth.noFree")}</p>`}</div>
       ${msg}
-      <p class="hint">Not in the list, or picked the wrong name? Ask Levi to fix it. <button class="link" data-signout-gate>Sign out</button></p>
+      <p class="hint">${t("auth.claimHelp")} <button class="link" data-signout-gate>${t("auth.signOut")}</button></p>
     </div>`;
   }
 }
@@ -280,7 +325,7 @@ async function onGateClick(ev) {
       gateMsg = { text: "", err: false };
     } catch (e) {
       if (e.code !== "auth/popup-closed-by-user" && e.code !== "auth/cancelled-popup-request")
-        gateMessage("Google sign-in didn't work here. Try the email link instead.", true);
+        gateMessage(t("auth.googleFailed"), true);
     }
   }
   const c = ev.target.closest("[data-claim]");
@@ -299,11 +344,9 @@ async function onGateSubmit(ev) {
   try {
     await A.sendSignInLinkToEmail(fbAuth, email, { url: location.origin + location.pathname, handleCodeInApp: true });
     pref.set("signinEmail", email);
-    gateMessage(`Check ${email} for a sign-in link (also look in spam). Open it on this device.`, false);
+    gateMessage(t("auth.checkEmail", { email }), false);
   } catch (e) {
-    gateMessage(e.code === "auth/quota-exceeded"
-      ? "Too many sign-in emails today. Try Google sign-in, or try again tomorrow."
-      : "Couldn't send the email. Check the address and try again.", true);
+    gateMessage(t(e.code === "auth/quota-exceeded" ? "auth.quota" : "auth.sendFailed"), true);
   }
 }
 
@@ -314,6 +357,6 @@ function sortedPlayers() {
     .sort((a, b) => (a.order || 0) - (b.order || 0) || a.id.localeCompare(b.id));
 }
 
-const displayName = (p, i) => p.name || `Player ${i + 1}`;
+const displayName = (p, i) => p.name || t("playerN", { n: i + 1 });
 
 const slug = t => t.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().replace(/[^a-z0-9]+/g, "-");

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Pampas · Availability</title>
+<title data-i18n-doc="page.title">Pampas · Availability</title>
 <meta name="theme-color" content="#1f3a2e">
 <link rel="icon" type="image/png" href="assets/favicon.png">
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
@@ -19,13 +19,15 @@
 <style>
 
   /* Schedule */
-  .months { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(min(200px, 100%), 1fr)); }
+  .months { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(min(280px, 100%), 1fr)); }
   .month { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; }
   .month h3 { margin: 0 0 8px; font-size: .8rem; letter-spacing: .08em; color: var(--muted); }
   .month ul { list-style: none; margin: 0; padding: 0; }
-  .month li { display: flex; gap: 10px; padding: 4px 0; align-items: baseline; }
+  .month li { display: flex; gap: 10px; padding: 6px 0; align-items: baseline; border-top: 1px solid var(--border); }
+  .month li:first-child { border-top: none; }
+  .month .actions { display: flex; gap: 4px; flex-shrink: 0; }
   .month .d { font-variant-numeric: tabular-nums; color: var(--muted); min-width: 52px; }
-  .month .opp-name { flex: 1; }
+  .month .opp-name { flex: 1; min-width: 0; overflow-wrap: anywhere; }
   .ics { font-size: .75rem; padding: 2px 8px; color: var(--accent); white-space: nowrap; }
   .section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
   .section-head h2 { margin-bottom: 12px; }
@@ -43,6 +45,7 @@
   thead th { font-size: .75rem; font-weight: 600; color: var(--muted); padding: 8px 4px; vertical-align: bottom; line-height: 1.25; }
   thead th .opp { display: block; color: var(--text); font-size: .78rem; }
   thead th.final .opp { color: var(--final); }
+  thead th .time { display: block; font-weight: 400; }
   th.name, td.name {
     position: sticky; left: 0; z-index: 1; background: var(--surface);
     text-align: left; min-width: 170px; border-right: 1px solid var(--border);
@@ -104,6 +107,7 @@
   .card .when { color: var(--muted); font-size: .8rem; }
   .card .title { font-weight: 600; flex: 1; min-width: 0; overflow-wrap: anywhere; }
   .badge { font-size: .8rem; font-weight: 700; border-radius: 999px; padding: 2px 10px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .card .details { margin-top: 6px; }
   .card .counts { color: var(--muted); font-size: .8rem; margin: 6px 0 10px; }
   .chips { display: flex; flex-wrap: wrap; gap: 6px; }
   .chip { font-size: .85rem; padding: 6px 10px; border-radius: 999px; color: var(--muted); }
@@ -135,41 +139,61 @@
   dialog textarea { width: 100%; font: inherit; font-size: .9rem; padding: 8px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text); resize: vertical; }
   dialog .row { display: flex; gap: 8px; justify-content: flex-end; margin-top: 10px; flex-wrap: wrap; }
   dialog a.btn { font-size: .85rem; text-decoration: none; background: #25d366; color: #fff; border-radius: 8px; padding: 6px 12px; }
+
+  /* Admin: match details dialog */
+  .details-dlg { width: min(520px, calc(100vw - 32px)); }
+  .details-dlg label.block { display: flex; flex-direction: column; gap: 4px; font-size: .8rem; color: var(--muted); margin-top: 12px; }
+  .details-dlg .times { display: flex; gap: 12px; flex-wrap: wrap; }
+  .details-dlg .times label { display: flex; flex-direction: column; gap: 4px; font-size: .8rem; color: var(--muted); }
+  .details-dlg input { font: inherit; font-size: .9rem; color: var(--text); background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 7px 8px; }
+  .details-dlg .search-row { display: flex; gap: 6px; margin-top: 4px; }
+  .details-dlg .search-row input { flex: 1; min-width: 0; }
+  #venue-results { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; font-size: .85rem; }
+  #venue-results .result { text-align: left; font-size: .85rem; padding: 7px 10px; }
+  .venue-card { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; font-size: .9rem; margin-top: 4px; }
+  .venue-actions { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; margin-top: 6px; font-size: .85rem; }
+  .venue-actions a { color: var(--accent); }
+  .details-dlg .muted { color: var(--muted); }
+  .details-dlg .warn { color: var(--maybe); }
+  .details-dlg .row { margin-top: 16px; align-items: center; }
+  .details-dlg .spacer { flex: 1; }
+  .details-dlg .primary { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+  .link-danger { background: none; border: none; padding: 0; color: var(--no); text-decoration: underline; font-size: .85rem; }
 </style>
 </head>
 <body>
 <header class="brand">
   <div class="brand-inner">
     <a href="./"><img class="logo" src="assets/wordmark-light.png" alt="Pampas" width="720" height="213"></a>
-    <nav class="tabs"><a href="./" aria-current="page">Availability</a><a href="carpool.html">🚗 Carpool</a></nav>
+    <nav class="tabs"><a href="./" aria-current="page" data-i18n="tab.availability">Availability</a><a href="carpool.html" data-i18n="tab.carpool">🚗 Carpool</a></nav>
   </div>
 </header>
 <main>
   <h1>Winter Midam 26-27</h1>
-  <p class="sub">Tap a cell to set your availability · <span class="status" id="status">Connecting…</span></p>
-  <p class="banner" id="banner" hidden>Not connected to a database yet. Changes are kept only until you reload. Set <code>FIREBASE_DB_URL</code> in <code>config.js</code> (see README).</p>
+  <p class="sub"><span data-i18n="avail.sub">Tap a cell to set your availability</span> · <span class="status" id="status" data-i18n="status.connecting">Connecting…</span></p>
+  <p class="banner" id="banner" hidden data-i18n-html="banner.noDb"></p>
 
   <div class="section-head">
-    <h2>Schedule</h2>
-    <button class="ics" id="ics-all" title="Add all matches to your calendar">📅 Add all to calendar</button>
+    <h2 data-i18n="schedule">Schedule</h2>
+    <button class="ics" id="ics-all" data-i18n="ics.all" data-i18n-title="ics.allTitle">📅 Add all to calendar</button>
   </div>
   <div class="months" id="months"></div>
 
-  <h2>Availability</h2>
+  <h2 data-i18n="availability">Availability</h2>
   <div class="toolbar">
     <div class="legend">
-      <span><i class="swatch" style="background:var(--yes-bg);border:1px solid var(--yes)"></i>✓ Available</span>
-      <span><i class="swatch" style="background:var(--maybe-bg);border:1px solid var(--maybe)"></i>? Maybe</span>
-      <span><i class="swatch" style="background:var(--no-bg);border:1px solid var(--no)"></i>✗ Not available</span>
+      <span><i class="swatch" style="background:var(--yes-bg);border:1px solid var(--yes)"></i><span data-i18n="legend.yes">✓ Available</span></span>
+      <span><i class="swatch" style="background:var(--maybe-bg);border:1px solid var(--maybe)"></i><span data-i18n="legend.maybe">? Maybe</span></span>
+      <span><i class="swatch" style="background:var(--no-bg);border:1px solid var(--no)"></i><span data-i18n="legend.no">✗ Not available</span></span>
     </div>
-    <label class="min" title="Totals turn green when at least this many players are available">Min. players
+    <label class="min" data-i18n-title="min.title"><span data-i18n="min">Min. players</span>
       <input type="number" id="min" min="1" max="50" inputmode="numeric"></label>
     <button id="past" hidden></button>
     <div class="seg" role="group" aria-label="View">
-      <button data-view="table">Table</button><button data-view="cards">Cards</button>
+      <button data-view="table" data-i18n="view.table">Table</button><button data-view="cards" data-i18n="view.cards">Cards</button>
     </div>
-    <button id="add">+ Add player</button>
-    <button id="export">Export CSV</button>
+    <button id="add" data-i18n="add">+ Add player</button>
+    <button id="export" data-i18n="export">Export CSV</button>
   </div>
   <div class="cards" id="cards" hidden></div>
   <div class="grid-wrap" id="table-view">
@@ -179,32 +203,62 @@
       <tfoot><tr id="foot"></tr></tfoot>
     </table>
   </div>
-  <p class="note">Shared with the whole team. Changes save instantly and appear live for everyone who has the page open.
-    Totals are green when the minimum is reached, orange when it's reached only by counting the maybes, red otherwise. 📣 prepares a reminder for players who haven't answered.</p>
+  <p class="note" data-i18n="note"></p>
 
   <section class="accounts" id="accounts" hidden>
-    <h2>Accounts <span class="muted">(only you see this)</span></h2>
-    <p class="muted">Which players have linked their login. Reset a link if someone picked the wrong name; they can then choose again.</p>
+    <h2><span data-i18n="accounts">Accounts</span> <span class="muted" data-i18n="accounts.onlyYou"></span></h2>
+    <p class="muted" data-i18n="accounts.help"></p>
     <ul id="accounts-list"></ul>
   </section>
 </main>
 
 <dialog id="remind">
   <h3 id="remind-title"></h3>
-  <textarea id="remind-text" rows="7"></textarea>
+  <textarea id="remind-text" rows="8"></textarea>
   <div class="row">
-    <button id="remind-close">Close</button>
-    <button id="remind-copy">Copy</button>
-    <a class="btn" id="remind-wa" target="_blank" rel="noopener">Share on WhatsApp</a>
+    <button id="remind-close" data-i18n="close">Close</button>
+    <button id="remind-copy" data-i18n="copy">Copy</button>
+    <a class="btn" id="remind-wa" target="_blank" rel="noopener" data-i18n="whatsapp">Share on WhatsApp</a>
   </div>
 </dialog>
 
+<!-- Admin: time, venue and meeting point for one match -->
+<dialog id="details" class="details-dlg">
+  <form method="dialog" id="details-form">
+    <h3 id="details-title"></h3>
+    <div class="times">
+      <label><span data-i18n="details.start">Start</span> <input type="time" name="start"></label>
+      <label><span data-i18n="details.end">End</span> <input type="time" name="end"></label>
+    </div>
+    <label class="block"><span data-i18n="details.venue">Venue</span></label>
+    <div id="venue-chosen"></div>
+    <div id="venue-search">
+      <div class="search-row">
+        <input name="q" data-i18n-placeholder="details.venuePh" enterkeyhint="search" autocomplete="off">
+        <button type="button" id="venue-find" data-i18n="details.search">Search</button>
+      </div>
+      <div id="venue-results"></div>
+    </div>
+    <label class="block"><span data-i18n="details.meet">Meeting time / place</span>
+      <input name="meet" maxlength="120" data-i18n-placeholder="details.meetPh"></label>
+    <label class="block"><span data-i18n="details.info">Extra info</span>
+      <input name="info" maxlength="200" data-i18n-placeholder="details.infoPh"></label>
+    <div class="row">
+      <button type="button" id="details-clear" class="link-danger" data-i18n="details.clear">Clear all</button>
+      <span class="spacer"></span>
+      <button type="button" id="details-cancel" data-i18n="details.cancel">Cancel</button>
+      <button type="submit" class="primary" data-i18n="details.save">Save</button>
+    </div>
+  </form>
+</dialog>
+
 <script src="config.js"></script>
+<script src="i18n.js"></script>
 <script src="common.js"></script>
 <script>
 const CYCLE = ["", "yes", "maybe", "no"];
 const SYMBOL = { "": "–", yes: "✓", maybe: "?", no: "✗" };
-const LABEL = { "": "", yes: "Available", maybe: "Maybe", no: "Not available" };
+const LABEL = { "": "", yes: t("label.yes"), maybe: t("label.maybe"), no: t("label.no") };
 
 const DEFAULT_MIN = 3;
 let view = pref.get("view", matchMedia("(max-width: 700px)").matches ? "cards" : "table");
@@ -219,15 +273,22 @@ function renderSchedule() {
   document.getElementById("months").innerHTML = Object.entries(byMonth).map(([m, evs]) => `
     <div class="month"><h3>${m}</h3><ul>${evs.map(e => `
       <li class="${isPast(e) ? "past" : ""}"><span class="d">${fmt(e.date, { weekday: "short", day: "numeric" })}</span>
-      <span class="opp-name">${e.opp}${e.final ? '<span class="tag">FINAL</span>' : ""}</span>
-      <button class="ics" data-date="${e.date}" title="Add to calendar (.ics)">📅 .ics</button></li>`).join("")}
+      <div class="opp-name">${esc(e.opp)}${e.final ? `<span class="tag">${t("final")}</span>` : ""}${detailsHtml(e, "", true)}</div>
+      <div class="actions">
+        <button class="ics" data-ics="${e.date}" title="${t("ics.oneTitle")}">${t("ics.one")}</button>
+        ${session.admin ? `<button class="ics" data-edit="${e.date}" title="${t("details.edit")}">✏️</button>` : ""}
+      </div></li>`).join("")}
     </ul></div>`).join("");
-  document.querySelectorAll(".month .ics").forEach(b =>
-    b.addEventListener("click", () => {
-      const e = EVENTS.find(x => x.date === b.dataset.date);
-      downloadIcs([e], `${e.date}-${slug(e.opp)}.ics`);
-    }));
 }
+document.getElementById("months").addEventListener("click", ev => {
+  const ics = ev.target.closest("[data-ics]");
+  if (ics) {
+    const e = EVENTS.find(x => x.date === ics.dataset.ics);
+    downloadIcs([e], `${e.date}-${slug(e.opp)}.ics`);
+  }
+  const edit = ev.target.closest("[data-edit]");
+  if (edit) openDetails(EVENTS.find(x => x.date === edit.dataset.edit));
+});
 
 const minPlayers = () => (root.settings && root.settings.minPlayers) || DEFAULT_MIN;
 const shownEvents = () => EVENTS.filter(e => showPast || !isPast(e));
@@ -260,15 +321,17 @@ function render() {
 
   const players = sortedPlayers();
   const events = shownEvents();
+  renderSchedule();
   renderControls();
   renderCards(players, events);
 
   document.querySelector("#table-view table").style.minWidth = `${180 + events.length * 72}px`;
   document.getElementById("head").innerHTML =
-    `<th class="name">Player</th>` +
+    `<th class="name">${t("player")}</th>` +
     events.map(e => `<th class="${e.final ? "final" : ""}">
       ${fmt(e.date, { weekday: "short", day: "numeric", month: "short" })}
-      <span class="opp">${e.opp}${e.final ? " 🏆" : ""}</span></th>`).join("");
+      <span class="opp">${esc(e.opp)}${e.final ? " 🏆" : ""}</span>
+      ${matchInfo(e).start ? `<span class="time">${esc(matchInfo(e).start)}</span>` : ""}</th>`).join("");
 
   const body = document.getElementById("body");
   body.innerHTML = "";
@@ -281,7 +344,7 @@ function render() {
     nameTd.innerHTML = `<span class="num">${i + 1}</span>`;
     const input = document.createElement("input");
     input.dataset.pid = p.id;
-    input.placeholder = `Player ${i + 1}`;
+    input.placeholder = t("playerN", { n: i + 1 });
     input.value = p.id === focusId ? focusVal : p.name || "";
     input.readOnly = !editable;
     input.addEventListener("input", () => {
@@ -289,9 +352,9 @@ function render() {
       nameTimers[p.id] = setTimeout(() => write(`players/${p.id}/name`, input.value || null), 400);
     });
     const del = document.createElement("button");
-    del.className = "del"; del.title = "Remove player"; del.textContent = "✕";
+    del.className = "del"; del.title = t("removePlayer"); del.textContent = "✕";
     del.addEventListener("click", () => {
-      if (!confirm(`Remove ${p.name || "Player " + (i + 1)} for everyone?`)) return;
+      if (!confirm(t("removeConfirm", { name: displayName(p, i) }))) return;
       update({ [`players/${p.id}`]: null, ...(p.uid ? { [`users/${p.uid}`]: null } : {}) });
     });
     del.hidden = !session.admin;
@@ -300,9 +363,7 @@ function render() {
     cal.className = "cal";
     cal.textContent = "📅";
     cal.disabled = !mine.length;
-    cal.title = mine.length
-      ? `Add my ${mine.length} match${mine.length > 1 ? "es" : ""} (✓ and ?) to calendar`
-      : "Mark ✓ or ? on some matches first";
+    cal.title = mine.length ? t("cal.mine", { n: mine.length }) : t("cal.none");
     cal.addEventListener("click", () => {
       const who = slug(p.name || `player-${i + 1}`);
       downloadIcs(mine, `${who}-matches.ics`, e => p.avail[e.date], p.name);
@@ -332,12 +393,12 @@ function render() {
   });
 
   document.getElementById("foot").innerHTML =
-    `<td class="name">Available (min. ${minPlayers()})</td>` +
+    `<td class="name">${t("foot.available", { min: minPlayers() })}</td>` +
     events.map(e => {
       const c = tally(e, players);
       return `<td class="${c.level}"><div class="y">${c.yes}</div>
         <div><span class="m">${c.maybe}?</span> · <span class="n">${c.no}✗</span></div>
-        <button class="remind" data-date="${e.date}" title="${c.missing.length} without answer – prepare reminder"
+        <button class="remind" data-date="${e.date}" title="${t("remind.title", { n: c.missing.length })}"
           ${c.missing.length ? "" : "disabled"}>📣${c.missing.length ? " " + c.missing.length : ""}</button></td>`;
     }).join("");
 }
@@ -352,11 +413,13 @@ function renderCards(players, events) {
     card.innerHTML = `
       <header>
         <div class="title"><div class="when">${fmt(e.date, { weekday: "long", day: "numeric", month: "long" })}</div>
-          ${esc(e.opp)}${e.final ? ' <span class="tag">FINAL</span>' : ""}</div>
-        <span class="badge ${c.level}" title="Available / minimum">${c.yes}/${minPlayers()}</span>
-        <button class="remind" data-date="${e.date}" title="Prepare reminder" ${c.missing.length ? "" : "disabled"}>📣</button>
+          ${esc(e.opp)}${e.final ? ` <span class="tag">${t("final")}</span>` : ""}</div>
+        <span class="badge ${c.level}" title="${t("card.badgeTitle")}">${c.yes}/${minPlayers()}</span>
+        <button class="remind" data-date="${e.date}" title="${t("remind.short")}" ${c.missing.length ? "" : "disabled"}>📣</button>
       </header>
-      <div class="counts">${c.yes} ✓ · ${c.maybe} ? · ${c.no} ✗ · ${c.missing.length} no answer — tap ${session.admin ? "a" : "your"} name to change</div>
+      ${detailsHtml(e)}
+      <div class="counts">${t("card.counts", { y: c.yes, m: c.maybe, n: c.no, none: c.missing.length,
+        who: t(session.admin ? "card.whoAdmin" : "card.whoOwn") })}</div>
       <div class="chips"></div>`;
     const chips = card.querySelector(".chips");
     players.forEach((p, i) => {
@@ -382,7 +445,7 @@ function renderControls() {
   const pastCount = EVENTS.filter(isPast).length;
   const pastBtn = document.getElementById("past");
   pastBtn.hidden = !pastCount;
-  pastBtn.textContent = showPast ? "Hide past matches" : `Show past matches (${pastCount})`;
+  pastBtn.textContent = showPast ? t("past.hide") : t("past.show", { n: pastCount });
   document.querySelectorAll(".seg button").forEach(b => b.setAttribute("aria-pressed", b.dataset.view === view));
   document.getElementById("cards").hidden = view !== "cards";
   document.getElementById("table-view").hidden = view !== "table";
@@ -394,9 +457,9 @@ function renderAccounts() {
   if (box.hidden) return;
   document.getElementById("accounts-list").innerHTML = sortedPlayers().filter(p => p.name).map(p => `
     <li><span class="who">${esc(p.name)}</span>
-      ${p.uid ? `<span class="muted">linked${p.uid === session.user.uid ? " (you)" : ""}</span>
-        <button class="link" data-reset="${p.id}">Reset</button>` : `<span class="muted">not linked yet</span>
-        ${session.pid ? "" : `<button class="link" data-mine="${p.id}">That's me</button>`}`}</li>`).join("");
+      ${p.uid ? `<span class="muted">${t("accounts.linked")}${p.uid === session.user.uid ? " " + t("accounts.you") : ""}</span>
+        <button class="link" data-reset="${p.id}">${t("accounts.reset")}</button>` : `<span class="muted">${t("accounts.notLinked")}</span>
+        ${session.pid ? "" : `<button class="link" data-mine="${p.id}">${t("accounts.mine")}</button>`}`}</li>`).join("");
 }
 document.getElementById("accounts-list").addEventListener("click", ev => {
   const mine = ev.target.closest("[data-mine]");
@@ -407,7 +470,7 @@ document.getElementById("accounts-list").addEventListener("click", ev => {
   const b = ev.target.closest("[data-reset]");
   if (!b) return;
   const p = root.players[b.dataset.reset];
-  if (!confirm(`Unlink the login from ${p.name}? They'll be asked to pick their name again.`)) return;
+  if (!confirm(t("accounts.unlinkConfirm", { name: p.name }))) return;
   update({ [`players/${b.dataset.reset}/uid`]: null, [`users/${p.uid}`]: null });
 });
 
@@ -430,15 +493,18 @@ document.addEventListener("click", ev => {
   if (!b) return;
   const e = EVENTS.find(x => x.date === b.dataset.date);
   const c = tally(e, sortedPlayers());
+  const m = matchInfo(e);
   const when = fmt(e.date, { weekday: "long", day: "numeric", month: "long" });
-  const text = `Reminder: ${e.opp}${e.final ? " (Final)" : ""} on ${when}.\n` +
-    `Please fill in your availability 👉 ${location.href.split("#")[0]}\n\n` +
-    `No answer yet: ${c.missing.join(", ")}`;
-  document.getElementById("remind-title").textContent =
-    `${c.missing.length} player${c.missing.length > 1 ? "s" : ""} without answer – ${e.opp}, ${when}`;
+  const details = [timeText(e) && `🕘 ${timeText(e)}`, m.venue && `📍 ${venueText(m.venue)}`].filter(Boolean).join(" · ");
+  const text = t("reminder.text", {
+    opp: e.opp + (e.final ? " " + t("ics.final") : ""), when,
+    details: details ? "\n" + details : "",
+    url: location.href.split(/[?#]/)[0], names: c.missing.join(", "),
+  });
+  document.getElementById("remind-title").textContent = t("reminder.heading", { n: c.missing.length, opp: e.opp, when });
   document.getElementById("remind-text").value = text;
   document.getElementById("remind-wa").href = "https://wa.me/?text=" + encodeURIComponent(text);
-  document.getElementById("remind-copy").textContent = "Copy";
+  document.getElementById("remind-copy").textContent = t("copy");
   dlg.showModal();
 });
 document.getElementById("remind-close").onclick = () => dlg.close();
@@ -446,8 +512,115 @@ document.getElementById("remind-copy").onclick = async ev => {
   const ta = document.getElementById("remind-text");
   try { await navigator.clipboard.writeText(ta.value); }
   catch { ta.select(); document.execCommand("copy"); }
-  ev.target.textContent = "Copied ✓";
+  ev.target.textContent = t("copied");
 };
+
+// ---- Admin: match details (time, venue via place search, meeting point) ----
+const detailsDlg = document.getElementById("details");
+const form = document.getElementById("details-form");
+let draft = null; // { e, venue, results, status }
+
+function openDetails(e) {
+  const m = matchInfo(e);
+  draft = { e, venue: m.venue || null, results: [], status: "idle" };
+  document.getElementById("details-title").textContent =
+    t("details.title", { opp: e.opp, when: fmt(e.date, { weekday: "long", day: "numeric", month: "long" }) });
+  form.start.value = m.start || "";
+  form.end.value = m.end || "";
+  form.meet.value = m.meet || "";
+  form.info.value = m.info || "";
+  form.q.value = "";
+  renderVenue();
+  detailsDlg.showModal();
+}
+
+function renderVenue() {
+  const v = draft.venue;
+  document.getElementById("venue-chosen").innerHTML = v ? `
+    <div class="venue-card">📍 <b>${esc(v.name || "")}</b>${v.address ? `<br><span class="muted">${esc(v.address)}</span>` : ""}
+      <div class="venue-actions"><a href="${mapsUrl(v)}" target="_blank" rel="noopener">${t("maps")} ↗</a>
+      <button type="button" class="link" data-venue="change">${t("details.change")}</button>
+      <button type="button" class="link" data-venue="remove">${t("details.remove")}</button></div></div>` : "";
+  document.getElementById("venue-search").hidden = !!v;
+  const q = form.q.value.trim();
+  const google = q ? `<a class="google-check" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}" target="_blank" rel="noopener">${t("details.googleCheck")}</a>` : "";
+  const typed = q ? `<button type="button" class="link" data-venue="typed">${t("details.useTyped")}</button>` : "";
+  document.getElementById("venue-results").innerHTML =
+    draft.status === "loading" ? `<div class="muted">${t("details.searching")}</div>` :
+    draft.status === "error" ? `<div class="warn">${t("details.searchFailed")}</div>` :
+    draft.status === "none" ? `<div class="warn">${t("details.noResults")}</div><div class="venue-actions">${typed} ${google}</div>` :
+    draft.status === "results" ? draft.results.map((r, i) => `
+      <button type="button" class="result" data-pick="${i}">📍 <b>${esc(r.name)}</b>${r.address ? `<br><span class="muted">${esc(r.address)}</span>` : ""}</button>`).join("") +
+      `<div class="venue-actions">${typed} ${google}</div>` : "";
+}
+
+// Free place search (Photon, built on OpenStreetMap): sports halls, clubs, addresses.
+const SKIP = new Set(["parcel_locker", "vending_machine", "post_box", "atm", "bench", "waste_basket"]);
+async function findVenue() {
+  const q = form.q.value.trim();
+  if (q.length < 2) return;
+  draft.status = "loading"; renderVenue();
+  try {
+    const url = "https://photon.komoot.io/api/?limit=10&lat=50.85&lon=4.35&bbox=2.4,49.4,6.5,51.8&q=" + encodeURIComponent(q);
+    const data = await fetch(url).then(r => r.json());
+    const seen = new Set();
+    draft.results = data.features
+      .filter(f => !SKIP.has(f.properties.osm_value))
+      .map(f => {
+        const p = f.properties;
+        const street = [p.street, p.housenumber].filter(Boolean).join(" ");
+        const town = [p.postcode, p.city || p.locality || p.district].filter(Boolean).join(" ");
+        const name = p.name || street || town;
+        const address = [street !== name ? street : "", town !== name ? town : ""].filter(Boolean).join(", ");
+        return { name, address, lat: f.geometry.coordinates[1], lon: f.geometry.coordinates[0] };
+      })
+      .filter(r => r.name && !seen.has(r.name + r.address) && seen.add(r.name + r.address))
+      .slice(0, 6);
+    draft.status = draft.results.length ? "results" : "none";
+  } catch {
+    draft.status = "error";
+  }
+  renderVenue();
+}
+
+let venueTimer;
+form.q.addEventListener("input", () => { clearTimeout(venueTimer); venueTimer = setTimeout(findVenue, 700); });
+form.q.addEventListener("keydown", ev => { if (ev.key === "Enter") { ev.preventDefault(); clearTimeout(venueTimer); findVenue(); } });
+document.getElementById("venue-find").onclick = () => { clearTimeout(venueTimer); findVenue(); };
+detailsDlg.addEventListener("click", ev => {
+  const pick = ev.target.closest("[data-pick]");
+  if (pick) { draft.venue = draft.results[Number(pick.dataset.pick)]; draft.status = "idle"; renderVenue(); }
+  const act = ev.target.closest("[data-venue]");
+  if (!act) return;
+  if (act.dataset.venue === "typed") draft.venue = { name: form.q.value.trim().slice(0, 120) };
+  if (act.dataset.venue === "change" || act.dataset.venue === "remove") {
+    if (act.dataset.venue === "change") form.q.value = draft.venue.name || "";
+    draft.venue = null; draft.status = "idle";
+  }
+  renderVenue();
+});
+document.getElementById("details-cancel").onclick = () => detailsDlg.close();
+document.getElementById("details-clear").onclick = () => {
+  if (!confirm(t("details.clearConfirm"))) return;
+  write(`matches/${draft.e.date}`, null);
+  detailsDlg.close();
+};
+form.addEventListener("submit", () => {
+  const v = draft.venue;
+  const data = {
+    start: form.start.value || null,
+    end: form.end.value || null,
+    venue: v ? {
+      name: (v.name || "").slice(0, 120),
+      ...(v.address ? { address: v.address.slice(0, 160) } : {}),
+      ...(v.lat != null ? { lat: v.lat, lon: v.lon } : {}),
+    } : null,
+    meet: form.meet.value.trim().slice(0, 120) || null,
+    info: form.info.value.trim().slice(0, 200) || null,
+  };
+  for (const k of Object.keys(data)) if (data[k] === null) delete data[k];
+  write(`matches/${draft.e.date}`, Object.keys(data).length ? data : null);
+});
 
 document.getElementById("add").onclick = async () => {
   const players = sortedPlayers();
@@ -460,9 +633,9 @@ document.getElementById("add").onclick = async () => {
 };
 
 document.getElementById("export").onclick = () => {
-  const rows = [["Player", ...EVENTS.map(e => `${e.date} ${e.opp}`)]];
+  const rows = [[t("csv.player"), ...EVENTS.map(e => `${e.date} ${e.opp}`)]];
   sortedPlayers().forEach((p, i) =>
-    rows.push([p.name || `Player ${i + 1}`, ...EVENTS.map(e => LABEL[p.avail[e.date] || ""])]));
+    rows.push([displayName(p, i), ...EVENTS.map(e => LABEL[p.avail[e.date] || ""])]));
   const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\r\n");
   const a = document.createElement("a");
   a.href = URL.createObjectURL(new Blob(["﻿" + csv], { type: "text/csv" }));
@@ -471,8 +644,7 @@ document.getElementById("export").onclick = () => {
   URL.revokeObjectURL(a.href);
 };
 
-// ---- Calendar (.ics) export: every match 09:00–17:00 Brussels time ----
-const START = "090000", END = "170000";
+// ---- Calendar (.ics) export: match times from the details, else 09:00–17:00 Brussels time ----
 const VTIMEZONE = [
   "BEGIN:VTIMEZONE", "TZID:Europe/Brussels",
   "BEGIN:DAYLIGHT", "TZOFFSETFROM:+0100", "TZOFFSETTO:+0200", "TZNAME:CEST",
@@ -481,30 +653,39 @@ const VTIMEZONE = [
   "DTSTART:19701025T030000", "RRULE:FREQ=YEARLY;BYMONTH=10;BYDAY=-1SU", "END:STANDARD",
   "END:VTIMEZONE",
 ];
-const icsText = t => String(t).replace(/[\\;,]/g, c => "\\" + c);
+const icsText = s => String(s).replace(/[\\;,]/g, c => "\\" + c).replace(/\r?\n/g, "\\n");
+const hhmmss = hm => hm.replace(":", "") + "00";
+// Long lines are folded (RFC 5545) so strict calendar apps accept them.
+const fold = line => line.length <= 70 ? line : line.match(/.{1,70}/gu).join("\r\n ");
 
 // Titles read "{player} Wintermidam {location}"; the player is left out for team-wide exports.
 // statusOf(e) may return "maybe" to mark an event as tentative.
 function buildIcs(events, statusOf = () => "", player = "") {
   const stamp = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d+/, "");
+  const url = location.href.split(/[?#]/)[0];
   const lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//team-availability//EN", "CALSCALE:GREGORIAN", "METHOD:PUBLISH", ...VTIMEZONE];
   for (const e of events) {
     const d = e.date.replace(/-/g, "");
+    const m = matchInfo(e), v = m.venue;
     const maybe = statusOf(e) === "maybe";
+    const start = m.start || "09:00";
+    const end = m.end || (m.start ? `${String((Number(m.start.slice(0, 2)) + 2) % 24).padStart(2, "0")}${m.start.slice(2)}` : "17:00");
+    const desc = [m.meet && t("ics.meet", { meet: m.meet }), m.info, v && mapsUrl(v), t("ics.markAvail", { url })].filter(Boolean).join("\n");
     lines.push(
       "BEGIN:VEVENT",
       `UID:${d}-${slug(e.opp)}@team-availability`,
       `DTSTAMP:${stamp}`,
-      `DTSTART;TZID=Europe/Brussels:${d}T${START}`,
-      `DTEND;TZID=Europe/Brussels:${d}T${END}`,
+      `DTSTART;TZID=Europe/Brussels:${d}T${hhmmss(start)}`,
+      `DTEND;TZID=Europe/Brussels:${d}T${hhmmss(end)}`,
       `STATUS:${maybe ? "TENTATIVE" : "CONFIRMED"}`,
-      `SUMMARY:${icsText([player, "Wintermidam", e.opp].filter(Boolean).join(" ") + (e.final ? " (Final)" : "") + (maybe ? " (maybe)" : ""))}`,
-      `LOCATION:${icsText(e.opp)}`,
-      `DESCRIPTION:${icsText("Mark your availability: " + location.href.split("#")[0])}`,
+      `SUMMARY:${icsText([player, "Wintermidam", e.opp].filter(Boolean).join(" ") + (e.final ? " " + t("ics.final") : "") + (maybe ? " " + t("ics.maybe") : ""))}`,
+      `LOCATION:${icsText(v ? venueText(v) : e.opp)}`,
+      ...(v && v.lat != null ? [`GEO:${v.lat};${v.lon}`] : []),
+      `DESCRIPTION:${icsText(desc)}`,
       "END:VEVENT");
   }
   lines.push("END:VCALENDAR");
-  return lines.join("\r\n") + "\r\n";
+  return lines.map(fold).join("\r\n") + "\r\n";
 }
 
 function downloadIcs(events, filename, statusOf, player) {
@@ -516,7 +697,6 @@ function downloadIcs(events, filename, statusOf, player) {
 }
 document.getElementById("ics-all").onclick = () => downloadIcs(EVENTS, "team-schedule-2026-2027.ics");
 
-renderSchedule();
 start();
 </script>
 

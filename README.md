@@ -18,6 +18,18 @@ A shared schedule and availability grid for the 2026–2027 season (15 players b
   looked up via OpenStreetMap Nominatim and cached in your browser)
 - "Where everyone lives" groups the team by gemeente
 
+### Match details (admin)
+
+On the Availability page the admin sees ✏️ next to each match: set start/end time, the venue
+(searched with Photon / OpenStreetMap, or typed in), a meeting time/place and extra info.
+These show up on both pages, in reminders and in the calendar (.ics) files; the Carpool page
+also shows each player's distance to the venue.
+
+### Languages
+
+Dutch and English (NL | EN switch in the header; default follows the browser language).
+All interface texts live in `i18n.js`.
+
 To change the schedule, edit the `EVENTS` array in `common.js`.
 
 ## One-time setup: Firebase (free, ~5 minutes)

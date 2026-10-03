@@ -94,12 +94,19 @@ button:disabled { cursor: default; opacity: .5; }
 
 /* Account bar in the header */
 .brand-inner { position: relative; }
-.account { position: absolute; top: 18px; right: 16px; display: flex; gap: 10px; align-items: center; font-size: .85rem; color: var(--brand-text); }
+.corner { position: absolute; top: 18px; right: max(16px, env(safe-area-inset-right)); display: flex; gap: 14px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+.account { display: flex; gap: 10px; align-items: center; font-size: .85rem; color: var(--brand-text); }
+.lang { display: inline-flex; border: 1px solid rgba(244, 239, 228, .4); border-radius: 999px; overflow: hidden; }
+.lang button { background: none; border: none; border-radius: 0; color: var(--brand-text); opacity: .7; font-size: .75rem; font-weight: 700; padding: 3px 9px; }
+.lang button[aria-pressed="true"] { background: var(--pampas); color: var(--brand); opacity: 1; }
+/* Match details line (time, venue, meeting point) */
+.details { color: var(--muted); font-size: .8rem; line-height: 1.4; margin-top: 2px; }
+.details a { color: var(--accent); white-space: nowrap; }
 .account .link { color: var(--brand-text); opacity: .8; }
 .admin-tag { font-size: .7rem; font-weight: 700; background: var(--pampas); color: var(--brand); border-radius: 999px; padding: 1px 8px; margin-left: 4px; }
 button.link { background: none; border: none; padding: 0; text-decoration: underline; color: inherit; font-size: inherit; }
 @media (max-width: 480px) {
-  .account { position: static; margin-top: 8px; }
+  .corner { position: static; margin-top: 8px; justify-content: space-between; }
 }
 
 /* Sign-in / claim screen */
