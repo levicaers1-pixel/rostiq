@@ -58,10 +58,11 @@ const venueShort = v => (v ? [v.name, (v.address || "").split(", ").pop()].filte
 function detailsHtml(e, extra = "", compact = false) {
   const m = matchInfo(e), v = m.venue;
   const bits = [];
-  const line1 = [timeText(e) && `🕘 ${esc(timeText(e))}`,
-    v && `📍 ${esc(compact ? venueShort(v) : venueText(v))} <a href="${mapsUrl(v)}" target="_blank" rel="noopener">${t("maps")} ↗</a>${extra}`]
-    .filter(Boolean).join(" · ");
-  if (line1) bits.push(`<div>${line1}</div>`);
+  const time = timeText(e) && `🕘 ${esc(timeText(e))}`;
+  const place = v && `📍 ${esc(compact ? venueShort(v) : venueText(v))} <a href="${mapsUrl(v)}" target="_blank" rel="noopener">${t("maps")} ↗</a>${extra}`;
+  // Compact lists put time and place on their own lines; elsewhere they share one line.
+  if (compact) [time, place].filter(Boolean).forEach(x => bits.push(`<div>${x}</div>`));
+  else if (time || place) bits.push(`<div>${[time, place].filter(Boolean).join(" · ")}</div>`);
   if (m.meet) bits.push(`<div>🚩 ${t("meet")}: ${esc(m.meet)}</div>`);
   if (m.info) bits.push(`<div>ℹ️ ${esc(m.info)}</div>`);
   return bits.length ? `<div class="details">${bits.join("")}</div>` : "";
