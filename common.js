@@ -316,6 +316,7 @@ function start() {
   applyStaticTexts();
   injectAuthUI();
   injectPhonePrompt();
+  document.body.insertAdjacentHTML("beforeend", `<footer class="site-footer">${t("footer")}</footer>`);
   injectShareDialog();
   if (AUTH_ON) initAuth(); else connect();
 }
