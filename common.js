@@ -50,6 +50,39 @@ function kmBetween(a, b) {
   return 2 * 6371 * Math.asin(Math.sqrt(h));
 }
 
+// ---- Weather forecast at the venue (Open-Meteo, free, no key), from ~2 weeks before the match ----
+const WX_ICON = c => c === 0 ? "☀️" : c <= 2 ? "🌤️" : c === 3 ? "☁️" : c <= 48 ? "🌫️" : c <= 57 ? "🌦️"
+  : c <= 67 ? "🌧️" : c <= 77 ? "🌨️" : c <= 82 ? "🌦️" : c <= 86 ? "🌨️" : "⛈️";
+const wxCache = {};
+function weatherFor(e) {
+  const v = matchInfo(e).venue;
+  if (!v || v.lat == null) return null;
+  const days = Math.round((parse(e.date) - parse(TODAY)) / 864e5);
+  if (days < 0 || days > 15) return null; // forecasts only reach ~16 days ahead
+  const key = `wx:${e.date}:${v.lat.toFixed(2)},${v.lon.toFixed(2)}`;
+  if (key in wxCache) return wxCache[key];
+  try {
+    const c = JSON.parse(pref.get(key, "null"));
+    if (c && Date.now() - c.at < 3 * 3600e3) return (wxCache[key] = c.wx); // refresh every 3 hours
+  } catch {}
+  wxCache[key] = null; // fetching (or unavailable)
+  const url = `https://api.open-meteo.com/v1/forecast?latitude=${v.lat}&longitude=${v.lon}` +
+    "&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,wind_speed_10m_max" +
+    `&timezone=Europe%2FBrussels&start_date=${e.date}&end_date=${e.date}`;
+  fetch(url).then(r => r.json()).then(j => {
+    const d = j.daily;
+    if (!d || !d.time || !d.time.length || d.temperature_2m_max[0] == null) return;
+    const wx = { code: d.weather_code[0], max: Math.round(d.temperature_2m_max[0]), min: Math.round(d.temperature_2m_min[0]),
+      rain: d.precipitation_probability_max[0], wind: Math.round(d.wind_speed_10m_max[0]) };
+    wxCache[key] = wx;
+    pref.set(key, JSON.stringify({ at: Date.now(), wx }));
+    render();
+  }).catch(() => {});
+  return null;
+}
+const wxText = wx => `${WX_ICON(wx.code)} ${wx.max}°/${wx.min}° · 💨 ${wx.wind} ${t("unit.kmh")}` +
+  (wx.rain != null ? ` · 💧 ${wx.rain}%` : "");
+
 // Venue name + town only (last part of the address), for compact lists.
 const venueShort = v => (v ? [v.name, (v.address || "").split(", ").pop()].filter(Boolean).join(", ") : "");
 
@@ -63,6 +96,8 @@ function detailsHtml(e, extra = "", compact = false) {
   // Compact lists put time and place on their own lines; elsewhere they share one line.
   if (compact) [time, place].filter(Boolean).forEach(x => bits.push(`<div>${x}</div>`));
   else if (time || place) bits.push(`<div>${[time, place].filter(Boolean).join(" · ")}</div>`);
+  const wx = weatherFor(e);
+  if (wx) bits.push(`<div title="${t("weather.title")}">${wxText(wx)}</div>`);
   if (m.meet) bits.push(`<div>🚩 ${t("meet")}: ${esc(m.meet)}</div>`);
   if (m.info) bits.push(`<div>ℹ️ ${esc(m.info)}</div>`);
   return bits.length ? `<div class="details">${bits.join("")}</div>` : "";

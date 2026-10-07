@@ -152,6 +152,34 @@ let me = pref.get("me", "");
 // everyone's distances use the same, correct location.
 const km = (idA, idB) => kmBetween(geoOf(idA), geoOf(idB));
 
+// Driving time by road (OSRM, free public router), cached per device per pair of places.
+const routeCache = {};
+function routeBetween(a, b) {
+  if (!a || !b || a.lat == null || b.lat == null) return null;
+  const key = `route:${a.lat.toFixed(3)},${a.lon.toFixed(3)}>${b.lat.toFixed(3)},${b.lon.toFixed(3)}`;
+  if (key in routeCache) return routeCache[key];
+  try { const saved = JSON.parse(pref.get(key, "null")); if (saved) return (routeCache[key] = saved); } catch {}
+  routeCache[key] = null;
+  fetch(`https://router.project-osrm.org/route/v1/driving/${a.lon},${a.lat};${b.lon},${b.lat}?overview=false`)
+    .then(r => r.json())
+    .then(j => {
+      const r = j.routes && j.routes[0];
+      if (!r) return;
+      const v = { min: Math.max(1, Math.round(r.duration / 60)), km: Math.round(r.distance / 1000) };
+      routeCache[key] = v;
+      pref.set(key, JSON.stringify(v));
+      render();
+    })
+    .catch(() => {});
+  return null;
+}
+// Latest departure: start time minus driving time minus 15 minutes, rounded down to 5 minutes.
+function leaveBy(start, min) {
+  const [h, m] = start.split(":").map(Number);
+  const t0 = Math.floor((h * 60 + m - min - 15) / 5) * 5;
+  return t0 > 0 ? `${String(Math.floor(t0 / 60)).padStart(2, "0")}:${String(t0 % 60).padStart(2, "0")}` : "";
+}
+
 const COUNTRY = LANG === "nl" ? { be: "", nl: "Nederland", fr: "Frankrijk", lu: "Luxemburg" } : { be: "", nl: "Netherlands", fr: "France", lu: "Luxembourg" };
 let search = { status: "idle", results: [] }; // idle | loading | results | none | error
 
@@ -323,7 +351,7 @@ function renderMatch(e) {
   let html = `
     <div class="when">${fmt(e.date, { weekday: "long", day: "numeric", month: "long" })}</div>
     <div class="title">${esc(e.opp)}${e.final ? `<span class="tag">${t("final")}</span>` : ""}</div>
-    ${detailsHtml(e, toVenue !== null ? ` <span class="km">${t("carpool.toVenue", { km: Math.round(toVenue) })}</span>` : "")}
+    ${detailsHtml(e, venueExtra(e, toVenue))}
     <div class="summary">${t("carpool.summary", { cars: st.cars.length, free: freeSeats, waiting: st.waiting.length })}
       <button class="small share" data-act="share">${t("share.carpool")}</button></div>`;
 
@@ -403,6 +431,16 @@ function renderMatch(e) {
 }
 const noteTimers = {};
 
+// Driving time from my place to the venue (and when to leave); straight-line distance until the route is known.
+function venueExtra(e, toVenue) {
+  const route = me ? routeBetween(geoOf(me), matchInfo(e).venue) : null;
+  if (route) {
+    const start = matchInfo(e).start, leave = start ? leaveBy(start, route.min) : "";
+    return ` <span class="km" title="${t("carpool.leaveTitle")}">${t("carpool.driveTime", route)}${leave ? " · " + t("carpool.leaveAt", { time: leave }) : ""}</span>`;
+  }
+  return toVenue !== null ? ` <span class="km">${t("carpool.toVenue", { km: Math.round(toVenue) })}</span>` : "";
+}
+
 // Ready-made WhatsApp message with the carpool plan for one match.
 function carpoolMessage(e) {
   const st = matchState(e), m = matchInfo(e), v = m.venue;
@@ -420,6 +458,7 @@ function carpoolMessage(e) {
     `📅 ${fmt(e.date, { weekday: "long", day: "numeric", month: "long" })}${timeText(e) ? " · 🕘 " + timeText(e) : ""}`,
     v && `📍 ${venueText(v)}`,
     v && `🗺️ ${chatMapsUrl(v)}`,
+    weatherFor(e) && wxText(weatherFor(e)),
     m.meet && `🚩 ${t("meet")}: ${m.meet}`,
     BLANK,
     cars.length ? cars.join("\n") : t("msg.noCars"),

@@ -545,6 +545,7 @@ function matchMessage(e) {
     timeText(e) && `🕘 ${timeText(e)}`,
     v && `📍 ${venueText(v)}`,
     v && `🗺️ ${chatMapsUrl(v)}`,
+    weatherFor(e) && wxText(weatherFor(e)),
     m.meet && `🚩 ${t("meet")}: ${m.meet}`,
     m.info && `ℹ️ ${m.info}`,
     BLANK,
