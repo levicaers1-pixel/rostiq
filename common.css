@@ -99,6 +99,16 @@ button:disabled { cursor: default; opacity: .5; }
 .lang { display: inline-flex; border: 1px solid rgba(244, 239, 228, .4); border-radius: 999px; overflow: hidden; }
 .lang button { background: none; border: none; border-radius: 0; color: var(--brand-text); opacity: .7; font-size: .75rem; font-weight: 700; padding: 3px 9px; }
 .lang button[aria-pressed="true"] { background: var(--pampas); color: var(--brand); opacity: 1; }
+/* Dialogs (share window, match details) */
+dialog { border: 1px solid var(--border); border-radius: 12px; background: var(--surface); color: var(--text); width: min(480px, calc(100vw - 32px)); padding: 16px; }
+dialog::backdrop { background: rgba(0, 0, 0, .4); }
+dialog h3 { margin: 0 0 10px; font-size: 1rem; }
+dialog textarea { width: 100%; font: inherit; font-size: .9rem; padding: 8px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text); resize: vertical; }
+dialog .row { display: flex; gap: 8px; justify-content: flex-end; margin-top: 10px; flex-wrap: wrap; }
+dialog a.btn { font-size: .85rem; text-decoration: none; background: #25d366; color: #fff; border-radius: 8px; padding: 6px 12px; }
+.share-dlg { width: min(560px, calc(100vw - 32px)); }
+.share-dlg .hint { color: var(--muted); font-size: .8rem; margin: 6px 0 0; }
+
 /* WhatsApp group button under the page subtitle */
 .wa-group { display: inline-flex; align-items: center; gap: 6px; margin-top: 12px; padding: 7px 14px; border-radius: 999px;
   background: #25d366; color: #fff; font-weight: 600; font-size: .9rem; text-decoration: none; }

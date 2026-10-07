@@ -210,10 +210,50 @@ function syncSession() {
   render();
 }
 
+// ---- Share window: an editable message to copy or send via WhatsApp (both pages) ----
+function injectShareDialog() {
+  document.body.insertAdjacentHTML("beforeend", `
+    <dialog id="share" class="share-dlg">
+      <h3 id="share-title"></h3>
+      <textarea id="share-text" rows="14"></textarea>
+      <p class="hint">${t("share.hint")}</p>
+      <div class="row">
+        <button id="share-close">${t("close")}</button>
+        <button id="share-copy">${t("copy")}</button>
+        <a class="btn" id="share-wa" target="_blank" rel="noopener">${t("whatsapp")}</a>
+      </div>
+    </dialog>`);
+  const dlg = document.getElementById("share"), ta = document.getElementById("share-text");
+  const syncLink = () => { document.getElementById("share-wa").href = "https://wa.me/?text=" + encodeURIComponent(ta.value); };
+  ta.addEventListener("input", syncLink);
+  document.getElementById("share-close").onclick = () => dlg.close();
+  document.getElementById("share-copy").onclick = async ev => {
+    try { await navigator.clipboard.writeText(ta.value); }
+    catch { ta.select(); document.execCommand("copy"); }
+    ev.target.textContent = t("copied");
+  };
+  window.openShare = (title, text) => {
+    document.getElementById("share-title").textContent = title;
+    document.getElementById("share-copy").textContent = t("copy");
+    ta.value = text;
+    syncLink();
+    dlg.showModal();
+  };
+}
+// Join message lines. Optional lines that are empty/false/0 are dropped; BLANK gives an intentional empty line.
+const BLANK = {};
+// Short, readable Maps link for chat messages ("…?q=Golf+de+Mormal,+59144+Preux-au-Sart").
+const chatMapsUrl = v => "https://maps.google.com/?q=" +
+  encodeURIComponent(venueShort(v) || `${v.lat},${v.lon}`).replace(/%20/g, "+").replace(/%2C/g, ",");
+const lines = arr => arr.filter(l => l === BLANK || (typeof l === "string" && l))
+  .map(l => (l === BLANK ? "" : l)).join("\n");
+const pageUrl = file => location.href.split(/[?#]/)[0].replace(/[^/]*$/, file);
+
 // Kick off: with login, wait for the user; otherwise connect straight away.
 function start() {
   applyStaticTexts();
   injectAuthUI();
+  injectShareDialog();
   if (AUTH_ON) initAuth(); else connect();
 }
 

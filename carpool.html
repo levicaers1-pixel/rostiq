@@ -5,6 +5,19 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title data-i18n-doc="carpool.pageTitle">Pampas · Carpool</title>
 <meta name="theme-color" content="#1f3a2e">
+<!-- Link preview (WhatsApp, iMessage, Facebook, …) -->
+<meta name="description" content="Beschikbaarheid, kalender en carpool voor Winter Midam 26-27 – Pampas.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Pampas">
+<meta property="og:title" content="Carpool · Winter Midam 26-27 · Pampas">
+<meta property="og:description" content="Beschikbaarheid, kalender en carpool voor Winter Midam 26-27 – Pampas.">
+<meta property="og:url" content="https://levicaers1-pixel.github.io/team-availability/carpool.html">
+<meta property="og:image" content="https://levicaers1-pixel.github.io/team-availability/assets/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Pampas – Winter Midam 26-27">
+<meta property="og:locale" content="nl_BE">
+<meta name="twitter:card" content="summary_large_image">
 <link rel="icon" type="image/png" href="assets/favicon.png">
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
 <link rel="manifest" href="manifest.webmanifest">
@@ -46,7 +59,8 @@
   .match .title { font-weight: 600; font-size: 1.05rem; }
   .match .details { margin-top: 4px; }
   .tag { font-size: .7rem; font-weight: 600; color: var(--final); border: 1px solid var(--final); border-radius: 999px; padding: 0 6px; margin-left: 4px; }
-  .summary { color: var(--muted); font-size: .8rem; margin: 4px 0 10px; }
+  .summary { color: var(--muted); font-size: .8rem; margin: 4px 0 10px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .summary .share { margin-left: auto; }
 
   .mine { background: var(--bg); border-radius: 8px; padding: 8px; margin-bottom: 10px; }
   .seg { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; flex-wrap: wrap; }
@@ -283,7 +297,8 @@ function renderMatch(e) {
     <div class="when">${fmt(e.date, { weekday: "long", day: "numeric", month: "long" })}</div>
     <div class="title">${esc(e.opp)}${e.final ? `<span class="tag">${t("final")}</span>` : ""}</div>
     ${detailsHtml(e, toVenue !== null ? ` <span class="km">${t("carpool.toVenue", { km: Math.round(toVenue) })}</span>` : "")}
-    <div class="summary">${t("carpool.summary", { cars: st.cars.length, free: freeSeats, waiting: st.waiting.length })}</div>`;
+    <div class="summary">${t("carpool.summary", { cars: st.cars.length, free: freeSeats, waiting: st.waiting.length })}
+      <button class="small share" data-act="share">${t("share.carpool")}</button></div>`;
 
   if (me) {
     html += `<div class="mine">
@@ -345,6 +360,7 @@ function renderMatch(e) {
       leave: () => leave(e),
       take: () => take(e, b.dataset.id),
       drop: () => drop(e, b.dataset.id),
+      share: () => openShare(t("share.carpoolTitle", { opp: e.opp }), carpoolMessage(e)),
     })[b.dataset.act]();
   });
   el.addEventListener("change", ev => {
@@ -359,6 +375,35 @@ function renderMatch(e) {
   return el;
 }
 const noteTimers = {};
+
+// Ready-made WhatsApp message with the carpool plan for one match.
+function carpoolMessage(e) {
+  const st = matchState(e), m = matchInfo(e), v = m.venue;
+  const where = id => (placeOf(id) ? ` (${placeOf(id)})` : "");
+  const cars = st.cars.map(c => {
+    const free = c.seats - c.riders.length;
+    return lines([
+      `🚗 *${nameOf(c.id)}*${where(c.id)} – ${free > 0 ? t("msg.seatsFree", { n: free }) : t("msg.full")}`,
+      c.note && `   🕘 ${c.note}`,
+      c.riders.length && `   👥 ${c.riders.map(r => nameOf(r) + where(r)).join(", ")}`,
+    ]);
+  });
+  return lines([
+    `*🚗 Carpool – ${e.opp}${e.final ? " " + t("ics.final") : ""}*`,
+    `📅 ${fmt(e.date, { weekday: "long", day: "numeric", month: "long" })}${timeText(e) ? " · 🕘 " + timeText(e) : ""}`,
+    v && `📍 ${venueText(v)}`,
+    v && `🗺️ ${chatMapsUrl(v)}`,
+    m.meet && `🚩 ${t("meet")}: ${m.meet}`,
+    BLANK,
+    cars.length ? cars.join("\n") : t("msg.noCars"),
+    st.waiting.length ? BLANK : null,
+    st.waiting.length && `${t("msg.waiting")}: ${st.waiting.map(id => nameOf(id) + where(id)).join(", ")}`,
+    st.open.length ? BLANK : null,
+    st.open.length && `${t("msg.open")}: ${st.open.map(id => nameOf(id) + where(id)).join(", ")}`,
+    BLANK,
+    t("msg.carpoolLink", { url: pageUrl("carpool.html") }),
+  ]);
+}
 
 function render() {
   if (AUTH_ON) {
