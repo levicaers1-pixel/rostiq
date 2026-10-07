@@ -189,7 +189,17 @@ function disconnect() {
   root = {};
 }
 
+// The group invite link lives in the database (not in this public repo), so only signed-in teammates see it.
+const WA_LINK = /^https:\/\/chat\.whatsapp\.com\/[A-Za-z0-9]{10,40}$/;
+function renderWaGroup() {
+  const a = document.getElementById("wa-group");
+  const link = root.settings && root.settings.waGroup;
+  a.hidden = !(link && WA_LINK.test(link));
+  if (!a.hidden) a.href = link;
+}
+
 function syncSession() {
+  renderWaGroup();
   if (AUTH_ON) {
     const uid = session.user && session.user.uid;
     const pid = uid && root.users && root.users[uid] && root.users[uid].pid;
@@ -256,6 +266,8 @@ function injectAuthUI() {
     location.reload();
   });
   document.querySelector("main").insertAdjacentHTML("beforebegin", `<section class="gate" id="gate" hidden></section>`);
+  document.querySelector("main .sub").insertAdjacentHTML("afterend",
+    `<a class="wa-group" id="wa-group" hidden target="_blank" rel="noopener" title="${t("wa.title")}">${t("wa.open")}</a>`);
   document.getElementById("account").addEventListener("click", ev => {
     if (ev.target.closest("[data-signout]")) A.signOut(fbAuth);
   });

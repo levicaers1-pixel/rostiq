@@ -99,6 +99,10 @@ button:disabled { cursor: default; opacity: .5; }
 .lang { display: inline-flex; border: 1px solid rgba(244, 239, 228, .4); border-radius: 999px; overflow: hidden; }
 .lang button { background: none; border: none; border-radius: 0; color: var(--brand-text); opacity: .7; font-size: .75rem; font-weight: 700; padding: 3px 9px; }
 .lang button[aria-pressed="true"] { background: var(--pampas); color: var(--brand); opacity: 1; }
+/* WhatsApp group button under the page subtitle */
+.wa-group { display: inline-flex; align-items: center; gap: 6px; margin-top: 12px; padding: 7px 14px; border-radius: 999px;
+  background: #25d366; color: #fff; font-weight: 600; font-size: .9rem; text-decoration: none; }
+.wa-group:hover { filter: brightness(.95); }
 /* Match details line (time, venue, meeting point) */
 .details { color: var(--muted); font-size: .8rem; line-height: 1.4; margin-top: 2px; }
 .details a { color: var(--accent); white-space: nowrap; }

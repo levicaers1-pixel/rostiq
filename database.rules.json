@@ -44,6 +44,7 @@
     "settings": {
       ".write": "auth.token.email === 'levicaers1@gmail.com' && auth.token.email_verified === true",
       "minPlayers": { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 50" },
+      "waGroup": { ".validate": "newData.isString() && newData.val().matches(/^https:\\/\\/chat\\.whatsapp\\.com\\/[A-Za-z0-9]{10,40}$/)" },
       "$other": { ".validate": false }
     },
     "matches": {

@@ -141,6 +141,11 @@
   .accounts li { display: flex; align-items: center; gap: 8px; font-size: .9rem; padding: 3px 0; }
   .accounts li .who { flex: 1; }
   .accounts .muted { color: var(--muted); font-size: .8rem; }
+  .wa-setting { margin-top: 16px; border-top: 1px solid var(--border); padding-top: 12px; }
+  .wa-setting label { font-weight: 600; font-size: .9rem; }
+  .wa-setting .search-row { display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap; }
+  .wa-setting input { flex: 1 1 240px; min-width: 0; font: inherit; font-size: .9rem; color: var(--text); background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 7px 8px; }
+  .wa-setting .err { color: var(--no); }
 
   /* Reminder dialog */
   dialog { border: 1px solid var(--border); border-radius: 12px; background: var(--surface); color: var(--text); width: min(480px, calc(100vw - 32px)); padding: 16px; }
@@ -219,6 +224,15 @@
     <h2><span data-i18n="accounts">Accounts</span> <span class="muted" data-i18n="accounts.onlyYou"></span></h2>
     <p class="muted" data-i18n="accounts.help"></p>
     <ul id="accounts-list"></ul>
+    <form class="wa-setting" id="wa-form">
+      <label for="wa-input" data-i18n="wa.setting">WhatsApp group link</label>
+      <div class="search-row">
+        <input id="wa-input" type="url" placeholder="https://chat.whatsapp.com/…" autocomplete="off">
+        <button type="submit" data-i18n="wa.save">Save</button>
+        <button type="button" id="wa-remove" data-i18n="wa.remove">Remove</button>
+      </div>
+      <p class="muted" id="wa-msg" data-i18n="wa.help"></p>
+    </form>
   </section>
 </main>
 
@@ -465,6 +479,9 @@ function renderAccounts() {
   const box = document.getElementById("accounts");
   box.hidden = !(AUTH_ON && session.admin);
   if (box.hidden) return;
+  const waInput = document.getElementById("wa-input");
+  if (document.activeElement !== waInput) waInput.value = (root.settings && root.settings.waGroup) || "";
+  document.getElementById("wa-remove").hidden = !(root.settings && root.settings.waGroup);
   document.getElementById("accounts-list").innerHTML = sortedPlayers().filter(p => p.name).map(p => `
     <li><span class="who">${esc(p.name)}</span>
       ${p.uid ? `<span class="muted">${t("accounts.linked")}${p.uid === session.user.uid ? " " + t("accounts.you") : ""}</span>
@@ -483,6 +500,16 @@ document.getElementById("accounts-list").addEventListener("click", ev => {
   if (!confirm(t("accounts.unlinkConfirm", { name: p.name }))) return;
   update({ [`players/${b.dataset.reset}/uid`]: null, [`users/${p.uid}`]: null });
 });
+
+document.getElementById("wa-form").addEventListener("submit", ev => {
+  ev.preventDefault();
+  const link = document.getElementById("wa-input").value.trim().replace(/[?#].*$/, "");
+  const msg = document.getElementById("wa-msg");
+  if (!WA_LINK.test(link)) { msg.textContent = t("wa.invalid"); msg.className = "err"; return; }
+  write("settings/waGroup", link);
+  msg.textContent = t("wa.saved"); msg.className = "muted";
+});
+document.getElementById("wa-remove").onclick = () => write("settings/waGroup", null);
 
 document.getElementById("min").addEventListener("change", ev => {
   const n = Math.round(Number(ev.target.value));
