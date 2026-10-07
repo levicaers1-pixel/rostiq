@@ -198,14 +198,58 @@ function renderWaGroup() {
   if (!a.hidden) a.href = link;
 }
 
+// ---- Phone numbers: stored as digits with country code (e.g. 32470123456), used for wa.me chats ----
+function normPhone(raw) {
+  let s = String(raw || "").trim();
+  const plus = s.startsWith("+");
+  s = s.replace(/\D/g, "");
+  if (!plus) {
+    if (s.startsWith("00")) s = s.slice(2);
+    else if (s.startsWith("0")) s = "32" + s.slice(1); // local number: assume Belgium
+  }
+  return /^[1-9][0-9]{7,14}$/.test(s) ? s : null;
+}
+const phoneOf = pid => (root.players && root.players[pid] && root.players[pid].phone) || "";
+const firstName = name => String(name || "").trim().split(/\s+/)[0];
+const waChat = (phone, text) => `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
+const shortDate = d => fmt(d, { weekday: "short", day: "numeric", month: "numeric" });
+
+// Ask the signed-in player for their number once (until they fill it in or tap "Later").
+function renderPhonePrompt() {
+  const box = document.getElementById("phone-prompt");
+  const pid = session.pid;
+  box.hidden = !(AUTH_ON && pid && !phoneOf(pid) && pref.get("phoneLater", "") !== pid);
+}
+function injectPhonePrompt() {
+  document.querySelector("main .sub").insertAdjacentHTML("afterend", `
+    <form class="phone-prompt" id="phone-prompt" hidden>
+      <p>${t("phone.prompt")}</p>
+      <div class="phone-row">
+        <input type="tel" name="phone" placeholder="${t("phone.ph")}" autocomplete="tel" inputmode="tel">
+        <button type="submit">${t("phone.save")}</button>
+        <button type="button" class="link" data-later>${t("phone.later")}</button>
+      </div>
+      <p class="err" hidden>${t("phone.invalid")}</p>
+    </form>`);
+  const form = document.getElementById("phone-prompt");
+  form.addEventListener("submit", ev => {
+    ev.preventDefault();
+    const n = normPhone(form.phone.value);
+    form.querySelector(".err").hidden = !!n;
+    if (n && session.pid) write(`players/${session.pid}/phone`, n);
+  });
+  form.querySelector("[data-later]").onclick = () => { pref.set("phoneLater", session.pid || ""); renderPhonePrompt(); };
+}
+
 function syncSession() {
-  renderWaGroup();
   if (AUTH_ON) {
     const uid = session.user && session.user.uid;
     const pid = uid && root.users && root.users[uid] && root.users[uid].pid;
     session.pid = pid && root.players && root.players[pid] ? pid : null;
     session.ready = true;
   }
+  renderWaGroup();
+  renderPhonePrompt();
   renderAuth();
   render();
 }
@@ -220,6 +264,7 @@ function injectShareDialog() {
       <h3 id="share-title"></h3>
       <textarea id="share-text" rows="14"></textarea>
       <p class="hint" id="share-hint"></p>
+      <div class="people" id="share-people"></div>
       <div class="row">
         <button id="share-close">${t("close")}</button>
         <button id="share-copy">${t("copy")}</button>
@@ -238,7 +283,11 @@ function injectShareDialog() {
   document.getElementById("share-group").addEventListener("click", copy); // the link itself opens the group
   document.getElementById("share-native").onclick = () =>
     navigator.share({ text: ta.value }).catch(() => {}); // cancelled: nothing to do
-  window.openShare = (title, text) => {
+  window.openShare = (title, text, people = []) => {
+    document.getElementById("share-people").innerHTML = people.length ? `<p class="hint">${t("remind.personal")}</p>` +
+      people.map(p => p.phone
+        ? `<a class="dm" href="${waChat(p.phone, p.text)}" target="_blank" rel="noopener">💬 ${esc(p.name)}</a>`
+        : `<span class="dm off">${esc(p.name)} <small>(${t("remind.noPhone")})</small></span>`).join("") : "";
     const group = root.settings && root.settings.waGroup;
     const canShare = !!navigator.share && matchMedia("(pointer: coarse)").matches;
     const groupBtn = document.getElementById("share-group");
@@ -266,6 +315,7 @@ const pageUrl = file => location.href.split(/[?#]/)[0].replace(/[^/]*$/, file);
 function start() {
   applyStaticTexts();
   injectAuthUI();
+  injectPhonePrompt();
   injectShareDialog();
   if (AUTH_ON) initAuth(); else connect();
 }

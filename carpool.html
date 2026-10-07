@@ -38,6 +38,7 @@
     border: 1px solid var(--border); border-radius: 8px; padding: 7px 8px; width: 100%;
   }
   .geo-row { display: flex; gap: 6px; }
+  .phone-field { margin-top: 12px; max-width: 360px; }
   .geo-row input { flex: 1; min-width: 0; }
   .geo-results { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
   .geo-results button { text-align: left; font-size: .9rem; padding: 8px 10px; }
@@ -89,7 +90,7 @@
   .rider { font-size: .8rem; background: var(--bg); border-radius: 999px; padding: 3px 10px; }
   .list { list-style: none; margin: 0; padding: 0; font-size: .9rem; }
   .list li { display: flex; align-items: center; gap: 8px; padding: 4px 0; flex-wrap: wrap; }
-  .list li .who { flex: 1; }
+  .list li .who { flex: 1 1 60%; min-width: 0; }
   .small { font-size: .8rem; padding: 3px 10px; }
   .empty { color: var(--muted); font-size: .85rem; }
 </style>
@@ -119,6 +120,14 @@
       </div>
     </div>
     <div class="geo-results" id="geo-results"></div>
+    <form class="field phone-field" id="phone-form">
+      <label for="my-phone" data-i18n="phone.label">📱 My mobile number (for WhatsApp)</label>
+      <div class="geo-row">
+        <input id="my-phone" type="tel" autocomplete="tel" inputmode="tel" data-i18n-placeholder="phone.ph">
+        <button type="submit" data-i18n="phone.save">Save</button>
+      </div>
+      <span class="hint" id="phone-msg"></span>
+    </form>
     <p class="hint" id="me-hint"></p>
   </section>
 
@@ -200,6 +209,20 @@ function distLabel(otherId) {
   if (d === null) return "";
   return `<span class="km">${d < 1 ? t("sameArea") : t("kmFrom", { km: Math.round(d) })}</span>`;
 }
+// 💬 link to a direct WhatsApp chat with a ready message, chosen by who I am in this match.
+function dmLink(e, other, st) {
+  const phone = phoneOf(other);
+  if (!me || other === me || !phone) return "";
+  const mine = st.all[me] || {}, theirs = st.all[other] || {};
+  const vars = { first: firstName(nameOf(other)), opp: e.opp, when: shortDate(e.date), place: placeOf(me), note: mine.note || "" };
+  const key =
+    mine.role === "driver" && theirs.with === me ? "msg.myRider" :
+    mine.role === "driver" ? "msg.offerRide" :
+    theirs.role === "driver" && mine.with === other ? "msg.toMyDriver" :
+    theirs.role === "driver" ? "msg.askRide" : "msg.carpoolGeneric";
+  return ` <a class="dm-icon" href="${waChat(phone, t(key, vars))}" target="_blank" rel="noopener" title="${esc(t("dm.title", { name: nameOf(other) }))}">💬</a>`;
+}
+
 const placeLabel = id =>
   geoOf(id) ? `<span class="place">📍 ${esc(placeText(id))}</span>`
   : placeOf(id) ? `<span class="place">📍 ${esc(placeOf(id))} <span class="warn">${t("carpool.notConfirmed")}</span></span>`
@@ -245,6 +268,10 @@ function renderMe() {
   sel.innerHTML = `<option value="">${t("carpool.choose")}</option>` +
     named().map(p => `<option value="${p.id}" ${p.id === me ? "selected" : ""}>${esc(p.name)}</option>`).join("");
   sel.disabled = AUTH_ON && !session.admin;
+  const ph = document.getElementById("my-phone");
+  ph.disabled = !me;
+  document.querySelector("#phone-form button").disabled = !me;
+  if (document.activeElement !== ph) ph.value = phoneOf(me) ? "+" + phoneOf(me) : "";
   const g = document.getElementById("gemeente");
   g.disabled = !me;
   document.getElementById("geo-find").disabled = !me;
@@ -326,11 +353,11 @@ function renderMatch(e) {
     const free = c.seats - c.riders.length;
     const canJoin = me && c.id !== me && free > 0 && !(myRole === "rider" && my.with === c.id) && myRole !== "driver";
     return `<div class="car ${c.id === me ? "me" : ""}">
-      <div class="top"><span class="who">🚗 ${esc(nameOf(c.id))} ${placeLabel(c.id)}</span> ${distLabel(c.id)}
+      <div class="top"><span class="who">🚗 ${esc(nameOf(c.id))}${dmLink(e, c.id, st)} ${placeLabel(c.id)}</span> ${distLabel(c.id)}
         <span class="seats ${free <= 0 ? "full" : ""}">${free > 0 ? t("carpool.free", { free, seats: c.seats }) : t("carpool.full")}</span>
         ${canJoin ? `<button class="small" data-act="join" data-id="${c.id}">${t("carpool.join")}</button>` : ""}</div>
       ${c.note ? `<div class="note">🕘 ${esc(c.note)}</div>` : ""}
-      ${c.riders.length ? `<div class="riders">${c.riders.map(r => `<span class="rider">${esc(nameOf(r))} · ${esc(placeOf(r) || "?")}${distLabel(r) ? " " + distLabel(r) : ""}${
+      ${c.riders.length ? `<div class="riders">${c.riders.map(r => `<span class="rider">${esc(nameOf(r))}${dmLink(e, r, st)} · ${esc(placeOf(r) || "?")}${distLabel(r) ? " " + distLabel(r) : ""}${
         c.id === me ? ` <button class="small" data-act="drop" data-id="${r}" title="${t("carpool.dropTitle")}">✕</button>` : ""}</span>`).join("")}</div>` : ""}
     </div>`;
   }).join("") : `<div class="empty">${t("carpool.noDrivers")}</div>`);
@@ -340,14 +367,14 @@ function renderMatch(e) {
   const iHaveRoom = myCar && myCar.seats - myCar.riders.length > 0;
   if (st.waiting.length) {
     html += `<h4>${t("carpool.waiting")}</h4><ul class="list">` + [...st.waiting].sort(byDistance).map(id => `
-      <li><span class="who">🙋 ${esc(nameOf(id))} ${placeLabel(id)}</span> ${distLabel(id)}
+      <li><span class="who">🙋 ${esc(nameOf(id))}${dmLink(e, id, st)} ${placeLabel(id)}</span> ${distLabel(id)}
         ${iHaveRoom ? `<button class="small" data-act="take" data-id="${id}">${t("carpool.take")}</button>` : ""}</li>`).join("") + `</ul>`;
   }
 
   // Available players who haven't said anything about transport yet.
   if (st.open.length) {
     html += `<h4>${t("carpool.open")}</h4><ul class="list">` + [...st.open].sort(byDistance).map(id => `
-      <li><span class="who">${esc(nameOf(id))} ${placeLabel(id)}</span> ${distLabel(id)}</li>`).join("") + `</ul>`;
+      <li><span class="who">${esc(nameOf(id))}${dmLink(e, id, st)} ${placeLabel(id)}</span> ${distLabel(id)}</li>`).join("") + `</ul>`;
   }
 
   el.innerHTML = html;
@@ -432,6 +459,16 @@ function render() {
 document.getElementById("me").addEventListener("change", ev => {
   me = ev.target.value; pref.set("me", me); search = { status: "idle", results: [] }; render();
 });
+document.getElementById("phone-form").addEventListener("submit", ev => {
+  ev.preventDefault();
+  const raw = document.getElementById("my-phone").value.trim();
+  const n = raw ? normPhone(raw) : null;
+  const msg = document.getElementById("phone-msg");
+  if (raw && !n) { msg.textContent = t("phone.invalid"); msg.className = "hint err"; return; }
+  write(`players/${me}/phone`, n);
+  msg.textContent = t("phone.saved"); msg.className = "hint";
+});
+
 let gemTimer;
 const gemInput = document.getElementById("gemeente");
 gemInput.addEventListener("input", () => {

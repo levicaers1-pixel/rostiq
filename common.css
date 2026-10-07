@@ -110,6 +110,19 @@ dialog a.btn { font-size: .85rem; text-decoration: none; background: #25d366; co
 .share-dlg .hint { color: var(--muted); font-size: .8rem; margin: 6px 0 0; }
 .share-dlg .primary-wa { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
 
+/* Phone number prompt under the subtitle */
+.phone-prompt { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; margin-top: 12px; font-size: .85rem; max-width: 640px; }
+.phone-prompt p { margin: 0 0 8px; color: var(--muted); }
+.phone-prompt .phone-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.phone-prompt input { flex: 1 1 180px; min-width: 0; font: inherit; padding: 7px 8px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text); }
+.phone-prompt .err, .err { color: var(--no); }
+/* Direct WhatsApp chat buttons */
+.share-dlg .people { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+.share-dlg .people .hint { width: 100%; }
+a.dm, .dm { display: inline-flex; align-items: center; gap: 4px; font-size: .85rem; padding: 4px 10px; border-radius: 999px; background: #e7f8ee; color: #1a7f45; text-decoration: none; border: 1px solid #b9e9cc; }
+.dm.off { background: var(--bg); color: var(--muted); border-color: var(--border); }
+a.dm-icon { text-decoration: none; font-size: .75rem; line-height: 1; padding: 2px 6px; margin-left: 4px; border-radius: 999px; background: #25d366; vertical-align: 1px; }
+
 /* WhatsApp group button under the page subtitle */
 .wa-group { display: inline-flex; align-items: center; gap: 6px; margin-top: 12px; padding: 7px 14px; border-radius: 999px;
   background: #25d366; color: #fff; font-weight: 600; font-size: .9rem; text-decoration: none; }

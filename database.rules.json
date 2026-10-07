@@ -22,6 +22,10 @@
           ".write": "auth != null && root.child('players').child($pid).child('uid').val() === auth.uid",
           ".validate": "newData.isString() && newData.val().length <= 60"
         },
+        "phone": {
+          ".write": "auth != null && root.child('players').child($pid).child('uid').val() === auth.uid",
+          ".validate": "newData.isString() && newData.val().matches(/^[1-9][0-9]{7,14}$/)"
+        },
         "gemeente": {
           ".write": "auth != null && root.child('players').child($pid).child('uid').val() === auth.uid",
           ".validate": "newData.isString() && newData.val().length <= 60"

@@ -587,7 +587,12 @@ document.addEventListener("click", ev => {
     details: details ? "\n" + details : "",
     url: location.href.split(/[?#]/)[0], names: c.missing.join(", "),
   });
-  openShare(t("reminder.heading", { n: c.missing.length, opp: e.opp, when }), text);
+  const url = location.href.split(/[?#]/)[0];
+  const people = sortedPlayers().filter(p => p.name && !p.avail[e.date]).map(p => ({
+    name: p.name, phone: p.phone || "",
+    text: t("msg.personalReminder", { first: firstName(p.name), opp: e.opp, when: shortDate(e.date), url }),
+  }));
+  openShare(t("reminder.heading", { n: c.missing.length, opp: e.opp, when }), text, people);
 });
 
 // ---- Admin: match details (time, venue via place search, meeting point) ----
