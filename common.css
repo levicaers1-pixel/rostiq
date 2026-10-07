@@ -110,6 +110,12 @@ dialog a.btn { font-size: .85rem; text-decoration: none; background: #25d366; co
 .share-dlg .hint { color: var(--muted); font-size: .8rem; margin: 6px 0 0; }
 .share-dlg .primary-wa { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
 
+/* Countdown chip above the page title */
+.countdown { display: inline-block; margin-bottom: 10px; padding: 4px 12px; border-radius: 999px; font-size: .85rem; font-weight: 600;
+  background: var(--yes-bg); color: var(--accent); border: 1px solid var(--border); }
+.countdown span { font-weight: 400; color: var(--muted); }
+.countdown.soon { background: var(--pampas); color: var(--brand); }
+
 /* Phone number prompt under the subtitle */
 .phone-prompt { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; margin-top: 12px; font-size: .85rem; max-width: 640px; }
 .phone-prompt p { margin: 0 0 8px; color: var(--muted); }

@@ -289,6 +289,17 @@ function syncSession() {
   render();
 }
 
+// ---- Countdown to the next match, above the page title ----
+function injectCountdown() {
+  const next = EVENTS.find(e => !isPast(e));
+  if (!next) return;
+  const n = Math.round((parse(next.date) - parse(TODAY)) / 864e5);
+  const opp = next.opp + (next.final ? " 🏆" : "");
+  const text = n === 0 ? t("countdown.today", { opp }) : n === 1 ? t("countdown.tomorrow", { opp }) : t("countdown.days", { n, opp });
+  document.querySelector("main h1").insertAdjacentHTML("beforebegin",
+    `<div class="countdown${n <= 1 ? " soon" : ""}">${esc(text)} <span>· ${esc(fmt(next.date, { weekday: "short", day: "numeric", month: "short" }))}</span></div>`);
+}
+
 // ---- Share window: an editable message to send to the team group (both pages) ----
 // WhatsApp has no link that posts straight into a group, so the quickest routes are:
 //  - "Copy & open group": copies the text and opens the team group (invite link) – just paste;
@@ -350,6 +361,7 @@ const pageUrl = file => location.href.split(/[?#]/)[0].replace(/[^/]*$/, file);
 function start() {
   applyStaticTexts();
   injectAuthUI();
+  injectCountdown();
   injectPhonePrompt();
   document.body.insertAdjacentHTML("beforeend", `<footer class="site-footer">${t("footer")}</footer>`);
   injectShareDialog();
