@@ -210,33 +210,46 @@ function syncSession() {
   render();
 }
 
-// ---- Share window: an editable message to copy or send via WhatsApp (both pages) ----
+// ---- Share window: an editable message to send to the team group (both pages) ----
+// WhatsApp has no link that posts straight into a group, so the quickest routes are:
+//  - "Copy & open group": copies the text and opens the team group (invite link) – just paste;
+//  - "Share…": the phone's own share sheet, where the group shows among recent chats.
 function injectShareDialog() {
   document.body.insertAdjacentHTML("beforeend", `
     <dialog id="share" class="share-dlg">
       <h3 id="share-title"></h3>
       <textarea id="share-text" rows="14"></textarea>
-      <p class="hint">${t("share.hint")}</p>
+      <p class="hint" id="share-hint"></p>
       <div class="row">
         <button id="share-close">${t("close")}</button>
         <button id="share-copy">${t("copy")}</button>
-        <a class="btn" id="share-wa" target="_blank" rel="noopener">${t("whatsapp")}</a>
+        <button id="share-native" class="primary-wa">${t("share.native")}</button>
+        <a class="btn" id="share-group" target="_blank" rel="noopener">${t("share.copyOpen")}</a>
       </div>
     </dialog>`);
   const dlg = document.getElementById("share"), ta = document.getElementById("share-text");
-  const syncLink = () => { document.getElementById("share-wa").href = "https://wa.me/?text=" + encodeURIComponent(ta.value); };
-  ta.addEventListener("input", syncLink);
-  document.getElementById("share-close").onclick = () => dlg.close();
-  document.getElementById("share-copy").onclick = async ev => {
-    try { await navigator.clipboard.writeText(ta.value); }
-    catch { ta.select(); document.execCommand("copy"); }
-    ev.target.textContent = t("copied");
+  const copy = () => {
+    // Started synchronously inside the tap, so phones allow it before the group link opens.
+    if (navigator.clipboard) navigator.clipboard.writeText(ta.value).catch(() => {});
+    else { ta.select(); document.execCommand("copy"); }
   };
+  document.getElementById("share-close").onclick = () => dlg.close();
+  document.getElementById("share-copy").onclick = ev => { copy(); ev.target.textContent = t("copied"); };
+  document.getElementById("share-group").addEventListener("click", copy); // the link itself opens the group
+  document.getElementById("share-native").onclick = () =>
+    navigator.share({ text: ta.value }).catch(() => {}); // cancelled: nothing to do
   window.openShare = (title, text) => {
+    const group = root.settings && root.settings.waGroup;
+    const canShare = !!navigator.share && matchMedia("(pointer: coarse)").matches;
+    const groupBtn = document.getElementById("share-group");
+    groupBtn.hidden = !group;
+    if (group) groupBtn.href = group;
+    document.getElementById("share-native").hidden = !canShare;
+    document.getElementById("share-hint").textContent =
+      t(group ? "share.hintGroup" : canShare ? "share.hintNative" : "share.hintCopy");
     document.getElementById("share-title").textContent = title;
     document.getElementById("share-copy").textContent = t("copy");
     ta.value = text;
-    syncLink();
     dlg.showModal();
   };
 }

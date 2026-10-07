@@ -108,6 +108,7 @@ dialog .row { display: flex; gap: 8px; justify-content: flex-end; margin-top: 10
 dialog a.btn { font-size: .85rem; text-decoration: none; background: #25d366; color: #fff; border-radius: 8px; padding: 6px 12px; }
 .share-dlg { width: min(560px, calc(100vw - 32px)); }
 .share-dlg .hint { color: var(--muted); font-size: .8rem; margin: 6px 0 0; }
+.share-dlg .primary-wa { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
 
 /* WhatsApp group button under the page subtitle */
 .wa-group { display: inline-flex; align-items: center; gap: 6px; margin-top: 12px; padding: 7px 14px; border-radius: 999px;
