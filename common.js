@@ -342,7 +342,8 @@ async function loadProfile(myTeams) {
     const rows = await Promise.all(Object.entries(profile.teams).map(([tid, pid]) => getAbs(`teams/${tid}/players/${pid}`)));
     const add = {};
     for (const f of missing) { const row = rows.find(r => r && r[f] != null && r[f] !== ""); if (row) add[f] = row[f]; }
-    if (Object.keys(add).length && await send("PATCH", `users/${uid}/profile`, add, true)) Object.assign(data, add);
+    // Use them right away, also if saving the profile fails (it's retried on the next sign-in).
+    if (Object.keys(add).length) { Object.assign(data, add); send("PATCH", `users/${uid}/profile`, add, true); }
   }
   if (session.user && session.user.uid !== uid) return; // signed out meanwhile
   profile.data = data;
