@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title data-i18n-doc="admin.pageTitle">Pampas · Admin</title>
+<title data-i18n-doc="admin.pageTitle">Rostiq · Admin</title>
 <meta name="theme-color" content="#1f3a2e">
 <meta name="robots" content="noindex">
 <link rel="icon" type="image/png" href="assets/favicon.png">
@@ -11,7 +11,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Winter Midam">
+<meta name="apple-mobile-web-app-title" content="Rostiq">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -38,6 +38,9 @@
   .plist .flags { display: flex; gap: 10px; flex-wrap: wrap; font-size: .8rem; color: var(--muted); }
   .plist .flags .off { opacity: .45; text-decoration: line-through; }
   .plist .acts { display: flex; gap: 12px; align-items: center; grid-row: span 2; flex-wrap: wrap; justify-content: flex-end; }
+  .invite { margin-top: 14px; border-top: 1px solid var(--border); padding-top: 12px; }
+  .invite label { display: grid; gap: 6px; font-size: .9rem; }
+  .invite input { flex: 1 1 260px; min-width: 0; }
   #requests-panel { border-color: var(--maybe); }
 
   /* Settings */
@@ -66,7 +69,7 @@
 <body>
 <header class="brand">
   <div class="brand-inner">
-    <a href="./"><img class="logo" src="assets/wordmark-light.png" alt="Pampas" width="720" height="213"></a>
+    <a href="./"><span class="logo-text">Rostiq</span></a>
     <nav class="tabs"><a href="./" data-i18n="tab.availability">Availability</a><a href="carpool.html" data-i18n="tab.carpool">🚗 Carpool</a><a href="ploeg.html" data-i18n="tab.team">👥 Team</a><a href="admin.html" class="admin-tab" aria-current="page" hidden data-i18n="tab.admin">⚙️ Admin</a></nav>
   </div>
 </header>
@@ -82,6 +85,11 @@
       <h2 data-i18n="admin.requests">Access requests</h2>
       <p class="help" data-i18n="admin.requestsHelp"></p>
       <ul class="plist" id="requests"></ul>
+      <div class="invite">
+        <label><b data-i18n="admin.invite">Invite link</b>
+          <span class="row"><input id="invite-link" readonly> <button type="button" id="invite-copy" data-i18n="copy">Copy</button></span></label>
+        <p class="muted" data-i18n="admin.inviteHelp"></p>
+      </div>
     </section>
 
     <!-- Players & accounts -->
@@ -163,7 +171,13 @@ function render() {
   renderMatches();
 }
 
+document.getElementById("invite-copy").onclick = ev => {
+  navigator.clipboard.writeText(document.getElementById("invite-link").value).catch(() => {});
+  ev.target.textContent = t("copied");
+};
+
 function renderRequests() {
+  document.getElementById("invite-link").value = pageUrl("");
   const reqs = Object.entries(root.requests || {}).sort((a, b) => (a[1].at || 0) - (b[1].at || 0));
   const free = sortedPlayers().filter(p => p.name && !p.uid);
   document.getElementById("requests").innerHTML = reqs.length ? reqs.map(([uid, r]) => `
@@ -192,13 +206,11 @@ document.getElementById("requests").addEventListener("click", ev => {
       pid = "p" + Date.now().toString(36);
       const order = sortedPlayers().reduce((m, p) => Math.max(m, p.order || 0), 0) + 1;
       changes[`players/${pid}`] = { order, name: (r.name || "?").slice(0, 60), uid, ...(r.email ? { email: r.email.toLowerCase() } : {}) };
-    } else {
-      changes[`players/${pid}/uid`] = uid;
+    } else if (r.email && !root.players[pid].email) {
       // Their login email becomes the contact email, unless one is already filled in.
-      if (r.email && !root.players[pid].email) changes[`players/${pid}/email`] = r.email.toLowerCase();
+      changes[`players/${pid}/email`] = r.email.toLowerCase();
     }
-    changes[`users/${uid}/pid`] = pid;
-    update(changes);
+    linkAccount(uid, pid, changes);
   }
   const rej = ev.target.closest("[data-req-reject]");
   if (rej && confirm(t("admin.rejectConfirm", { name: (root.requests[rej.dataset.reqReject] || {}).name || "?" })))
@@ -212,11 +224,13 @@ function renderPlayers() {
       <div><span class="name">${esc(displayName(p, i))}</span>
         <div class="flags">
           ${AUTH_ON ? (p.uid ? `<span>🔗 ${t("accounts.linked")}${p.uid === me ? " " + t("accounts.you") : ""}</span>` : flag(false, "🔗 " + t("accounts.notLinked"))) : ""}
+          ${p.uid && root.admins && root.admins[p.uid] ? `<span>${t("admin.isAdmin")}</span>` : ""}
           ${p.email ? `<span>✉️ ${esc(p.email)}</span>` : ""}
           ${flag(!!p.phone, t("admin.hasPhone"))}
           ${flag(!!(p.geo || p.gemeente), t("admin.hasPlace"))}
         </div></div>
       <div class="acts">
+        ${AUTH_ON && p.uid && session.platformAdmin ? `<button class="link" data-admin="${p.id}">${t(root.admins && root.admins[p.uid] ? "admin.removeAdmin" : "admin.makeAdmin")}</button>` : ""}
         ${AUTH_ON && p.uid ? `<button class="link" data-reset="${p.id}">${t("accounts.reset")}</button>` : ""}
         ${AUTH_ON && !p.uid && p.name && !session.pid ? `<button class="link" data-mine="${p.id}">${t("accounts.mine")}</button>` : ""}
         <button class="link err" data-remove="${p.id}">${t("admin.remove")}</button>
@@ -239,7 +253,7 @@ function renderMatches() {
       <span class="when">${esc(fmt(e.date, { weekday: "short", day: "numeric", month: "short", year: "numeric" }))}</span>
       <div><span class="opp">${esc(e.opp)}</span>${e.final ? `<span class="tag">${t("final")}</span>` : ""}${detailsHtml(e, "", true)}</div>
       <div class="acts">
-        <a href="./#edit=${e.date}" title="${t("details.edit")}">✏️</a>
+        <a href="./?t=${TEAM_ID}#edit=${e.date}" title="${t("details.edit")}">✏️</a>
         <button data-del-match="${e.date}" title="${t("admin.remove")}">🗑️</button>
       </div>
     </li>`).join("") : `<li class="muted">${t("admin.noMatches")}</li>`;
@@ -248,25 +262,25 @@ function renderMatches() {
 // ---- Players ----
 document.getElementById("players").addEventListener("click", ev => {
   const mine = ev.target.closest("[data-mine]");
-  if (mine) {
-    const uid = session.user.uid;
-    return update({ [`players/${mine.dataset.mine}/uid`]: uid, [`users/${uid}/pid`]: mine.dataset.mine }).then(syncSession);
+  if (mine) return linkAccount(session.user.uid, mine.dataset.mine).then(syncSession);
+  const adm = ev.target.closest("[data-admin]");
+  if (adm) {
+    const uid = root.players[adm.dataset.admin].uid;
+    return write(`admins/${uid}`, root.admins && root.admins[uid] ? null : true);
   }
   const reset = ev.target.closest("[data-reset]");
   if (reset) {
     const p = root.players[reset.dataset.reset];
-    if (confirm(t("accounts.unlinkConfirm", { name: p.name || "" })))
-      update({ [`players/${reset.dataset.reset}/uid`]: null, [`users/${p.uid}`]: null });
+    if (confirm(t("accounts.unlinkConfirm", { name: p.name || "" }))) unlinkAccount(p.uid, reset.dataset.reset);
   }
   const rm = ev.target.closest("[data-remove]");
   if (rm) {
     const p = root.players[rm.dataset.remove];
     if (!confirm(t("admin.removeConfirm", { name: p.name || "?" }))) return;
     const changes = { [`players/${rm.dataset.remove}`]: null };
-    if (p.uid) changes[`users/${p.uid}`] = null;
     for (const [date, entries] of Object.entries(root.carpool || {}))
       if (entries[rm.dataset.remove]) changes[`carpool/${date}/${rm.dataset.remove}`] = null;
-    update(changes);
+    if (p.uid) unlinkAccount(p.uid, null, changes); else update(changes);
   }
 });
 document.getElementById("add-player").addEventListener("submit", ev => {

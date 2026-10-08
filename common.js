@@ -1,22 +1,37 @@
-// Rostiq – shared by all pages: schedule, database connection and helpers.
+// Rostiq – shared by all pages: teams, database connection, login and helpers.
 // Each page defines a global render() that is called whenever the data changes.
+// Everything of one team lives under teams/{TEAM_ID}/ in the database; `root` mirrors that subtree.
 
-// Team settings come from team.js (window.TEAM). The built-in schedule is used until the admin
-// edits matches on the Admin page; then the list in the database (schedule/{date}) takes over.
-const DEFAULT_EVENTS = TEAM.events || [];
-let EVENTS = DEFAULT_EVENTS.slice();
+const DB = (window.FIREBASE_DB_URL || "").trim().replace(/\/+$/, "");
+
+// Per-viewer UI preferences (not shared).
+const pref = {
+  get(k, d) { try { return localStorage.getItem(k) ?? d; } catch { return d; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch {} },
+};
+
+// ---- Which team: ?t=<id> in the address, else the last team used on this device ----
+const QUERY = new URLSearchParams(location.search);
+const WANT_PICKER = QUERY.has("pick");
+let TEAM_ID = WANT_PICKER ? "" : (QUERY.get("t") || pref.get("team", "") || "").toLowerCase();
+const NO_TEAM_PAGE = !!window.PLATFORM_PAGE; // the Rostiq admin page works across teams
+
+function mergeTeamInfo(info) {
+  for (const k of Object.keys(TEAM)) if (k !== "id") delete TEAM[k];
+  Object.assign(TEAM, TEAM_DEFAULTS, info || {}, { id: TEAM_ID });
+}
+
+// Schedule: the team's list in the database (schedule/{date}); TEAM.events only as a fallback.
+let EVENTS = [];
 function refreshEvents() {
   const s = root.schedule || {};
   const fromDb = (root.settings && root.settings.scheduleInDb) || Object.keys(s).length;
   EVENTS = fromDb
     ? Object.keys(s).sort().map(date => ({ date, opp: s[date].opp || "?", ...(s[date].final ? { final: true } : {}) }))
-    : DEFAULT_EVENTS.slice();
+    : (TEAM.events || []).slice();
 }
-const DEFAULT_SEASON = TEAM.season || "";
-const seasonName = () => (root.settings && root.settings.seasonName) || DEFAULT_SEASON;
-const TEAM_SIZE = TEAM.teamSize ?? 15;
-
-const DB = (window.FIREBASE_DB_URL || "").trim().replace(/\/+$/, "");
+const seasonName = () => (root.settings && root.settings.seasonName) || TEAM.season || TEAM.brand;
+const teamSize = () => TEAM.teamSize ?? 0;
 
 const TODAY = new Date().toLocaleDateString("sv-SE"); // YYYY-MM-DD, local time
 const isPast = e => e.date < TODAY;
@@ -24,12 +39,6 @@ const isPast = e => e.date < TODAY;
 const parse = d => new Date(d + "T12:00:00");
 const fmt = (d, opts) => parse(d).toLocaleDateString(LOCALE, opts);
 const esc = t => String(t).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
-
-// Per-viewer UI preferences (not shared).
-const pref = {
-  get(k, d) { try { return localStorage.getItem(k) ?? d; } catch { return d; } },
-  set(k, v) { try { localStorage.setItem(k, v); } catch {} },
-};
 
 // ---- Match details (time, venue, meeting point), set by the admin ----
 // Stored at matches/{date}: { start, end, venue: { name, address, lat, lon }, meet, info }.
@@ -103,12 +112,12 @@ function detailsHtml(e, extra = "", compact = false) {
   return bits.length ? `<div class="details">${bits.join("")}</div>` : "";
 }
 
-// ---- Shared state (mirror of the database root) ----
+// ---- Shared state (mirror of teams/{TEAM_ID}) ----
 let root = {};
 
 function defaultPlayers() {
   const players = {};
-  for (let i = 1; i <= TEAM_SIZE; i++) players["p" + String(i).padStart(2, "0")] = { order: i };
+  for (let i = 1; i <= teamSize(); i++) players["p" + String(i).padStart(2, "0")] = { order: i };
   return players;
 }
 
@@ -130,55 +139,66 @@ function apply(path, value, merge) {
   if (value === null) delete node[last]; else node[last] = value;
 }
 
-// ---- Login (Firebase Authentication) ----
-// Login is switched on by putting FIREBASE_CONFIG in config.js. Without it the
-// page works as before: no accounts, everyone can edit everything.
-const ADMIN_EMAILS = (TEAM.admins || []).map(e => e.toLowerCase());
+// ---- Login (Firebase Authentication) and roles ----
+// platformAdmin: Rostiq owner (all teams). admin: manages this team (team admin or platform admin).
+// pid: this account's player row in the team. pending: signed in, waiting for the team admin.
+const PLATFORM = (window.PLATFORM_ADMINS || []).map(e => e.toLowerCase());
 const AUTH_ON = !!window.FIREBASE_CONFIG;
 const SDK = "https://www.gstatic.com/firebasejs/12.12.0/";
-// user: Firebase user; pid: the player row this account has claimed.
-// pending: signed in but not yet linked to a player by the admin (sees nothing until approved).
-const session = { user: null, admin: !AUTH_ON, pid: null, ready: !AUTH_ON, pending: false, request: null };
+const session = { user: null, platformAdmin: !AUTH_ON, admin: !AUTH_ON, pid: null, ready: !AUTH_ON,
+  pending: false, request: null, picking: false, teams: null, noTeam: false };
 let fbAuth = null, A = null;
 
 // Only the admin and a row's own player may change it (the database rules enforce the same).
 const canEdit = pid => session.admin || (!!pid && pid === session.pid);
 
-async function dbUrl(path, forceRefresh) {
-  const t = AUTH_ON && session.user ? await session.user.getIdToken(forceRefresh) : null;
-  return `${DB}/${path}.json` + (t ? `?auth=${encodeURIComponent(t)}` : "");
+async function token(forceRefresh) {
+  return AUTH_ON && session.user ? session.user.getIdToken(forceRefresh) : null;
 }
+// Absolute database path (e.g. "users/<uid>/teams") …
+async function dbUrlAbs(path, forceRefresh) {
+  const tk = await token(forceRefresh);
+  return `${DB}/${path}.json` + (tk ? `?auth=${encodeURIComponent(tk)}` : "");
+}
+// … and a path inside the current team (e.g. "players/p01" → teams/<id>/players/p01).
+const dbUrl = (path, forceRefresh) => dbUrlAbs(`teams/${TEAM_ID}${path ? "/" + path : ""}`, forceRefresh);
+const getAbs = async path => fetch(await dbUrlAbs(path)).then(r => (r.ok ? r.json() : null)).catch(() => null);
 
-async function send(method, path, value) {
-  if (!DB) return;
+async function send(method, path, value, abs) {
+  if (!DB) return false;
   try {
-    const res = await fetch(await dbUrl(path), {
+    const res = await fetch(await (abs ? dbUrlAbs(path) : dbUrl(path)), {
       method,
       body: value === undefined ? undefined : JSON.stringify(value),
     });
     if (!res.ok) throw new Error(res.status);
+    return true;
   } catch (e) {
     setStatus("err", t(AUTH_ON ? "status.notSavedOwnRow" : "status.saveFailed"));
+    return false;
   }
 }
 
+// Writes inside the current team (applied locally first, so the page reacts immediately).
 async function write(path, value) {
   apply(path, value, false);
   refreshEvents();
   render();
   return send(value === null ? "DELETE" : "PUT", path, value === null ? undefined : value);
 }
-
-// Several paths in one atomic update, e.g. { "players/p01/uid": "...", "users/abc/pid": "p01" }.
+// Several paths in one atomic update, e.g. { "players/p01/uid": "...", "members/<uid>": "p01" }.
 async function update(changes) {
   for (const [path, value] of Object.entries(changes)) apply(path, value, false);
   refreshEvents();
   render();
   return send("PATCH", "", changes);
 }
+// Outside the current team (e.g. the "my teams" index users/<uid>/teams/<id>).
+const writeAbs = (path, value) => send(value === null ? "DELETE" : "PUT", path, value === null ? undefined : value, true);
 
 function setStatus(cls, text) {
   const el = document.getElementById("status");
+  if (!el) return;
   el.className = "status " + cls;
   el.textContent = text;
 }
@@ -189,7 +209,7 @@ async function connect(forceRefresh) {
     root = { players: defaultPlayers() };
     document.getElementById("banner").hidden = false;
     setStatus("err", t("status.notConnected"));
-    render();
+    syncSession();
     return;
   }
   if (es) es.close();
@@ -202,8 +222,7 @@ async function connect(forceRefresh) {
     if (!seeded && path === "/" && !merge) {
       seeded = true;
       if (!root.initialized && session.admin) {
-        // First visit ever: create the 15 default rows. Rules only allow writes
-        // per player, so use multi-path keys ("players/p01") rather than a nested object.
+        // A team's first visit: create the empty player rows (if the team wants any).
         const changes = { initialized: true };
         for (const [id, p] of Object.entries(defaultPlayers())) changes[`players/${id}`] = p;
         update(changes);
@@ -227,10 +246,11 @@ function disconnect() {
   root = {};
 }
 
-// The group invite link lives in the database (not in this public repo), so only signed-in teammates see it.
+// The group invite link lives in the database, so only signed-in teammates see it.
 const WA_LINK = /^https:\/\/chat\.whatsapp\.com\/[A-Za-z0-9]{10,40}$/;
 function renderWaGroup() {
   const a = document.getElementById("wa-group");
+  if (!a) return;
   const link = root.settings && root.settings.waGroup;
   a.hidden = !(link && WA_LINK.test(link));
   if (!a.hidden) a.href = link;
@@ -255,8 +275,9 @@ const shortDate = d => fmt(d, { weekday: "short", day: "numeric", month: "numeri
 // Ask the signed-in player for their number once (until they fill it in or tap "Later").
 function renderPhonePrompt() {
   const box = document.getElementById("phone-prompt");
+  if (!box) return;
   const pid = session.pid;
-  box.hidden = !(AUTH_ON && pid && !phoneOf(pid) && pref.get("phoneLater", "") !== pid);
+  box.hidden = !(AUTH_ON && pid && !phoneOf(pid) && pref.get("phoneLater:" + TEAM_ID, "") !== pid);
 }
 function injectPhonePrompt() {
   document.querySelector("main .sub").insertAdjacentHTML("afterend", `
@@ -276,7 +297,7 @@ function injectPhonePrompt() {
     form.querySelector(".err").hidden = !!n;
     if (n && session.pid) write(`players/${session.pid}/phone`, n);
   });
-  form.querySelector("[data-later]").onclick = () => { pref.set("phoneLater", session.pid || ""); renderPhonePrompt(); };
+  form.querySelector("[data-later]").onclick = () => { pref.set("phoneLater:" + TEAM_ID, session.pid || ""); renderPhonePrompt(); };
 }
 
 // A linked player without a contact email gets the email they sign in with (once per visit).
@@ -289,12 +310,15 @@ function fillLoginEmail() {
 }
 
 function syncSession() {
+  if (root.info) mergeTeamInfo(root.info);
   if (AUTH_ON) {
     const uid = session.user && session.user.uid;
-    const pid = uid && root.users && root.users[uid] && root.users[uid].pid;
+    const pid = uid && root.members && root.members[uid];
     session.pid = pid && root.players && root.players[pid] ? pid : null;
+    session.admin = session.platformAdmin || !!(uid && root.admins && root.admins[uid] === true);
     session.ready = true;
   }
+  applyBranding();
   fillLoginEmail();
   refreshEvents();
   renderCountdown();
@@ -308,10 +332,10 @@ function syncSession() {
 // ---- Countdown to the next match, above the page title ----
 function injectCountdown() {
   document.querySelector("main h1").insertAdjacentHTML("beforebegin", `<div class="countdown" id="countdown" hidden></div>`);
-  renderCountdown();
 }
 function renderCountdown() {
   const el = document.getElementById("countdown");
+  if (!el) return;
   const next = EVENTS.find(e => !isPast(e));
   el.hidden = !next;
   if (!next) return;
@@ -326,7 +350,7 @@ function renderSeasonTitle() {
   document.querySelectorAll("[data-season]").forEach(el => { el.textContent = seasonName(); });
 }
 
-// ---- Share window: an editable message to send to the team group (both pages) ----
+// ---- Share window: an editable message to send to the team group ----
 // WhatsApp has no link that posts straight into a group, so the quickest routes are:
 //  - "Copy & open group": copies the text and opens the team group (invite link) – just paste;
 //  - "Share…": the phone's own share sheet, where the group shows among recent chats.
@@ -381,32 +405,50 @@ const chatMapsUrl = v => "https://maps.google.com/?q=" +
   encodeURIComponent(venueShort(v) || `${v.lat},${v.lon}`).replace(/%20/g, "+").replace(/%2C/g, ",");
 const lines = arr => arr.filter(l => l === BLANK || (typeof l === "string" && l))
   .map(l => (l === BLANK ? "" : l)).join("\n");
-const pageUrl = file => location.href.split(/[?#]/)[0].replace(/[^/]*$/, file);
+// Link to a page of this team (used in messages and calendar files), e.g. ".../carpool.html?t=ic-heren-1".
+const pageUrl = file => location.href.split(/[?#]/)[0].replace(/[^/]*$/, file) + (TEAM_ID ? `?t=${TEAM_ID}` : "");
 
-// Kick off: with login, wait for the user; otherwise connect straight away.
-// Team branding: logo (or the team name as text) and optional colour overrides.
+// ---- Team branding: logo (or the team name as text), colours, page links carrying ?t= ----
 function applyBranding() {
-  document.querySelectorAll(".brand .logo").forEach(img => {
-    if (TEAM.logo) { img.src = TEAM.logo; img.alt = TEAM.brand; }
-    else img.outerHTML = `<span class="logo-text">${esc(TEAM.brand)}</span>`;
-  });
-  const c = TEAM.colors;
-  if (c) {
-    const vars = o => Object.entries(o || {}).map(([k, v]) => `${k}: ${v};`).join(" ");
-    document.head.insertAdjacentHTML("beforeend", `<style>:root { ${vars(c.light)} }
-      @media (prefers-color-scheme: dark) { :root { ${vars(c.dark)} } }</style>`);
+  const home = document.querySelector(".brand-inner > a");
+  if (home) {
+    home.href = pageUrl("");
+    home.innerHTML = TEAM.logo ? `<img class="logo" src="${esc(TEAM.logo)}" alt="${esc(TEAM.brand)}">`
+      : `<span class="logo-text">${esc(TEAM.brand)}</span>`;
   }
+  const tabs = document.querySelector(".tabs");
+  if (tabs) tabs.hidden = !TEAM_ID; // no team chosen yet: nothing to navigate to
+  document.querySelectorAll(".tabs a").forEach(a => {
+    const file = (a.getAttribute("href") || "").split("?")[0];
+    a.setAttribute("href", file + (TEAM_ID ? `?t=${TEAM_ID}` : ""));
+  });
+  const c = TEAM.colors, vars = o => Object.entries(o || {}).map(([k, v]) => `${k}: ${v};`).join(" ");
+  let style = document.getElementById("team-colors");
+  if (!style) { style = document.createElement("style"); style.id = "team-colors"; document.head.append(style); }
+  style.textContent = c ? `:root { ${vars(c.light)} } @media (prefers-color-scheme: dark) { :root { ${vars(c.dark)} } }` : "";
+  const title = document.querySelector("title[data-i18n-doc]");
+  if (title) document.title = t(title.dataset.i18nDoc); // e.g. "IC Heren 1 · Beschikbaarheid"
 }
 
+function chooseTeam(id) {
+  TEAM_ID = id;
+  pref.set("team", id);
+  location.href = location.pathname + "?t=" + encodeURIComponent(id);
+}
+
+// Kick off: with login, wait for the user; otherwise connect straight away.
 function start() {
-  applyBranding();
+  mergeTeamInfo(null);
   applyStaticTexts();
+  applyBranding();
   injectAuthUI();
-  injectCountdown();
-  injectPhonePrompt();
+  if (!NO_TEAM_PAGE) {
+    injectCountdown();
+    injectPhonePrompt();
+  }
   document.body.insertAdjacentHTML("beforeend", `<footer class="site-footer">${t("footer")}</footer>`);
   injectShareDialog();
-  if (AUTH_ON) initAuth(); else connect();
+  if (AUTH_ON) initAuth(); else if (!NO_TEAM_PAGE) connect(); else render();
 }
 
 async function initAuth() {
@@ -427,35 +469,67 @@ async function initAuth() {
     } catch (e) {
       gateMessage(t("auth.linkExpired"), true);
     }
-    history.replaceState(null, "", location.pathname);
+    history.replaceState(null, "", location.pathname + (TEAM_ID ? `?t=${TEAM_ID}` : ""));
   }
   // Coming back from a Google redirect: success arrives via onAuthStateChanged; surface failures.
   A.getRedirectResult(fbAuth).catch(() =>
     gateMessage(t("auth.redirectFailed"), true));
   A.onAuthStateChanged(fbAuth, user => {
     session.user = user;
-    session.admin = !!user && user.emailVerified && ADMIN_EMAILS.includes((user.email || "").toLowerCase());
+    session.platformAdmin = !!user && user.emailVerified && PLATFORM.includes((user.email || "").toLowerCase());
+    session.admin = session.platformAdmin;
     session.pid = null;
     session.pending = false;
-    session.ready = !user; // with a user, wait until we know whether the account is linked
-    if (user) checkMembership(); else { stopApprovalWatch(); disconnect(); }
+    session.picking = false;
+    session.ready = !user; // with a user, wait until we know the team and the membership
+    if (user) afterSignIn(); else { stopApprovalWatch(); disconnect(); }
     renderAuth();
     render();
   });
 }
 
-// Only accounts the admin linked to a player (users/{uid}) may read the team's data.
+// Signed in: load "my teams", pick the team, then check membership in it.
+async function afterSignIn() {
+  const uid = session.user.uid;
+  const mine = (await getAbs(`users/${uid}/teams`)) || {};
+  session.teams = Object.keys(mine);
+  if (session.platformAdmin) {
+    const all = (await getAbs("teams")) || {};
+    session.teams = [...new Set([...session.teams, ...Object.keys(all)])];
+  }
+  if (NO_TEAM_PAGE) { session.ready = true; renderAuth(); render(); return; }
+  if (!TEAM_ID && session.teams.length === 1 && !WANT_PICKER) return chooseTeam(session.teams[0]);
+  if (!TEAM_ID) return showPicker();
+  checkMembership();
+}
+
+// Team chooser ("My teams"): shown when no team is chosen yet, or via "switch team".
+async function showPicker(message) {
+  session.picking = true;
+  session.ready = true;
+  session.pickerTeams = await Promise.all((session.teams || []).map(async id => ({ id, info: (await getAbs(`teams/${id}/info`)) || {} })));
+  session.pickerTeams.sort((a, b) => (a.info.brand || a.id).localeCompare(b.info.brand || b.id));
+  if (message) gateMsg = { text: message, err: true };
+  renderAuth();
+}
+
+// Only accounts the team admin linked to a player (teams/{t}/members/{uid}) may read the team.
 // Others get the "waiting for approval" screen and can send a request with their name.
 let approvalEs = null;
 function stopApprovalWatch() { if (approvalEs) approvalEs.close(); approvalEs = null; }
 
 async function checkMembership() {
   const uid = session.user.uid;
-  if (!session.admin) {
-    let linked = null;
-    try { linked = await fetch(await dbUrl(`users/${uid}`)).then(r => r.json()); } catch {}
-    if (!(linked && linked.pid)) {
-      try { session.request = await fetch(await dbUrl(`requests/${uid}`)).then(r => r.json()); } catch { session.request = null; }
+  const info = await getAbs(`teams/${TEAM_ID}/info`);
+  if (!info) { pref.set("team", ""); TEAM_ID = ""; return showPicker(t("pick.notFound")); }
+  mergeTeamInfo(info);
+  applyBranding();
+  pref.set("team", TEAM_ID);
+  if (!session.platformAdmin) {
+    const [pid, isAdmin] = await Promise.all([getAbs(`teams/${TEAM_ID}/members/${uid}`), getAbs(`teams/${TEAM_ID}/admins/${uid}`)]);
+    session.admin = isAdmin === true;
+    if (!pid && !session.admin) {
+      session.request = await getAbs(`teams/${TEAM_ID}/requests/${uid}`);
       session.pending = true;
       session.ready = true;
       renderAuth();
@@ -467,24 +541,24 @@ async function checkMembership() {
   connect();
 }
 
-// Open the site by itself as soon as the admin links this account.
+// Open the team by itself as soon as the team admin links this account.
 async function watchApproval(uid) {
   stopApprovalWatch();
-  const stream = approvalEs = new EventSource(await dbUrl(`users/${uid}`));
+  const stream = approvalEs = new EventSource(await dbUrl(`members/${uid}`));
   stream.addEventListener("put", e => {
-    const { path, data } = JSON.parse(e.data);
-    const approved = (path === "/" && data && data.pid) || (path === "/pid" && data);
-    if (!approved || stream !== approvalEs) return;
+    const { data } = JSON.parse(e.data);
+    if (!data || stream !== approvalEs) return;
     stopApprovalWatch();
     session.pending = false;
     session.ready = false;
+    if (!session.teams.includes(TEAM_ID)) session.teams.push(TEAM_ID);
     renderAuth();
     connect();
   });
   stream.addEventListener("auth_revoked", () => watchApproval(uid));
 }
 
-// ---- Login UI (shared by both pages) ----
+// ---- Login UI ----
 function injectAuthUI() {
   const brand = document.querySelector(".brand-inner");
   brand.insertAdjacentHTML("beforeend", `<div class="corner">
@@ -499,7 +573,7 @@ function injectAuthUI() {
     location.reload();
   });
   document.querySelector("main").insertAdjacentHTML("beforebegin", `<section class="gate" id="gate" hidden></section>`);
-  document.querySelector("main .sub").insertAdjacentHTML("afterend",
+  if (!NO_TEAM_PAGE) document.querySelector("main .sub").insertAdjacentHTML("afterend",
     `<a class="wa-group" id="wa-group" hidden target="_blank" rel="noopener" title="${t("wa.title")}">${t("wa.open")}</a>`);
   document.getElementById("account").addEventListener("click", ev => {
     if (ev.target.closest("[data-signout]")) A.signOut(fbAuth);
@@ -514,20 +588,26 @@ const standalone = () => matchMedia("(display-mode: standalone)").matches || nav
 let gateMsg = { text: "", err: false };
 function gateMessage(text, err) { gateMsg = { text, err }; renderAuth(); }
 
+const appUrl = file => location.href.split(/[?#]/)[0].replace(/[^/]*$/, file);
+
 function renderAuth() {
   if (!AUTH_ON) return;
   const gate = document.getElementById("gate"), main = document.querySelector("main"), acct = document.getElementById("account");
   const u = session.user;
-  const needClaim = u && (session.pending || (session.ready && !session.pid && !session.admin));
-  const showGate = !u || needClaim;
+  const picking = u && session.picking && !NO_TEAM_PAGE;
+  const needClaim = u && !picking && !NO_TEAM_PAGE && (session.pending || (session.ready && !session.pid && !session.admin));
+  const showGate = !u || picking || needClaim;
   gate.hidden = !showGate;
   main.hidden = showGate || (u && !session.ready);
 
   document.querySelectorAll(".admin-tab").forEach(a => { a.hidden = !session.admin; });
   acct.hidden = !u;
   if (u) {
-    const who = session.pid ? esc(root.players[session.pid].name || "") : esc(u.email || "");
-    acct.innerHTML = `<span>${who}${session.admin ? ' <span class="admin-tag">admin</span>' : ""}</span>
+    const who = session.pid && root.players && root.players[session.pid] ? esc(root.players[session.pid].name || "") : esc(u.email || "");
+    const switchable = (session.teams || []).length > 1 || session.platformAdmin;
+    acct.innerHTML = `<span>${who}${session.platformAdmin ? ' <span class="admin-tag">Rostiq</span>' : session.admin ? ' <span class="admin-tag">admin</span>' : ""}</span>
+      ${switchable && TEAM_ID ? `<a class="link switch" href="${appUrl("index.html")}?pick">⇄ ${t("pick.switch")}</a>` : ""}
+      ${session.platformAdmin ? `<a class="link switch" href="${appUrl("rostiq.html")}">⚙️ Rostiq</a>` : ""}
       <button data-signout class="link">${t("auth.signOut")}</button>`;
   }
 
@@ -547,9 +627,21 @@ function renderAuth() {
       ${msg}
       <p class="hint">${t(standalone() ? "auth.hintApp" : "auth.hintBrowser")}</p>
     </div>`;
+  } else if (picking) {
+    const list = session.pickerTeams || [];
+    gate.innerHTML = `<div class="gate-card">
+      <h1>${t("pick.title")}</h1>
+      ${msg}
+      ${list.length ? `<div class="team-list">${list.map(x => `
+        <button data-team="${esc(x.id)}"><b>${esc(x.info.brand || x.id)}</b>${x.info.season ? `<span>${esc(x.info.season)}</span>` : ""}</button>`).join("")}</div>`
+        : `<p class="sub">${t("pick.none")}</p>`}
+      ${session.platformAdmin ? `<p class="hint"><a href="${appUrl("rostiq.html")}">⚙️ ${t("pick.manage")}</a></p>` : ""}
+      <p class="hint"><button class="link" data-signout-gate>${t("auth.signOut")}</button></p>
+    </div>`;
   } else if (needClaim) {
     const r = session.request;
     gate.innerHTML = `<div class="gate-card">
+      <p class="team-chip">${esc(TEAM.brand)}${TEAM.season ? " · " + esc(TEAM.season) : ""}</p>
       <h1>${t("pending.title")}</h1>
       <p class="sub">${t("pending.text", { email: esc(u.email || "") })}</p>
       ${r && r.name ? `<p class="gate-msg">${t("pending.sent", { name: esc(r.name) })}</p>` : ""}
@@ -559,7 +651,7 @@ function renderAuth() {
         <button type="submit">${t(r ? "pending.update" : "pending.send")}</button>
       </form>
       ${msg}
-      <p class="hint"><button class="link" data-signout-gate>${t("auth.signOut")}</button></p>
+      <p class="hint">${(session.teams || []).length ? `<a href="${appUrl("index.html")}?pick">⇄ ${t("pick.switch")}</a> · ` : ""}<button class="link" data-signout-gate>${t("auth.signOut")}</button></p>
     </div>`;
   }
 }
@@ -578,13 +670,15 @@ async function onGateClick(ev) {
         gateMessage(t("auth.googleFailed"), true);
     }
   }
+  const team = ev.target.closest("[data-team]");
+  if (team) chooseTeam(team.dataset.team);
   if (ev.target.closest("[data-signout-gate]")) A.signOut(fbAuth);
 }
 
 async function onGateSubmit(ev) {
   ev.preventDefault();
   if (ev.target.classList.contains("request-form")) {
-    // Ask the admin for access, with the name the player goes by in the team.
+    // Ask the team admin for access, with the name the player goes by in the team.
     const u = session.user;
     const req = { email: u.email || "", name: ev.target.name.value.trim().slice(0, 60), at: Date.now() };
     try {
@@ -599,12 +693,26 @@ async function onGateSubmit(ev) {
   }
   const email = ev.target.email.value.trim();
   try {
-    await A.sendSignInLinkToEmail(fbAuth, email, { url: location.origin + location.pathname, handleCodeInApp: true });
+    await A.sendSignInLinkToEmail(fbAuth, email, {
+      url: location.origin + location.pathname + (TEAM_ID ? `?t=${TEAM_ID}` : ""), handleCodeInApp: true });
     pref.set("signinEmail", email);
     gateMessage(t("auth.checkEmail", { email }), false);
   } catch (e) {
     gateMessage(t(e.code === "auth/quota-exceeded" ? "auth.quota" : "auth.sendFailed"), true);
   }
+}
+
+// ---- Linking accounts to players (team admin) ----
+// Team part (player row + membership) first, then the account's "my teams" index.
+async function linkAccount(uid, pid, extra = {}) {
+  const row = extra[`players/${pid}`] ? {} : { [`players/${pid}/uid`]: uid }; // a new row already carries its uid
+  const ok = await update({ ...row, [`members/${uid}`]: pid, ...extra });
+  if (ok) await writeAbs(`users/${uid}/teams/${TEAM_ID}`, pid);
+  return ok;
+}
+async function unlinkAccount(uid, pid, extra = {}) {
+  await writeAbs(`users/${uid}/teams/${TEAM_ID}`, null);
+  return update({ ...(pid ? { [`players/${pid}/uid`]: null } : {}), [`members/${uid}`]: null, [`admins/${uid}`]: null, ...extra });
 }
 
 function sortedPlayers() {

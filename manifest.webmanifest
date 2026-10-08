@@ -1,15 +1,28 @@
 {
-  "name": "Winter Midam 26-27",
-  "short_name": "Winter Midam",
-  "description": "Pampas team availability and carpool",
+  "name": "Rostiq",
+  "short_name": "Rostiq",
+  "description": "Teamplanner voor sportploegen",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "background_color": "#f4efe4",
   "theme_color": "#1f3a2e",
   "icons": [
-    { "src": "assets/icon-192.png", "sizes": "192x192", "type": "image/png" },
-    { "src": "assets/icon-512.png", "sizes": "512x512", "type": "image/png" },
-    { "src": "assets/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    {
+      "src": "assets/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "assets/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "assets/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
   ]
 }

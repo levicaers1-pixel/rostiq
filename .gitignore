@@ -1,4 +1,2 @@
+# per-team build output (old tool)
 dist/
-# Real team configs contain admin emails: keep them out of this public repo.
-teams/*
-!teams/demo/

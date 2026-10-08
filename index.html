@@ -3,19 +3,19 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title data-i18n-doc="page.title">Pampas · Availability</title>
+<title data-i18n-doc="page.title">Rostiq · Availability</title>
 <meta name="theme-color" content="#1f3a2e">
 <!-- Link preview (WhatsApp, iMessage, Facebook, …) -->
-<meta name="description" content="Beschikbaarheid, kalender en carpool voor Winter Midam 26-27 – Pampas.">
+<meta name="description" content="Rostiq – teamplanner voor sportploegen: beschikbaarheid, kalender, carpool en WhatsApp.">
 <meta property="og:type" content="website">
-<meta property="og:site_name" content="Pampas">
-<meta property="og:title" content="Winter Midam 26-27 · Pampas">
-<meta property="og:description" content="Beschikbaarheid, kalender en carpool voor Winter Midam 26-27 – Pampas.">
-<meta property="og:url" content="https://levicaers1-pixel.github.io/team-availability/">
-<meta property="og:image" content="https://levicaers1-pixel.github.io/team-availability/assets/og-image.png">
+<meta property="og:site_name" content="Rostiq">
+<meta property="og:title" content="Rostiq">
+<meta property="og:description" content="Rostiq – teamplanner voor sportploegen: beschikbaarheid, kalender, carpool en WhatsApp.">
+<meta property="og:url" content="https://levicaers1-pixel.github.io/rostiq/">
+<meta property="og:image" content="https://levicaers1-pixel.github.io/rostiq/assets/og-image.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="Pampas – Winter Midam 26-27">
+<meta property="og:image:alt" content="Rostiq – teamplanner">
 <meta property="og:locale" content="nl_BE">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="icon" type="image/png" href="assets/favicon.png">
@@ -23,7 +23,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Winter Midam">
+<meta name="apple-mobile-web-app-title" content="Rostiq">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -187,12 +187,12 @@
 <body>
 <header class="brand">
   <div class="brand-inner">
-    <a href="./"><img class="logo" src="assets/wordmark-light.png" alt="Pampas" width="720" height="213"></a>
+    <a href="./"><span class="logo-text">Rostiq</span></a>
     <nav class="tabs"><a href="./" aria-current="page" data-i18n="tab.availability">Availability</a><a href="carpool.html" data-i18n="tab.carpool">🚗 Carpool</a><a href="ploeg.html" data-i18n="tab.team">👥 Team</a><a href="admin.html" class="admin-tab" hidden data-i18n="tab.admin">⚙️ Admin</a></nav>
   </div>
 </header>
 <main>
-  <h1 data-season>Winter Midam 26-27</h1>
+  <h1 data-season>Rostiq</h1>
   <p class="sub"><span data-i18n="avail.sub">Tap a cell to set your availability</span> · <span class="status" id="status" data-i18n="status.connecting">Connecting…</span></p>
   <p class="banner" id="banner" hidden data-i18n-html="banner.noDb"></p>
 
@@ -270,7 +270,6 @@ const CYCLE = ["", "yes", "maybe", "no"];
 const SYMBOL = { "": "–", yes: "✓", maybe: "?", no: "✗" };
 const LABEL = { "": "", yes: t("label.yes"), maybe: t("label.maybe"), no: t("label.no") };
 
-const DEFAULT_MIN = TEAM.minPlayers || 3;
 let view = pref.get("view", matchMedia("(max-width: 700px)").matches ? "cards" : "table");
 let showPast = pref.get("showPast", "0") === "1";
 
@@ -306,7 +305,7 @@ document.getElementById("months").addEventListener("click", ev => {
   if (edit) openDetails(EVENTS.find(x => x.date === edit.dataset.edit));
 });
 
-const minPlayers = () => (root.settings && root.settings.minPlayers) || DEFAULT_MIN;
+const minPlayers = () => (root.settings && root.settings.minPlayers) || TEAM.minPlayers || 3;
 const shownEvents = () => EVENTS.filter(e => showPast || !isPast(e));
 
 function tally(e, players) {
@@ -451,7 +450,7 @@ function openPendingEdit() {
   if (!pendingEdit || !session.admin || !session.ready || !root.players) return;
   const e = EVENTS.find(x => x.date === pendingEdit);
   pendingEdit = "";
-  history.replaceState(null, "", location.pathname);
+  history.replaceState(null, "", location.pathname + (TEAM_ID ? `?t=${TEAM_ID}` : ""));
   if (e) setTimeout(() => openDetails(e), 0);
 }
 
@@ -483,7 +482,7 @@ function matchMessage(e) {
   const m = matchInfo(e), v = m.venue;
   const yes = namesWith(e, "yes"), maybe = namesWith(e, "maybe"), no = namesWith(e, "no"), none = namesWith(e, "");
   return lines([
-    `*🏌️ ${TEAM.shortName} – ${e.opp}${e.final ? " " + t("ics.final") : ""}*`,
+    `*🏌️ ${TEAM.shortName || TEAM.brand} – ${e.opp}${e.final ? " " + t("ics.final") : ""}*`,
     `📅 ${longDate(e)}`,
     timeText(e) && `🕘 ${timeText(e)}`,
     v && `📍 ${venueText(v)}`,
@@ -529,9 +528,9 @@ document.addEventListener("click", ev => {
   const text = t("reminder.text", {
     opp: e.opp + (e.final ? " " + t("ics.final") : ""), when,
     details: details ? "\n" + details : "",
-    url: location.href.split(/[?#]/)[0], names: c.missing.join(", "),
+    url: pageUrl(""), names: c.missing.join(", "),
   });
-  const url = location.href.split(/[?#]/)[0];
+  const url = pageUrl("");
   const people = sortedPlayers().filter(p => p.name && !p.avail[e.date]).map(p => ({
     name: p.name, phone: p.phone || "",
     text: t("msg.personalReminder", { first: firstName(p.name), opp: e.opp, when: shortDate(e.date), url }),
@@ -675,9 +674,11 @@ const fold = line => line.length <= 70 ? line : line.match(/.{1,70}/gu).join("\r
 
 // Titles read "{player} {TEAM.calendarLabel} {location}"; the player is left out for team-wide exports.
 // statusOf(e) may return "maybe" to mark an event as tentative.
+// Unique event ids per team; Pampas keeps its original ones so re-importing updates existing events.
+const uidDomain = TEAM_ID === "pampas-wintermidam" ? "team-availability" : `${TEAM_ID}.rostiq`;
 function buildIcs(events, statusOf = () => "", player = "") {
   const stamp = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d+/, "");
-  const url = location.href.split(/[?#]/)[0];
+  const url = pageUrl("");
   const lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Caersultancy//Rostiq//EN", "CALSCALE:GREGORIAN", "METHOD:PUBLISH", ...VTIMEZONE];
   for (const e of events) {
     const d = e.date.replace(/-/g, "");
@@ -688,12 +689,12 @@ function buildIcs(events, statusOf = () => "", player = "") {
     const desc = [m.meet && t("ics.meet", { meet: m.meet }), m.info, v && mapsUrl(v), t("ics.markAvail", { url })].filter(Boolean).join("\n");
     lines.push(
       "BEGIN:VEVENT",
-      `UID:${d}-${slug(e.opp)}@team-availability`,
+      `UID:${d}-${slug(e.opp)}@${uidDomain}`,
       `DTSTAMP:${stamp}`,
       `DTSTART;TZID=Europe/Brussels:${d}T${hhmmss(start)}`,
       `DTEND;TZID=Europe/Brussels:${d}T${hhmmss(end)}`,
       `STATUS:${maybe ? "TENTATIVE" : "CONFIRMED"}`,
-      `SUMMARY:${icsText([player, TEAM.calendarLabel, e.opp].filter(Boolean).join(" ") + (e.final ? " " + t("ics.final") : "") + (maybe ? " " + t("ics.maybe") : ""))}`,
+      `SUMMARY:${icsText([player, TEAM.calendarLabel || TEAM.shortName || TEAM.brand, e.opp].filter(Boolean).join(" ") + (e.final ? " " + t("ics.final") : "") + (maybe ? " " + t("ics.maybe") : ""))}`,
       `LOCATION:${icsText(v ? venueText(v) : e.opp)}`,
       ...(v && v.lat != null ? [`GEO:${v.lat};${v.lon}`] : []),
       `DESCRIPTION:${icsText(desc)}`,

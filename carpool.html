@@ -3,19 +3,19 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title data-i18n-doc="carpool.pageTitle">Pampas · Carpool</title>
+<title data-i18n-doc="carpool.pageTitle">Rostiq · Carpool</title>
 <meta name="theme-color" content="#1f3a2e">
 <!-- Link preview (WhatsApp, iMessage, Facebook, …) -->
-<meta name="description" content="Beschikbaarheid, kalender en carpool voor Winter Midam 26-27 – Pampas.">
+<meta name="description" content="Rostiq – teamplanner voor sportploegen: beschikbaarheid, kalender, carpool en WhatsApp.">
 <meta property="og:type" content="website">
-<meta property="og:site_name" content="Pampas">
-<meta property="og:title" content="Carpool · Winter Midam 26-27 · Pampas">
-<meta property="og:description" content="Beschikbaarheid, kalender en carpool voor Winter Midam 26-27 – Pampas.">
-<meta property="og:url" content="https://levicaers1-pixel.github.io/team-availability/carpool.html">
-<meta property="og:image" content="https://levicaers1-pixel.github.io/team-availability/assets/og-image.png">
+<meta property="og:site_name" content="Rostiq">
+<meta property="og:title" content="Carpool · Rostiq">
+<meta property="og:description" content="Rostiq – teamplanner voor sportploegen: beschikbaarheid, kalender, carpool en WhatsApp.">
+<meta property="og:url" content="https://levicaers1-pixel.github.io/rostiq/carpool.html">
+<meta property="og:image" content="https://levicaers1-pixel.github.io/rostiq/assets/og-image.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="Pampas – Winter Midam 26-27">
+<meta property="og:image:alt" content="Rostiq – teamplanner">
 <meta property="og:locale" content="nl_BE">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="icon" type="image/png" href="assets/favicon.png">
@@ -23,7 +23,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Winter Midam">
+<meta name="apple-mobile-web-app-title" content="Rostiq">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -49,7 +49,7 @@
   .map-tools { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; margin: 10px 0; font-size: .85rem; }
   .map-tools select { font: inherit; padding: 4px 6px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text); }
   #map { height: 420px; border-radius: 8px; border: 1px solid var(--border); background: #e8e4da; }
-  /* Calmer, Pampas-toned map: soften the colorful OpenStreetMap tiles */
+  /* Calmer, brand-toned map: soften the colorful OpenStreetMap tiles */
   #map .leaflet-tile-pane { filter: grayscale(.75) sepia(.25) brightness(1.04) contrast(.92); }
   @media (max-width: 480px) { #map { height: 340px; } }
   .pin { display: flex; align-items: center; justify-content: center; border-radius: 50%; box-shadow: 0 1px 4px rgba(0, 0, 0, .35); }
@@ -116,7 +116,7 @@
 <body>
 <header class="brand">
   <div class="brand-inner">
-    <a href="./"><img class="logo" src="assets/wordmark-light.png" alt="Pampas" width="720" height="213"></a>
+    <a href="./"><span class="logo-text">Rostiq</span></a>
     <nav class="tabs"><a href="./" data-i18n="tab.availability">Availability</a><a href="carpool.html" aria-current="page" data-i18n="tab.carpool">🚗 Carpool</a><a href="ploeg.html" data-i18n="tab.team">👥 Team</a><a href="admin.html" class="admin-tab" hidden data-i18n="tab.admin">⚙️ Admin</a></nav>
   </div>
 </header>
@@ -174,7 +174,7 @@
 <script src="i18n.js"></script>
 <script src="common.js"></script>
 <script>
-let me = pref.get("me", "");
+let me = pref.get("me:" + TEAM_ID, "");
 
 // ---- Locations ----
 // Each player confirms their own place from a list of matches (OpenStreetMap
@@ -641,7 +641,7 @@ function render() {
 }
 
 document.getElementById("me").addEventListener("change", ev => {
-  me = ev.target.value; pref.set("me", me); search = { status: "idle", results: [] }; render();
+  me = ev.target.value; pref.set("me:" + TEAM_ID, me); search = { status: "idle", results: [] }; render();
 });
 document.getElementById("phone-form").addEventListener("submit", ev => {
   ev.preventDefault();

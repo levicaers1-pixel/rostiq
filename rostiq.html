@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title data-i18n-doc="rostiq.pageTitle">Rostiq · Teams</title>
+<meta name="theme-color" content="#1f3a2e">
+<meta name="robots" content="noindex">
+<link rel="icon" type="image/png" href="assets/favicon.png">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600&display=swap">
+<link rel="stylesheet" href="common.css">
+<style>
+  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; margin-top: 16px; }
+  .panel h2 { margin: 0 0 8px; }
+  .muted { color: var(--muted); font-size: .85rem; }
+  .ok { color: var(--yes); } .err { color: var(--no); }
+  .teams { list-style: none; margin: 0; padding: 0; }
+  .teams li { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; padding: 10px 0; border-top: 1px solid var(--border); }
+  .teams li:first-child { border-top: none; }
+  .teams .swatch { width: 14px; height: 14px; border-radius: 4px; border: 1px solid var(--border); flex-shrink: 0; }
+  .teams .name { font-weight: 700; }
+  .teams .grow { flex: 1; min-width: 180px; }
+  .teams a, .teams button { font-size: .85rem; }
+  .teams a.open { padding: 5px 10px; border-radius: 8px; background: var(--accent); color: var(--on-accent); text-decoration: none; }
+  form.new { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(min(240px, 100%), 1fr)); }
+  form.new label { display: grid; gap: 4px; font-size: .85rem; color: var(--muted); }
+  form.new input, form.new select { font: inherit; font-size: .95rem; color: var(--text); background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 8px; }
+  form.new .full { grid-column: 1 / -1; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  .primary { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+</style>
+</head>
+<body>
+<header class="brand">
+  <div class="brand-inner">
+    <a href="./"><span class="logo-text">Rostiq</span></a>
+  </div>
+</header>
+<main>
+  <h1 data-i18n="rostiq.title">Rostiq</h1>
+  <p class="sub"><span data-i18n="rostiq.sub"></span></p>
+  <p class="banner" id="no-access" hidden data-i18n="rostiq.noAccess"></p>
+
+  <div id="platform" hidden>
+    <section class="panel">
+      <h2 data-i18n="rostiq.teams">Teams</h2>
+      <ul class="teams" id="teams"><li class="muted">…</li></ul>
+    </section>
+
+    <section class="panel">
+      <h2 data-i18n="rostiq.new">New team</h2>
+      <form class="new" id="new-team">
+        <label><span data-i18n="rostiq.fBrand">Team name</span><input name="brand" maxlength="60" required></label>
+        <label><span data-i18n="rostiq.fId">Short id</span><input name="id" maxlength="40" required pattern="[a-z0-9][a-z0-9\-]{1,39}">
+          <span data-i18n="rostiq.fIdHelp"></span></label>
+        <label><span data-i18n="rostiq.fSeason">Season</span><input name="season" maxlength="60"></label>
+        <label><span data-i18n="rostiq.fAdminName">Admin name</span><input name="adminName" maxlength="60"></label>
+        <label><span data-i18n="rostiq.fMin">Minimum players</span><input name="min" type="number" min="1" max="50" value="4" required></label>
+        <label><span data-i18n="rostiq.fColor">Colours</span>
+          <select name="colors">
+            <option value="green" data-i18n="rostiq.colorGreen">Green & cream</option>
+            <option value="navy" data-i18n="rostiq.colorNavy">Navy & gold</option>
+            <option value="burgundy" data-i18n="rostiq.colorBurgundy">Burgundy & sand</option>
+          </select></label>
+        <div class="full"><button type="submit" class="primary" data-i18n="rostiq.create">Create team</button> <span class="msg"></span></div>
+      </form>
+    </section>
+  </div>
+</main>
+
+<script>window.PLATFORM_PAGE = true;</script>
+<script src="config.js"></script>
+<script src="team.js"></script>
+<script src="i18n.js"></script>
+<script src="common.js"></script>
+<script>
+// Colour presets for new teams (green & cream is the Rostiq default, so it needs no overrides).
+const PRESETS = {
+  green: null,
+  navy: {
+    light: { "--brand": "#16324f", "--accent": "#1f4e79", "--pampas": "#c9a227", "--bg": "#f3f5f8", "--surface": "#fbfcfd", "--border": "#d9e0e8", "--brand-text": "#f3f5f8" },
+    dark: { "--brand": "#0d1b2a", "--accent": "#c9a227", "--pampas": "#c9a227", "--bg": "#101a26", "--surface": "#16263a", "--border": "#25384f" },
+  },
+  burgundy: {
+    light: { "--brand": "#5a1f2b", "--accent": "#7a2a3a", "--pampas": "#d8c3a5", "--bg": "#f6f1ec", "--surface": "#fcf9f6", "--border": "#e6dacd", "--brand-text": "#f6f1ec" },
+    dark: { "--brand": "#2a0f15", "--accent": "#d8c3a5", "--pampas": "#d8c3a5", "--bg": "#1e1416", "--surface": "#2a1c1f", "--border": "#3d2a2e" },
+  },
+};
+const ID_OK = /^[a-z0-9][a-z0-9-]{1,39}$/;
+let teams = null; // [{ id, info, members }]
+
+const shallow = async path => { const u = await dbUrlAbs(path); return u + (u.includes("?") ? "&" : "?") + "shallow=true"; };
+async function loadTeams() {
+  const ids = Object.keys((await fetch(await shallow("teams")).then(r => r.json()).catch(() => null)) || {});
+  teams = await Promise.all(ids.map(async id => ({
+    id,
+    info: (await getAbs(`teams/${id}/info`)) || {},
+    members: Object.keys((await fetch(await shallow(`teams/${id}/members`)).then(r => r.json()).catch(() => null)) || {}).length,
+  })));
+  teams.sort((a, b) => (a.info.brand || a.id).localeCompare(b.info.brand || b.id));
+  render();
+}
+
+function render() {
+  const ok = AUTH_ON ? session.platformAdmin : true;
+  document.getElementById("no-access").hidden = ok || !session.ready;
+  document.getElementById("platform").hidden = !ok;
+  if (!ok) return;
+  if (!teams) { teams = []; loadTeams(); return; }
+  document.getElementById("teams").innerHTML = teams.length ? teams.map(x => {
+    const color = (x.info.colors && x.info.colors.light && x.info.colors.light["--brand"]) || "#1f3a2e";
+    const link = appUrl("index.html") + "?t=" + x.id;
+    return `<li>
+      <span class="swatch" style="background:${esc(color)}"></span>
+      <div class="grow"><div class="name">${esc(x.info.brand || x.id)}</div>
+        <div class="muted">${esc(x.info.season || "")} · ${esc(x.id)} · ${t("rostiq.members", { n: x.members })}</div></div>
+      <button class="link" data-copy="${esc(link)}">${t("rostiq.copyInvite")}</button>
+      <a class="open" href="${esc(link)}">${t("rostiq.open")}</a>
+    </li>`;
+  }).join("") : `<li class="muted">${t("rostiq.none")}</li>`;
+}
+
+document.getElementById("teams").addEventListener("click", ev => {
+  const b = ev.target.closest("[data-copy]");
+  if (!b) return;
+  navigator.clipboard.writeText(b.dataset.copy).catch(() => {});
+  b.textContent = t("rostiq.copied");
+});
+
+// Suggest an id from the team name.
+const form = document.getElementById("new-team");
+form.brand.addEventListener("input", () => {
+  if (!form.id.dataset.touched) form.id.value = slug(form.brand.value).replace(/^-+|-+$/g, "").slice(0, 40);
+});
+form.id.addEventListener("input", () => { form.id.dataset.touched = "1"; });
+
+form.addEventListener("submit", async ev => {
+  ev.preventDefault();
+  const msg = form.querySelector(".msg");
+  const id = form.id.value.trim(), brand = form.brand.value.trim(), season = form.season.value.trim();
+  if (!ID_OK.test(id)) { msg.textContent = t("rostiq.idInvalid"); msg.className = "msg err"; return; }
+  if (teams.some(x => x.id === id)) { msg.textContent = t("rostiq.idTaken"); msg.className = "msg err"; return; }
+  const min = Math.min(50, Math.max(1, Math.round(Number(form.min.value) || 4)));
+  const colors = PRESETS[form.colors.value];
+  const info = { brand, season: season || brand, shortName: season || brand, calendarLabel: brand, teamSize: 0, minPlayers: min,
+    ...(form.adminName.value.trim() ? { adminName: form.adminName.value.trim() } : {}), ...(colors ? { colors } : {}) };
+  const ok = await writeAbs(`teams/${id}`, { info, settings: { minPlayers: min, scheduleInDb: true, seasonName: season || brand }, initialized: true });
+  msg.className = "msg " + (ok ? "ok" : "err");
+  msg.textContent = ok ? t("rostiq.created", { name: brand }) : t("status.saveFailed");
+  if (ok) { form.reset(); delete form.id.dataset.touched; teams = null; render(); }
+});
+
+start();
+</script>
+</body>
+</html>

@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Rostiq · Migratie Pampas</title>
+<meta name="robots" content="noindex">
+<link rel="icon" type="image/png" href="assets/favicon.png">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600&display=swap">
+<link rel="stylesheet" href="common.css">
+<style>
+  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; margin-top: 16px; max-width: 760px; }
+  .panel ol { padding-left: 20px; }
+  .panel li { margin: 6px 0; }
+  .stats { font-variant-numeric: tabular-nums; }
+  .primary { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+  .ok { color: var(--yes); } .err { color: var(--no); } .muted { color: var(--muted); font-size: .85rem; }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 12px; }
+</style>
+</head>
+<body>
+<header class="brand"><div class="brand-inner"><a href="./"><span class="logo-text">Rostiq</span></a></div></header>
+<main>
+  <h1>Pampas → Rostiq</h1>
+  <p class="sub">Eenmalige overzetting van Pampas · Winter Midam naar de Rostiq-structuur (enkel voor de Rostiq-beheerder).</p>
+  <p class="banner" id="no-access" hidden>Deze pagina is enkel voor de Rostiq-beheerder.</p>
+
+  <section class="panel" id="panel" hidden>
+    <p>Wat er gebeurt:</p>
+    <ol>
+      <li>Eerst wordt automatisch een <b>back-up</b> van de hele database gedownload.</li>
+      <li>Daarna worden spelers, antwoorden, wedstrijden, details, carpools, instellingen, openstaande aanvragen en
+        de gekoppelde accounts <b>gekopieerd</b> naar <code>teams/pampas-wintermidam</code>.</li>
+      <li>De oude gegevens blijven staan (vangnet). De oude Pampas-site blijft dus gewoon werken.</li>
+    </ol>
+    <p class="muted">Je mag dit opnieuw uitvoeren (bv. vlak voor de definitieve overschakeling): de Pampas-ploeg in Rostiq wordt
+      dan opnieuw overschreven met de actuele oude gegevens. Wijzigingen die intussen in Rostiq gebeurden, gaan dan verloren.</p>
+    <p class="stats" id="stats">Gegevens laden…</p>
+    <div class="row">
+      <button class="primary" id="go" disabled>Back-up downloaden en migreren</button>
+      <span id="msg"></span>
+    </div>
+    <p class="row" id="done" hidden><a class="primary" style="padding:6px 12px;border-radius:8px;text-decoration:none" href="index.html?t=pampas-wintermidam">Pampas openen in Rostiq →</a></p>
+  </section>
+</main>
+
+<script>window.PLATFORM_PAGE = true;</script>
+<script src="config.js"></script>
+<script src="team.js"></script>
+<script src="i18n.js"></script>
+<script src="common.js"></script>
+<script>
+const TEAM_KEY = "pampas-wintermidam";
+// Pampas' own settings (were in team.js of the single-team site).
+const PAMPAS_INFO = {
+  brand: "Pampas", logo: "assets/wordmark-light.png", shortName: "Winter Midam", calendarLabel: "Wintermidam",
+  season: "Winter Midam 26-27", adminName: "Levi", teamSize: 15, minPlayers: 3,
+};
+const PAMPAS_EVENTS = [
+  ["2026-11-14", "Mormal"], ["2026-11-21", "Hainaut"], ["2026-12-13", "Lille Métropole"], ["2026-12-19", "Hainaut"],
+  ["2027-01-17", "Kapellen"], ["2027-01-23", "Hainaut"], ["2027-02-13", "Lille Métropole"], ["2027-02-21", "Mormal"],
+  ["2027-02-27", "Hainaut"], ["2027-03-06", "Keerbergen"], ["2027-03-13", "Rigenée", true],
+];
+let legacy = null;
+
+async function load() {
+  legacy = (await getAbs("")) || {};
+  const players = legacy.players || {}, users = legacy.users || {};
+  const linked = Object.entries(users).filter(([uid, u]) => u && u.pid && players[u.pid] && players[u.pid].uid === uid);
+  const answers = Object.values(players).reduce((n, p) => n + Object.keys(p.avail || {}).length, 0);
+  const rides = Object.values(legacy.carpool || {}).reduce((n, d) => n + Object.keys(d).length, 0);
+  document.getElementById("stats").innerHTML =
+    `Oude Pampas-gegevens: <b>${Object.keys(players).length}</b> spelers · <b>${linked.length}</b> gekoppelde accounts · ` +
+    `<b>${answers}</b> antwoorden · <b>${Object.keys(legacy.matches || {}).length}</b> wedstrijddetails · ` +
+    `<b>${rides}</b> carpool-items · <b>${Object.keys(legacy.requests || {}).length}</b> open aanvragen` +
+    (legacy.teams && legacy.teams[TEAM_KEY] ? `<br><span class="muted">Pampas staat al in Rostiq (vorige migratie) en wordt overschreven.</span>` : "");
+  document.getElementById("go").disabled = false;
+}
+
+function render() {
+  const ok = session.platformAdmin;
+  document.getElementById("no-access").hidden = ok || !session.ready;
+  document.getElementById("panel").hidden = !ok;
+  if (ok && !legacy) { legacy = {}; load(); }
+}
+
+document.getElementById("go").onclick = async () => {
+  const msg = document.getElementById("msg");
+  // 1) Backup of everything, as it is now.
+  const all = (await getAbs("")) || {};
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([JSON.stringify({ exportedAt: new Date().toISOString(), data: all }, null, 2)], { type: "application/json" }));
+  a.download = `rostiq-backup-voor-migratie-${TODAY}.json`;
+  a.click();
+
+  // 2) Build the Pampas team from the old root data.
+  const players = all.players || {}, users = all.users || {};
+  const members = {}, index = {};
+  for (const [uid, u] of Object.entries(users)) {
+    if (u && u.pid && players[u.pid] && players[u.pid].uid === uid) { members[uid] = u.pid; index[`users/${uid}/teams/${TEAM_KEY}`] = u.pid; }
+  }
+  const schedule = all.schedule && Object.keys(all.schedule).length ? all.schedule
+    : Object.fromEntries(PAMPAS_EVENTS.map(([d, opp, final]) => [d, { opp, ...(final ? { final: true } : {}) }]));
+  const team = {
+    info: { ...PAMPAS_INFO, events: PAMPAS_EVENTS.map(([date, opp, final]) => ({ date, opp, ...(final ? { final: true } : {}) })) },
+    settings: { ...(all.settings || {}), scheduleInDb: true },
+    initialized: true,
+    players, members, schedule,
+    ...(all.matches ? { matches: all.matches } : {}),
+    ...(all.carpool ? { carpool: all.carpool } : {}),
+    ...(all.requests ? { requests: all.requests } : {}),
+  };
+  msg.className = ""; msg.textContent = "Bezig…";
+  const ok = await send("PATCH", "", { [`teams/${TEAM_KEY}`]: team, ...index }, true);
+  msg.className = ok ? "ok" : "err";
+  msg.textContent = ok
+    ? `✓ Gemigreerd: ${Object.keys(players).length} spelers, ${Object.keys(members).length} accounts.`
+    : "✗ Migratie mislukt (niets gewijzigd). Zijn de overgangsregels gepubliceerd?";
+  document.getElementById("done").hidden = !ok;
+  if (ok) load();
+};
+
+start();
+</script>
+</body>
+</html>

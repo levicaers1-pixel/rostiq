@@ -166,3 +166,10 @@ button.link { background: none; border: none; padding: 0; text-decoration: under
 .gate .hint { color: var(--muted); font-size: .8rem; margin: 14px 0 0; }
 .claim-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }
 .claim-list button { padding: 10px; font-size: .95rem; }
+
+/* Team picker and team chip (Rostiq) */
+.team-list { display: grid; gap: 8px; margin-top: 8px; }
+.team-list button { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 12px 14px; text-align: left; font-size: 1rem; }
+.team-list button span { color: var(--muted); font-size: .85rem; }
+.team-chip { display: inline-block; margin: 0 0 8px; padding: 3px 10px; border-radius: 999px; background: var(--brand); color: var(--brand-text); font-size: .8rem; font-weight: 600; }
+.account .switch { color: var(--brand-text); opacity: .85; text-decoration: underline; white-space: nowrap; }
