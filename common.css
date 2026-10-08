@@ -81,8 +81,10 @@ button:disabled { cursor: default; opacity: .5; }
 .brand-inner, main { padding-left: max(16px, env(safe-area-inset-left)); padding-right: max(16px, env(safe-area-inset-right)); }
 .brand-inner { max-width: 1200px; margin: 0 auto; padding: 18px 16px 0; }
 .brand .logo { display: block; height: 58px; width: auto; }
-.tabs { display: flex; gap: 4px; margin-top: 10px; }
+.tabs { display: flex; gap: 4px; margin-top: 10px; overflow-x: auto; scrollbar-width: none; }
+.tabs::-webkit-scrollbar { display: none; }
 .tabs a {
+  white-space: nowrap; flex-shrink: 0;
   padding: 8px 14px; color: var(--brand-text); opacity: .7; text-decoration: none; font-weight: 600;
   border-bottom: 3px solid transparent; margin-bottom: -3px;
 }

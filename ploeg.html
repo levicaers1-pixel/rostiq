@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title data-i18n-doc="team.pageTitle">Pampas · Team</title>
+<meta name="theme-color" content="#1f3a2e">
+<meta name="robots" content="noindex">
+<link rel="icon" type="image/png" href="assets/favicon.png">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Winter Midam">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600&display=swap">
+<link rel="stylesheet" href="common.css">
+<style>
+  .toolbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 18px 0 12px; }
+  .toolbar input { flex: 1 1 220px; min-width: 0; font: inherit; font-size: .9rem; padding: 7px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text); }
+  .grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr)); }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+  .card.me { border-color: var(--accent); box-shadow: inset 3px 0 0 var(--accent); }
+  .head { display: flex; gap: 12px; align-items: center; }
+  .avatar { width: 44px; height: 44px; border-radius: 50%; background: var(--brand); color: var(--brand-text); display: flex; align-items: center; justify-content: center;
+    font-family: "Cormorant Garamond", Georgia, serif; font-weight: 600; font-size: 1.2rem; flex-shrink: 0; font-variant-numeric: lining-nums; }
+  .name { font-weight: 700; font-size: 1.02rem; overflow-wrap: anywhere; }
+  .you { font-size: .7rem; font-weight: 700; background: var(--pampas); color: var(--brand); border-radius: 999px; padding: 1px 8px; margin-left: 6px; vertical-align: 2px; }
+  .place { color: var(--muted); font-size: .85rem; }
+  .info { display: grid; gap: 4px; font-size: .88rem; }
+  .info a { color: var(--accent); overflow-wrap: anywhere; }
+  .info .missing { color: var(--muted); font-style: italic; }
+  .fed { font-variant-numeric: tabular-nums; letter-spacing: .02em; }
+  .copy { border: none; background: none; padding: 0 4px; font-size: .85rem; color: var(--muted); }
+  .stats { display: flex; flex-wrap: wrap; gap: 6px; }
+  .stat { font-size: .78rem; background: var(--bg); border-radius: 999px; padding: 3px 9px; color: var(--muted); }
+  .stat b { color: var(--text); }
+  .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: auto; }
+  .actions a, .actions button { font-size: .85rem; padding: 5px 10px; border-radius: 8px; text-decoration: none; }
+  .wa { background: #25d366; color: #fff; border: 1px solid #25d366; }
+  .empty { color: var(--muted); }
+
+  /* Edit dialog */
+  .edit-dlg label { display: grid; gap: 4px; font-size: .8rem; color: var(--muted); margin-top: 10px; }
+  .edit-dlg input { font: inherit; font-size: .95rem; color: var(--text); background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 8px; }
+  .edit-dlg .primary { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+  .edit-dlg .err { color: var(--no); font-size: .85rem; margin: 8px 0 0; }
+  .edit-dlg .hint { color: var(--muted); font-size: .8rem; }
+</style>
+</head>
+<body>
+<header class="brand">
+  <div class="brand-inner">
+    <a href="./"><img class="logo" src="assets/wordmark-light.png" alt="Pampas" width="720" height="213"></a>
+    <nav class="tabs"><a href="./" data-i18n="tab.availability">Availability</a><a href="carpool.html" data-i18n="tab.carpool">🚗 Carpool</a><a href="ploeg.html" aria-current="page" data-i18n="tab.team">👥 Team</a><a href="admin.html" class="admin-tab" hidden data-i18n="tab.admin">⚙️ Admin</a></nav>
+  </div>
+</header>
+<main>
+  <h1 data-i18n="team.title">Team</h1>
+  <p class="sub"><span data-i18n="team.sub"></span> · <span class="status" id="status" data-i18n="status.connecting">Connecting…</span></p>
+  <p class="banner" id="banner" hidden data-i18n-html="banner.noDb"></p>
+
+  <div class="toolbar">
+    <input id="filter" type="search" data-i18n-placeholder="team.search" autocomplete="off">
+    <button id="export" hidden data-i18n="team.export">⬇️ Export member list</button>
+  </div>
+  <div class="grid" id="grid"></div>
+</main>
+
+<dialog id="edit" class="edit-dlg">
+  <form method="dialog" id="edit-form">
+    <h3 id="edit-title"></h3>
+    <label><span data-i18n="team.fName">Name</span><input name="name" maxlength="60" autocomplete="name"></label>
+    <label><span data-i18n="team.fEmail">Email</span><input name="email" type="email" maxlength="100" autocomplete="email"></label>
+    <label><span data-i18n="team.fFed">Federation number</span><input name="fed" maxlength="20" autocomplete="off" inputmode="text"></label>
+    <label><span data-i18n="phone.label">📱 Mobile</span><input name="phone" type="tel" maxlength="25" autocomplete="tel" data-i18n-placeholder="phone.ph"></label>
+    <p class="hint" data-i18n="team.editHint"></p>
+    <p class="err" id="edit-err" hidden></p>
+    <div class="row">
+      <button type="button" id="edit-cancel" data-i18n="details.cancel">Cancel</button>
+      <button type="submit" class="primary" data-i18n="details.save">Save</button>
+    </div>
+  </form>
+</dialog>
+
+<script src="config.js"></script>
+<script src="i18n.js"></script>
+<script src="common.js"></script>
+<script>
+const FED = /^[A-Za-z0-9 .\/-]{1,20}$/;
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const initials = name => String(name || "?").trim().split(/\s+/).slice(0, 2).map(w => w[0] || "").join("").toUpperCase();
+let filterText = "";
+
+// Season numbers for one player: answers, and carpool rides as driver / passenger.
+function statsFor(p) {
+  const s = { yes: 0, maybe: 0, answered: 0, drove: 0, rode: 0 };
+  for (const e of EVENTS) {
+    const a = (p.avail || {})[e.date];
+    if (a) s.answered++;
+    if (a === "yes") s.yes++;
+    if (a === "maybe") s.maybe++;
+    const c = root.carpool && root.carpool[e.date] && root.carpool[e.date][p.id];
+    if (c && c.role === "driver") s.drove++;
+    if (c && c.role === "rider" && c.with) s.rode++;
+  }
+  return s;
+}
+
+function render() {
+  document.getElementById("export").hidden = !session.admin;
+  const q = filterText.toLowerCase();
+  const players = sortedPlayers().filter(p => p.name)
+    .filter(p => !q || [p.name, p.gemeente, p.email, p.fed].some(x => (x || "").toLowerCase().includes(q)));
+  const grid = document.getElementById("grid");
+  if (!players.length) { grid.innerHTML = `<p class="empty">${t("team.none")}</p>`; return; }
+  grid.innerHTML = players.map(p => {
+    const st = statsFor(p), mine = AUTH_ON && p.id === session.pid, editable = canEdit(p.id);
+    const place = (p.geo && p.geo.label) || p.gemeente;
+    return `<article class="card ${mine ? "me" : ""}">
+      <div class="head">
+        <div class="avatar">${esc(initials(p.name))}</div>
+        <div><div class="name">${esc(p.name)}${mine ? `<span class="you">${t("team.you")}</span>` : ""}</div>
+          <div class="place">${place ? "📍 " + esc(place) : ""}</div></div>
+      </div>
+      <div class="info">
+        <div>✉️ ${p.email ? `<a href="mailto:${esc(p.email)}">${esc(p.email)}</a>` : `<span class="missing">${t("team.noEmail")}</span>`}</div>
+        <div>🏌️ ${t("team.fed")}: ${p.fed
+          ? `<span class="fed">${esc(p.fed)}</span><button class="copy" data-copy="${esc(p.fed)}" title="${t("copy")}">📋</button>`
+          : `<span class="missing">${t("team.noFed")}</span>`}</div>
+      </div>
+      <div class="stats">
+        <span class="stat">✓ <b>${st.yes}</b>/${EVENTS.length} ${t("team.statYes")}</span>
+        ${st.maybe ? `<span class="stat">? <b>${st.maybe}</b></span>` : ""}
+        <span class="stat">🚗 <b>${st.drove}</b> ${t("team.statDrove")}</span>
+        <span class="stat">🙋 <b>${st.rode}</b> ${t("team.statRode")}</span>
+      </div>
+      <div class="actions">
+        ${p.phone && !mine ? `<a class="wa" href="https://wa.me/${p.phone}" target="_blank" rel="noopener">💬 WhatsApp</a>` : ""}
+        ${editable ? `<button data-edit="${p.id}">✏️ ${t(mine ? "team.editMine" : "team.edit")}</button>` : ""}
+      </div>
+    </article>`;
+  }).join("");
+}
+
+document.getElementById("filter").addEventListener("input", ev => { filterText = ev.target.value.trim(); render(); });
+document.getElementById("grid").addEventListener("click", async ev => {
+  const c = ev.target.closest("[data-copy]");
+  if (c) {
+    try { await navigator.clipboard.writeText(c.dataset.copy); c.textContent = "✓"; setTimeout(() => (c.textContent = "📋"), 1200); } catch {}
+  }
+  const e = ev.target.closest("[data-edit]");
+  if (e) openEdit(e.dataset.edit);
+});
+
+// ---- Edit my (or, for the admin, anyone's) details ----
+const dlg = document.getElementById("edit"), form = document.getElementById("edit-form");
+let editing = null;
+function openEdit(pid) {
+  const p = root.players[pid];
+  editing = pid;
+  document.getElementById("edit-title").textContent = p.name || "";
+  form.name.value = p.name || "";
+  form.email.value = p.email || "";
+  form.fed.value = p.fed || "";
+  form.phone.value = p.phone ? "+" + p.phone : "";
+  document.getElementById("edit-err").hidden = true;
+  dlg.showModal();
+}
+document.getElementById("edit-cancel").onclick = () => dlg.close();
+form.addEventListener("submit", ev => {
+  const err = msg => { ev.preventDefault(); const el = document.getElementById("edit-err"); el.textContent = msg; el.hidden = false; };
+  const name = form.name.value.trim(), email = form.email.value.trim(), fed = form.fed.value.trim().toUpperCase(), rawPhone = form.phone.value.trim();
+  if (!name) return err(t("team.errName"));
+  if (email && !EMAIL.test(email)) return err(t("team.errEmail"));
+  if (fed && !FED.test(fed)) return err(t("team.errFed"));
+  const phone = rawPhone ? normPhone(rawPhone) : null;
+  if (rawPhone && !phone) return err(t("phone.invalid"));
+  const base = `players/${editing}/`;
+  update({ [base + "name"]: name.slice(0, 60), [base + "email"]: email || null, [base + "fed"]: fed || null, [base + "phone"]: phone });
+});
+
+// ---- Admin: member list as CSV (e.g. for registrations) ----
+document.getElementById("export").onclick = () => {
+  const rows = [[t("team.fName"), t("team.fEmail"), t("team.fFed"), "Gemeente", t("team.fPhone")]];
+  for (const p of sortedPlayers().filter(p => p.name))
+    rows.push([p.name, p.email || "", p.fed || "", (p.geo && p.geo.label) || p.gemeente || "", p.phone ? "+" + p.phone : ""]);
+  const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(";")).join("\r\n");
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob(["﻿" + csv], { type: "text/csv" }));
+  a.download = `ledenlijst-${TODAY}.csv`;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+};
+
+start();
+</script>
+</body>
+</html>
