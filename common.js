@@ -291,6 +291,15 @@ function injectPhonePrompt() {
   form.querySelector("[data-later]").onclick = () => { pref.set("phoneLater", session.pid || ""); renderPhonePrompt(); };
 }
 
+// A linked player without a contact email gets the email they sign in with (once per visit).
+let loginEmailFilled = false;
+function fillLoginEmail() {
+  const pid = session.pid, email = session.user && session.user.email;
+  if (!AUTH_ON || loginEmailFilled || !pid || !email || !root.players || !root.players[pid]) return;
+  loginEmailFilled = true;
+  if (!root.players[pid].email) write(`players/${pid}/email`, email.toLowerCase());
+}
+
 function syncSession() {
   if (AUTH_ON) {
     const uid = session.user && session.user.uid;
@@ -298,6 +307,7 @@ function syncSession() {
     session.pid = pid && root.players && root.players[pid] ? pid : null;
     session.ready = true;
   }
+  fillLoginEmail();
   refreshEvents();
   renderCountdown();
   renderSeasonTitle();

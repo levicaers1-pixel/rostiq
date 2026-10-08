@@ -190,9 +190,11 @@ document.getElementById("requests").addEventListener("click", ev => {
     if (pid === "__new") {
       pid = "p" + Date.now().toString(36);
       const order = sortedPlayers().reduce((m, p) => Math.max(m, p.order || 0), 0) + 1;
-      changes[`players/${pid}`] = { order, name: (r.name || "?").slice(0, 60), uid };
+      changes[`players/${pid}`] = { order, name: (r.name || "?").slice(0, 60), uid, ...(r.email ? { email: r.email.toLowerCase() } : {}) };
     } else {
       changes[`players/${pid}/uid`] = uid;
+      // Their login email becomes the contact email, unless one is already filled in.
+      if (r.email && !root.players[pid].email) changes[`players/${pid}/email`] = r.email.toLowerCase();
     }
     changes[`users/${uid}/pid`] = pid;
     update(changes);
@@ -209,6 +211,7 @@ function renderPlayers() {
       <div><span class="name">${esc(displayName(p, i))}</span>
         <div class="flags">
           ${AUTH_ON ? (p.uid ? `<span>🔗 ${t("accounts.linked")}${p.uid === me ? " " + t("accounts.you") : ""}</span>` : flag(false, "🔗 " + t("accounts.notLinked"))) : ""}
+          ${p.email ? `<span>✉️ ${esc(p.email)}</span>` : ""}
           ${flag(!!p.phone, t("admin.hasPhone"))}
           ${flag(!!(p.geo || p.gemeente), t("admin.hasPlace"))}
         </div></div>
