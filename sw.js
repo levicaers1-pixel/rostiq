@@ -6,7 +6,7 @@
 //   the last-known team data itself.
 const CACHE = "rostiq-v1";
 const SHELL = [
-  "./", "index.html", "carpool.html", "ploeg.html", "admin.html", "rostiq.html",
+  "./", "index.html", "carpool.html", "ploeg.html", "admin.html", "rostiq.html", "start.html",
   "common.css", "common.js", "i18n.js", "icons.js", "boot.js", "team.js", "config.js", "manifest.webmanifest",
   "assets/rostiq-logo-header.png", "assets/icon-192.png", "assets/icon-512.png", "assets/favicon.png",
   "assets/apple-touch-icon.png", "assets/wordmark-light.png",

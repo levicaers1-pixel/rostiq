@@ -1027,6 +1027,7 @@ function renderAccount() {
         <span class="pill ${session.platformAdmin ? "dark" : session.admin ? "cyan" : "gray"}">${role}</span></div>
       ${switchable && TEAM_ID ? `<a class="menu-item" role="menuitem" href="${appUrl("index.html")}?pick">${ic("switch")} ${t("pick.switch")}</a>` : ""}
       ${session.platformAdmin ? `<a class="menu-item" role="menuitem" href="${appUrl("rostiq.html")}">${ic("settings")} ${t("menu.platform")}</a>` : ""}
+      <a class="menu-item" role="menuitem" href="${appUrl("start.html")}">${ic("plus")} ${t("menu.newTeam")}</a>
       ${canInstall() ? `<button class="menu-item" role="menuitem" data-install>${ic("download")} ${t("menu.install")}</button>` : ""}
       <div class="menu-lang"><span>${t("menu.language")}</span><div class="lang">${langButtons()}</div></div>
       <button class="menu-item danger" role="menuitem" data-signout>${ic("x")} ${t("auth.signOut")}</button>
@@ -1093,6 +1094,7 @@ function renderAuth() {
           return `<button data-team="${esc(x.id)}"><span class="team-swatch" style="background:${HEX.test(c) ? c : BRAND_PRESETS[0][1]}">${esc(initials0(x.info.brand || x.id))}</span>
             <span class="team-name"><b>${esc(x.info.brand || x.id)}</b>${x.info.season ? `<small>${esc(x.info.season)}</small>` : ""}</span>${ic("arrow-right")}</button>`;
         }).join("")}</div>` : `<p class="sub">${t("pick.none")}</p>`}
+        <a class="start-own" href="${appUrl("start.html")}">${ic("plus")} ${t("pick.start")}</a>
         ${signOutRow(session.platformAdmin ? `<a href="${appUrl("rostiq.html")}">${ic("settings")} ${t("pick.manage")}</a> · ` : "")}
       </div>
     </div>`;

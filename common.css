@@ -387,3 +387,8 @@ details.panel[open] > summary::after { transform: translateY(2px) rotate(-135deg
 .offline-bar svg.i { flex-shrink: 0; }
 /* Install help (iPhone) */
 .install-dlg ol { margin: 0 0 6px; padding-left: 20px; display: grid; gap: 8px; font-size: .92rem; }
+
+/* "Start your own team" link on the team picker */
+.start-own { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 12px; padding: 12px; border-radius: 14px;
+  border: 1.5px dashed color-mix(in srgb, var(--accent) 35%, var(--border)); color: var(--accent); font-weight: 600; text-decoration: none; }
+.start-own:hover { background: color-mix(in srgb, var(--accent) 5%, var(--surface)); }

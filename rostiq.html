@@ -30,6 +30,18 @@
   form.new label { display: grid; gap: 4px; font-size: .85rem; color: var(--muted); }
   form.new input, form.new select { font: inherit; font-size: .95rem; color: var(--text); background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 8px; }
   form.new .full { grid-column: 1 / -1; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  .teams .by { font-size: .78rem; color: var(--muted); }
+  .teams button.del { color: var(--no); }
+  .signup label.check { display: flex; align-items: center; gap: 8px; font-size: .92rem; }
+  .codes { list-style: none; margin: 12px 0; padding: 0; display: grid; gap: 6px; }
+  .codes li { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 8px 10px; border: 1px solid var(--border); border-radius: 10px; }
+  .codes code { font-weight: 700; font-size: .9rem; }
+  .codes .grow { flex: 1; color: var(--muted); font-size: .85rem; }
+  form.code-new { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  form.code-new input { font: inherit; font-size: .9rem; padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg); color: var(--text); }
+  form.code-new input[name=code] { text-transform: uppercase; width: 170px; }
+  form.code-new input[name=uses] { width: 90px; }
+  form.code-new input[name=note] { flex: 1 1 160px; min-width: 0; }
 </style>
 </head>
 <body>
@@ -47,6 +59,20 @@
     <section class="panel">
       <h2 data-i18n="rostiq.teams">Teams</h2>
       <ul class="teams" id="teams"><li class="muted">…</li></ul>
+    </section>
+
+    <section class="panel signup">
+      <h2 data-i18n="rostiq.signup">Self-service</h2>
+      <p class="muted" data-i18n-html="rostiq.signupHelp"></p>
+      <label class="check"><input type="checkbox" id="signup-open"> <span data-i18n="rostiq.signupOpen">Anyone may start a team (no code needed)</span></label>
+      <h3 data-i18n="rostiq.codes" style="margin:16px 0 0;font-size:1rem">Pilot codes</h3>
+      <ul class="codes" id="codes"></ul>
+      <form class="code-new" id="code-new">
+        <input name="code" maxlength="30" required pattern="[A-Za-z0-9\-]{3,30}" placeholder="PILOT-GOLF">
+        <input name="uses" type="number" min="1" max="1000" value="5" required data-i18n-title="rostiq.codeUses">
+        <input name="note" maxlength="60" data-i18n-placeholder="rostiq.codeNote">
+        <button class="primary" data-i18n="rostiq.codeAdd">Create code</button>
+      </form>
     </section>
 
     <section class="panel">
@@ -79,11 +105,11 @@ let teams = null; // [{ id, info, members }]
 const shallow = async path => { const u = await dbUrlAbs(path); return u + (u.includes("?") ? "&" : "?") + "shallow=true"; };
 async function loadTeams() {
   const ids = Object.keys((await fetch(await shallow("teams")).then(r => r.json()).catch(() => null)) || {});
-  teams = await Promise.all(ids.map(async id => ({
-    id,
-    info: (await getAbs(`teams/${id}/info`)) || {},
-    members: Object.keys((await fetch(await shallow(`teams/${id}/members`)).then(r => r.json()).catch(() => null)) || {}).length,
-  })));
+  teams = await Promise.all(ids.map(async id => {
+    const memberIds = Object.keys((await fetch(await shallow(`teams/${id}/members`)).then(r => r.json()).catch(() => null)) || {});
+    return { id, info: (await getAbs(`teams/${id}/info`)) || {}, meta: (await getAbs(`teams/${id}/meta`)) || null, memberIds, members: memberIds.length };
+  }));
+  signup = { open: (await getAbs("signup/open")) === true, codes: (await getAbs("signupCodes")) || {} };
   teams.sort((a, b) => (a.info.brand || a.id).localeCompare(b.info.brand || b.id));
   render();
 }
@@ -100,14 +126,62 @@ function render() {
     return `<li>
       <span class="swatch" style="background:${esc(color)}"></span>
       <div class="grow"><div class="name">${esc(x.info.brand || x.id)}</div>
-        <div class="muted">${esc(x.info.season || "")} · ${esc(x.id)} · ${t("rostiq.members", { n: x.members })}</div></div>
+        <div class="muted">${esc(x.info.season || "")} · ${esc(x.id)} · ${t("rostiq.members", { n: x.members })}</div>
+        ${x.meta ? `<div class="by">${t("rostiq.startedBy", { who: esc(x.meta.creatorName || "?") + (x.meta.creatorEmail ? ` (${esc(x.meta.creatorEmail)})` : ""),
+          when: esc(new Date(x.meta.createdAt || 0).toLocaleDateString(LOCALE)) })}${x.meta.code ? ` · ${esc(x.meta.code)}` : ""}</div>` : ""}</div>
       <button class="link" data-copy="${esc(link)}">${t("rostiq.copyInvite")}</button>
       <a class="open" href="${esc(link)}">${t("rostiq.open")}</a>
+      <button class="link del" data-delete="${esc(x.id)}">${t("rostiq.delete")}</button>
     </li>`;
   }).join("") : `<li class="muted">${t("rostiq.none")}</li>`;
+  // Self-service
+  document.getElementById("signup-open").checked = signup.open;
+  const codes = Object.entries(signup.codes).sort(([a], [b]) => a.localeCompare(b));
+  document.getElementById("codes").innerHTML = codes.length ? codes.map(([c, v]) => `<li><code>${esc(c)}</code>
+      <span class="pill ${v.uses > 0 ? "yes" : "gray"}">${t("rostiq.codeLeft", { n: v.uses || 0 })}</span>
+      <span class="grow">${esc(v.note || "")}</span>
+      <button class="link" data-copy="${esc(appUrl("start.html"))}">${t("rostiq.copyStart")}</button>
+      <button class="link del" data-code-del="${esc(c)}">${t("rostiq.delete")}</button></li>`).join("")
+    : `<li class="muted">${t("rostiq.noCodes")}</li>`;
+}
+let signup = { open: false, codes: {} };
+document.getElementById("signup-open").addEventListener("change", async ev => {
+  const ok = await writeAbs("signup/open", ev.target.checked ? true : null);
+  if (ok) signup.open = ev.target.checked; else ev.target.checked = signup.open;
+  if (ok) toast(t("toast.saved"));
+});
+document.getElementById("code-new").addEventListener("submit", async ev => {
+  ev.preventDefault();
+  const fm = ev.target, code = fm.code.value.trim().toUpperCase(), uses = Math.max(1, Math.min(1000, Number(fm.uses.value) || 1));
+  if (!/^[A-Z0-9-]{3,30}$/.test(code)) return;
+  const v = { uses, ...(fm.note.value.trim() ? { note: fm.note.value.trim().slice(0, 60) } : {}) };
+  if (await writeAbs(`signupCodes/${code}`, v)) { signup.codes[code] = v; fm.reset(); render(); toast(t("toast.saved")); }
+});
+document.getElementById("codes").addEventListener("click", async ev => {
+  const d = ev.target.closest("[data-code-del]");
+  if (d && confirm(t("rostiq.codeDelConfirm", { code: d.dataset.codeDel })) && await writeAbs(`signupCodes/${d.dataset.codeDel}`, null)) {
+    delete signup.codes[d.dataset.codeDel]; render();
+  }
+  const c = ev.target.closest("[data-copy]");
+  if (c) { navigator.clipboard.writeText(c.dataset.copy).catch(() => {}); c.textContent = t("rostiq.copied"); }
+});
+// Delete a team: the team, everyone's "my teams" entry for it, and the creator's "started" slot.
+async function deleteTeam(id) {
+  const x = teams.find(tm => tm.id === id);
+  if (!x || !confirm(t("rostiq.deleteConfirm", { name: x.info.brand || id }))) return;
+  const changes = { [`teams/${id}`]: null };
+  for (const uid of x.memberIds) changes[`users/${uid}/teams/${id}`] = null;
+  if (x.meta && x.meta.createdBy) {
+    const slots = (await getAbs(`users/${x.meta.createdBy}/created`)) || {};
+    for (const [slot, tid] of Object.entries(slots)) if (tid === id) changes[`users/${x.meta.createdBy}/created/${slot}`] = null;
+  }
+  if (await send("PATCH", "", changes, true, true) === true) { teams = teams.filter(tm => tm.id !== id); render(); toast(t("rostiq.deleted")); }
+  else toast(t("status.saveFailed"), "err");
 }
 
 document.getElementById("teams").addEventListener("click", ev => {
+  const del = ev.target.closest("[data-delete]");
+  if (del) return deleteTeam(del.dataset.delete);
   const b = ev.target.closest("[data-copy]");
   if (!b) return;
   navigator.clipboard.writeText(b.dataset.copy).catch(() => {});

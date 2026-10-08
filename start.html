@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title data-i18n-doc="start.pageTitle">RostiQ · Start je ploeg</title>
+<meta name="theme-color" content="#1e1b4b">
+<meta name="description" content="Start je ploeg op RostiQ – teamplanner voor sportploegen: beschikbaarheid, carpool, kalender en WhatsApp.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="RostiQ">
+<meta property="og:title" content="Start je ploeg op RostiQ">
+<meta property="og:description" content="Beschikbaarheid, carpool, kalender en WhatsApp voor je sportploeg – zonder app te installeren.">
+<meta property="og:image" content="https://levicaers1-pixel.github.io/rostiq/assets/og-image.png">
+<link rel="icon" type="image/png" href="assets/favicon.png">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Cormorant+Garamond:wght@600&display=swap">
+<link rel="stylesheet" href="common.css">
+<style>
+  .start { max-width: 620px; }
+  .start-form { display: grid; gap: 16px; padding: 20px; margin-top: 20px; }
+  .start-form label { display: grid; gap: 5px; font-size: .85rem; color: var(--muted); font-weight: 500; }
+  .start-form input, .start-form select { font: inherit; font-size: .95rem; color: var(--text); background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px 12px; }
+  .start-form .two { display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(min(240px, 100%), 1fr)); }
+  .start-form small { font-size: .78rem; color: var(--muted); font-weight: 400; }
+  .start-form small.ok { color: var(--yes); } .start-form small.err { color: var(--no); }
+  .idrow { display: flex; align-items: center; gap: 0; }
+  .idrow span { padding: 10px 0 10px 12px; color: var(--muted); font-size: .85rem; background: var(--bg); border: 1px solid var(--border); border-right: none; border-radius: var(--radius-sm) 0 0 var(--radius-sm); white-space: nowrap; }
+  .idrow input { flex: 1; min-width: 0; border-radius: 0 var(--radius-sm) var(--radius-sm) 0 !important; }
+  .swatches { display: flex; gap: 8px; flex-wrap: wrap; }
+  .swatches button { width: 42px; height: 42px; padding: 0; border-radius: 10px; border: 2px solid var(--border); background: linear-gradient(135deg, var(--a) 0 58%, var(--b) 58% 100%); }
+  .swatches button[aria-pressed="true"] { border-color: var(--text); box-shadow: 0 0 0 2px var(--bg) inset; }
+  .start-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .start-actions .primary { padding: 11px 20px; font-size: .95rem; }
+  .start-points { list-style: none; margin: 18px 0 0; padding: 0; display: grid; gap: 8px; color: var(--muted); font-size: .9rem; }
+  .start-points li { display: flex; gap: 10px; align-items: center; }
+  .start-points svg.i { color: var(--accent); }
+</style>
+</head>
+<body>
+<header class="brand">
+  <div class="brand-inner">
+    <a href="./"><img class="logo rostiq-logo" src="assets/rostiq-logo-header.png" alt="RostiQ"></a>
+  </div>
+</header>
+<main class="start">
+  <h1 data-i18n="start.title">Start your team</h1>
+  <p class="sub" data-i18n="start.sub"></p>
+  <ul class="start-points">
+    <li data-i18n-html="start.p1"></li><li data-i18n-html="start.p2"></li><li data-i18n-html="start.p3"></li>
+  </ul>
+
+  <form class="panel start-form" id="start-form" hidden>
+    <label id="code-field"><span data-i18n="start.code">Pilot code</span>
+      <input name="code" autocomplete="off" autocapitalize="characters" maxlength="30" placeholder="PILOT-…">
+      <small id="code-msg" data-i18n="start.codeHelp"></small></label>
+    <div class="two">
+      <label><span data-i18n="start.name">Team name</span><input name="brand" maxlength="60" required autocomplete="off"></label>
+      <label><span data-i18n="fields.sport">Sport</span><select name="sport" id="sport"></select></label>
+    </div>
+    <label><span data-i18n="start.id">Team link</span>
+      <div class="idrow"><span id="id-prefix"></span><input name="id" maxlength="40" required autocomplete="off" pattern="[a-z0-9][a-z0-9\-]{1,39}"></div>
+      <small id="id-msg"></small></label>
+    <div class="two">
+      <label><span data-i18n="start.season">Season / competition (optional)</span><input name="season" maxlength="60" autocomplete="off"></label>
+      <label><span data-i18n="start.you">Your name in the team</span><input name="you" maxlength="60" required autocomplete="name"></label>
+    </div>
+    <div>
+      <p class="field-label" data-i18n="brand.colors">Colours</p>
+      <div class="swatches" id="swatches"></div>
+    </div>
+    <div class="start-actions">
+      <button class="primary" type="submit" id="create" data-i18n="start.create">Create team</button>
+      <small class="err" id="create-err" hidden></small>
+    </div>
+  </form>
+</main>
+
+<script>window.PLATFORM_PAGE = true;</script>
+<script src="icons.js"></script>
+<script src="config.js"></script>
+<script src="team.js"></script>
+<script src="i18n.js"></script>
+<script src="common.js"></script>
+<script>
+// Self-service: a signed-in person starts a team (with a pilot code while signup isn't open to all).
+// One write creates the team with them as admin and first player, their "my teams" entry, one of their
+// three "started" slots and one use less of the code. The database rules check all of that.
+const ID_OK = /^[a-z0-9][a-z0-9-]{1,39}$/;
+const f = document.getElementById("start-form");
+const st = { open: null, code: { value: "", uses: null }, idTaken: false, idTouched: false, colors: BRAND_PRESETS[0][0], busy: false, loaded: false };
+
+f.sport.innerHTML = Object.keys(SPORTS).map(k => `<option value="${k}">${SPORTS[k].icon} ${t("sport." + k)}</option>`).join("");
+document.getElementById("create").textContent = t("start.create");
+document.getElementById("id-prefix").textContent = appUrl("").replace(/^https?:\/\//, "") + "?t=";
+
+async function load() {
+  st.loaded = true;
+  st.open = (await getAbs("signup/open")) === true;
+  if (!f.you.value) f.you.value = (session.user && session.user.displayName) || "";
+  render();
+}
+
+function render() {
+  const signedIn = AUTH_ON ? !!session.user && session.ready : true;
+  f.hidden = !signedIn;
+  if (!signedIn) return;
+  if (!st.loaded) { load(); return; }
+  document.getElementById("code-field").hidden = st.open === true;
+  const cm = document.getElementById("code-msg");
+  cm.className = st.code.uses === null ? "" : st.code.uses > 0 ? "ok" : "err";
+  cm.textContent = !st.code.value ? t("start.codeHelp") : st.code.uses === null ? "…" : st.code.uses > 0 ? t("start.codeOk", { n: st.code.uses }) : t("start.codeBad");
+  const im = document.getElementById("id-msg");
+  const id = f.id.value.trim();
+  im.className = !id ? "" : !ID_OK.test(id) || st.idTaken ? "err" : "ok";
+  im.textContent = !id ? t("start.idHelp") : !ID_OK.test(id) ? t("rostiq.idInvalid") : st.idTaken ? t("start.idTaken") : t("start.idFree");
+  document.getElementById("swatches").innerHTML = BRAND_PRESETS.map(([key, a, b]) =>
+    `<button type="button" data-preset="${key}" style="--a:${a};--b:${b}" title="${esc(t("brand.preset." + key))}" aria-label="${esc(t("brand.preset." + key))}" aria-pressed="${key === st.colors}"></button>`).join("");
+  document.getElementById("create").disabled = st.busy;
+}
+
+// Checks while typing: is the code valid, is the link still free?
+let codeTimer, idTimer;
+f.code.addEventListener("input", () => {
+  f.code.value = f.code.value.toUpperCase().replace(/[^A-Z0-9-]/g, "");
+  st.code = { value: f.code.value, uses: null }; render();
+  clearTimeout(codeTimer);
+  codeTimer = setTimeout(async () => {
+    const v = f.code.value;
+    if (v.length < 3) return;
+    const c = await getAbs(`signupCodes/${v}`);
+    if (f.code.value === v) { st.code = { value: v, uses: c && typeof c.uses === "number" ? c.uses : 0 }; render(); }
+  }, 400);
+});
+const checkId = () => {
+  clearTimeout(idTimer);
+  st.idTaken = false; render();
+  idTimer = setTimeout(async () => {
+    const id = f.id.value.trim();
+    if (!ID_OK.test(id)) return;
+    const exists = await getAbs(`teams/${id}/info`);
+    if (f.id.value.trim() === id) { st.idTaken = !!exists; render(); }
+  }, 400);
+};
+f.brand.addEventListener("input", () => {
+  if (!st.idTouched) { f.id.value = slug(f.brand.value).replace(/^-+|-+$/g, "").slice(0, 40); checkId(); }
+});
+f.id.addEventListener("input", () => { st.idTouched = true; f.id.value = f.id.value.toLowerCase(); checkId(); });
+document.getElementById("swatches").addEventListener("click", ev => {
+  const b = ev.target.closest("[data-preset]");
+  if (b) { st.colors = b.dataset.preset; render(); }
+});
+
+f.addEventListener("submit", async ev => {
+  ev.preventDefault();
+  const err = document.getElementById("create-err");
+  const fail = msg => { err.textContent = msg; err.hidden = false; st.busy = false; render(); };
+  err.hidden = true;
+  const uid = session.user.uid, id = f.id.value.trim(), brand = f.brand.value.trim(), you = f.you.value.trim();
+  const season = f.season.value.trim(), code = f.code.value.trim(), sport = f.sport.value;
+  if (!brand || !you || !ID_OK.test(id)) return fail(t("start.fillIn"));
+  st.busy = true; render();
+  if (await getAbs(`teams/${id}/info`)) { st.idTaken = true; return fail(t("start.idTaken")); }
+  const created = (await getAbs(`users/${uid}/created`)) || {};
+  const slot = ["s1", "s2", "s3"].find(k => !created[k]);
+  if (!slot) return fail(t("start.max"));
+  let codeUses = null;
+  if (!st.open) {
+    const c = code && await getAbs(`signupCodes/${code}`);
+    if (!c || !(c.uses > 0)) return fail(t("start.codeBad"));
+    codeUses = c.uses;
+  }
+  const preset = BRAND_PRESETS.find(p => p[0] === st.colors);
+  const colors = preset && preset !== BRAND_PRESETS[0] ? makePalette(preset[1], preset[2]) : null;
+  const team = {
+    info: { brand, season: season || brand, shortName: season || brand, calendarLabel: brand, teamSize: 0, minPlayers: 3,
+      adminName: you.split(/\s+/)[0], ...(colors ? { colors } : {}) },
+    settings: { minPlayers: 3, scheduleInDb: true, seasonName: season || brand, sport },
+    initialized: true,
+    admins: { [uid]: true },
+    members: { [uid]: "p1" },
+    players: { p1: { uid, name: you.slice(0, 60), order: 1 } },
+    meta: { createdBy: uid, createdAt: Date.now(), creatorName: you.slice(0, 60), creatorEmail: (session.user.email || "").slice(0, 100),
+      ...(codeUses !== null ? { code } : {}) },
+  };
+  const changes = { [`teams/${id}`]: team, [`users/${uid}/teams/${id}`]: "p1", [`users/${uid}/created/${slot}`]: id,
+    ...(codeUses !== null ? { [`signupCodes/${code}/uses`]: codeUses - 1 } : {}) };
+  const ok = await send("PATCH", "", changes, true, true);
+  if (ok !== true) return fail(t("start.failed"));
+  pref.set("team", id);
+  location.href = appUrl("index.html") + "?t=" + encodeURIComponent(id); // the setup checklist takes it from here
+});
+
+start();
+</script>
+</body>
+</html>

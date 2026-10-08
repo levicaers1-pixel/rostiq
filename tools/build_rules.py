@@ -156,11 +156,14 @@ team = {
         "events": {},
         "$other": NO,
     },
-    "admins": {"$uid": {".read": "auth != null && auth.uid === $uid", ".validate": "newData.val() === true"}},
+    # Starting a team: the only admin and member a self-starter can add is themselves.
+    "admins": {"$uid": {".read": "auth != null && auth.uid === $uid",
+                        ".validate": f"newData.val() === true && ({PA} || $uid === auth.uid || root.child('teams').child($tid).exists())"}},
     "members": {"$uid": {
         ".read": "auth != null && auth.uid === $uid",
         ".write": TA,
-        ".validate": "newData.isString() && newData.parent().parent().child('players').child(newData.val()).child('uid').val() === $uid"}},
+        ".validate": "newData.isString() && newData.parent().parent().child('players').child(newData.val()).child('uid').val() === $uid"
+                     f" && ({PA} || $uid === auth.uid || root.child('teams').child($tid).exists())"}},
     "requests": request_rules(f"auth != null && (auth.uid === $uid || {TA})", " && newData.parent().parent().child('info').exists()", TA),  # the team (also when created in the same write)
     "initialized": {".write": TA},
     "players": {"$pid": {".write": TA, **player_rules(OWNER)}},
@@ -168,7 +171,54 @@ team = {
     "schedule": {".write": TA, **schedule_rules()},
     "matches": {".write": TA, **matches_rules()},
     "carpool": carpool_rules(f"{TA} || {OWNER}", MYPID),
+    # Who started the team (self-service) – written once, at creation.
+    "meta": {
+        "createdBy": {".validate": "newData.isString()"},
+        "createdAt": {".validate": "newData.isNumber()"},
+        "creatorName": s(60),
+        "creatorEmail": s(100),
+        "code": s(30, 1),
+        "$other": NO,
+    },
     "$other": NO,
+}
+
+# ---- Self-service: anyone signed in (verified email) may START a new team, with a pilot code unless signup is open ----
+# One atomic write creates the team with the creator as its only admin and first player, their "my teams" entry,
+# their "created" entry and (with a code) one use less of that code. Max 3 self-started teams per person.
+NEW = "newData.parent().parent()"  # the database as it will be after the write
+CODE = "newData.child('meta').child('code').val()"
+SELF_CREATE = (
+    "auth != null && auth.token.email_verified === true && !data.exists()"
+    " && newData.child('admins').child(auth.uid).val() === true && newData.child('info').child('brand').isString()"
+    " && newData.child('meta').child('createdBy').val() === auth.uid && newData.child('meta').child('createdAt').isNumber()"
+    # max 3 per person: the new team takes one of three slots that was still free
+    + "".join([" && (" + " || ".join(
+        f"(!root.child('users').child(auth.uid).child('created').child('s{i}').exists()"
+        f" && {NEW}.child('users').child(auth.uid).child('created').child('s{i}').val() === $tid)" for i in (1, 2, 3)) + ")"]) +
+    " && (root.child('signup').child('open').val() === true"
+    f"     || ({CODE} !== null && root.child('signupCodes').child({CODE}).child('uses').val() > 0"
+    f"         && {NEW}.child('signupCodes').child({CODE}).child('uses').val() === root.child('signupCodes').child({CODE}).child('uses').val() - 1))"
+)
+team[".write"] = f"{PA} || ({SELF_CREATE})"
+
+signup = {
+    # Platform switch: true = anyone may start a team without a code.
+    "open": {".read": "auth != null", ".write": PA, ".validate": "newData.isBoolean()"},
+    "$other": NO,
+}
+signup_codes = {
+    ".read": PA,  # the list is yours; a single code can be read by whoever knows it
+    "$code": {
+        ".read": "auth != null",
+        ".write": f"{PA} || (auth != null && data.exists() && newData.exists())",
+        ".validate": f"$code.matches(/^[A-Z0-9-]{{3,30}}$/) && newData.hasChildren(['uses'])"
+                     f" && ({PA} || (newData.child('uses').val() === data.child('uses').val() - 1"
+                     " && newData.child('note').val() === data.child('note').val()))",
+        "uses": num(0, 1000),
+        "note": s(60),
+        "$other": NO,
+    },
 }
 
 users = {"$uid": {
@@ -176,14 +226,18 @@ users = {"$uid": {
     ".write": PA,
     # Index of my teams: users/{uid}/teams/{teamId} = playerId (mirrors teams/{t}/members/{uid}).
     "teams": {"$tid": {
-        ".write": f"{PA} || (auth != null && root.child('teams').child($tid).child('admins').child(auth.uid).val() === true)",
+        # PA, the team admin, or the person themselves (e.g. when starting a team); the value must match members/{uid}.
+        ".write": f"{PA} || (auth != null && (auth.uid === $uid || root.child('teams').child($tid).child('admins').child(auth.uid).val() === true))",
         ".validate": "newData.isString() && newData.val() === newData.parent().parent().parent().parent().child('teams').child($tid).child('members').child($uid).val()"}},
     # My personal details, shared by all my teams (each team keeps a copy in my player row).
     "profile": {".write": "auth != null && auth.uid === $uid", **personal(), "$other": NO},
+    # Teams I started myself (max 3, checked when creating). Only added, never removed by the user.
+    "created": {"$slot": {".write": "auth != null && auth.uid === $uid && newData.exists() && !data.exists()",
+                          ".validate": "$slot.matches(/^s[1-3]$/) && newData.isString() && newData.parent().parent().parent().parent().child('teams').child(newData.val()).child('meta').child('createdBy').val() === $uid"}},
     "$other": NO,
 }}
 
-final = {"rules": {"teams": {".read": PA, "$tid": team}, "users": users, "$other": NO}}
+final = {"rules": {"teams": {".read": PA, "$tid": team}, "users": users, "signup": signup, "signupCodes": signup_codes, "$other": NO}}
 
 # ---- Transition: also allow the old single-team structure at the root (Pampas, pre-migration) ----
 L_OWNER = "(auth != null && root.child('players').child($pid).child('uid').val() === auth.uid)"
