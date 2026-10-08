@@ -14,7 +14,7 @@ function refreshEvents() {
 }
 const DEFAULT_SEASON = TEAM.season || "";
 const seasonName = () => (root.settings && root.settings.seasonName) || DEFAULT_SEASON;
-const TEAM_SIZE = TEAM.teamSize || 15;
+const TEAM_SIZE = TEAM.teamSize ?? 15;
 
 const DB = (window.FIREBASE_DB_URL || "").trim().replace(/\/+$/, "");
 
