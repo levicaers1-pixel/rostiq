@@ -112,6 +112,50 @@
   .list li .who { flex: 1 1 60%; min-width: 0; }
   .small { font-size: .8rem; padding: 3px 10px; }
   .empty { color: var(--muted); font-size: .85rem; }
+
+  /* ---- Carpool cards (same language as the match cards) ---- */
+  .panel { padding: 16px; }
+  .field select, .field input { border-radius: var(--radius-sm); padding: 8px 10px; }
+  .matches { gap: 16px; grid-template-columns: repeat(auto-fill, minmax(min(380px, 100%), 1fr)); align-items: start; }
+  .match { padding: 16px; display: grid; gap: 14px; transition: box-shadow .2s var(--ease); }
+  .match:hover { box-shadow: var(--shadow); }
+  .match.final { border-color: color-mix(in srgb, var(--final) 45%, var(--border)); }
+  .m-head { display: grid; grid-template-columns: 58px 1fr auto; gap: 14px; align-items: start; }
+  .m-date { height: 68px; border-radius: 12px; background: color-mix(in srgb, var(--accent) 8%, var(--surface));
+    display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1; }
+  .m-date b { font-family: var(--font-head); font-weight: var(--head-weight); font-size: 1.55rem; color: var(--accent); margin: 3px 0 2px; }
+  .m-date span { font-size: .62rem; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); }
+  .m-title { font-weight: 700; font-size: 1.08rem; line-height: 1.3; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .m-head .details { display: grid; gap: 3px; margin-top: 6px; }
+  .ghost { border-color: transparent; background: transparent; color: var(--muted); padding: 7px; }
+  .ghost:hover:not(:disabled) { color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, var(--surface)); border-color: transparent; }
+  .cp-pills { display: flex; gap: 6px; flex-wrap: wrap; }
+  .mine { background: none; border-top: 1px solid var(--border); border-radius: 0; padding: 14px 0 0; margin: 0; display: grid; gap: 10px; }
+  .mine-label { font-size: .8rem; font-weight: 600; color: var(--muted); }
+  .mine .extra { margin: 0; color: var(--muted); }
+  .mine .extra select, .mine .extra input { border-radius: var(--radius-sm); padding: 7px 10px; background: var(--bg); }
+  h4 { margin: 0; padding-top: 14px; border-top: 1px solid var(--border); }
+  .car { border: 1px solid var(--border); border-radius: 12px; padding: 12px; margin: 10px 0 0; display: grid; gap: 10px; background: var(--surface); }
+  .car.me { border-color: color-mix(in srgb, var(--accent) 50%, var(--border)); box-shadow: inset 3px 0 0 var(--accent); }
+  .car-top { display: flex; align-items: center; gap: 10px; }
+  .car-who { flex: 1; min-width: 0; }
+  .car-who b { font-weight: 700; }
+  .car-place { font-size: .8rem; color: var(--muted); display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+  .av.lg { width: 38px; height: 38px; font-size: .78rem; border: none; }
+  .seat-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .seat-row .av { width: 28px; height: 28px; font-size: .62rem; border: none; }
+  .seat-empty { width: 28px; height: 28px; border-radius: 50%; border: 2px dashed color-mix(in srgb, var(--muted) 45%, transparent); flex-shrink: 0; }
+  .seat-row .seats-label { font-size: .8rem; color: var(--muted); margin-left: 4px; }
+  .seat-row .seats-label.full { color: var(--no); font-weight: 600; }
+  button.small { font-size: .8rem; padding: 5px 12px; }
+  .car .note { font-size: .85rem; color: var(--muted); margin: 0; }
+  .riders { margin: 0; }
+  .rider { display: inline-flex; align-items: center; gap: 4px; background: color-mix(in srgb, var(--muted) 10%, var(--surface)); padding: 4px 10px; font-size: .8rem; }
+  .list { margin-top: 8px; }
+  .list li { gap: 10px; padding: 6px 0; }
+  .list li .av { width: 28px; height: 28px; font-size: .62rem; border: none; }
+  .stats { display: grid; gap: 6px; }
+  .stats h3 { display: flex; align-items: center; gap: 8px; }
 </style>
 </head>
 <body>
@@ -171,6 +215,7 @@
   <div class="matches" id="matches"></div>
 </main>
 
+<script>window.SKELETON_PAGE = true;</script>
 <script src="icons.js"></script>
 <script src="config.js"></script>
 <script src="team.js"></script>
@@ -381,16 +426,25 @@ function renderMatch(e) {
   // How far the venue is from me (if both locations are known).
   const venue = matchInfo(e).venue;
   const toVenue = me ? kmBetween(geoOf(me), venue) : null;
+  const avatarOf = (id, cls = "") => `<span class="av${cls}" style="background:${avColor(nameOf(id))}" title="${esc(nameOf(id))}">${esc(initials(nameOf(id)))}</span>`;
   let html = `
-    <div class="when">${fmt(e.date, { weekday: "long", day: "numeric", month: "long" })}</div>
-    <div class="title">${esc(e.opp)}${e.final ? `<span class="tag">${t("final")}</span>` : ""}</div>
-    ${detailsHtml(e, venueExtra(e, toVenue))}
-    <div class="summary">${t("carpool.summary", { cars: st.cars.length, free: freeSeats, waiting: st.waiting.length })}
-      <button class="small share" data-act="share">${t("share.carpool")}</button></div>`;
+    <div class="m-head">
+      <div class="m-date"><span>${fmt(e.date, { weekday: "short" }).replace(".", "")}</span><b>${parse(e.date).getDate()}</b><span>${fmt(e.date, { month: "short" }).replace(".", "")}</span></div>
+      <div class="m-body">
+        <div class="m-title">${esc(e.opp)}${e.final ? `<span class="pill violet">${ic("trophy")} ${t("final")}</span>` : ""}</div>
+        ${detailsHtml(e, venueExtra(e, toVenue))}
+      </div>
+      <button class="ghost" data-act="share" title="${t("share.carpool")}" aria-label="${t("share.carpool")}">${ic("share")}</button>
+    </div>
+    <div class="cp-pills">
+      <span class="pill gray">${ic("car")} ${t("cp.cars", { n: st.cars.length })}</span>
+      <span class="pill ${freeSeats ? "yes" : "gray"}">${t("cp.free", { n: freeSeats })}</span>
+      ${st.waiting.length ? `<span class="pill maybe">${t("cp.waiting", { n: st.waiting.length })}</span>` : ""}
+    </div>`;
 
   if (me) {
-    html += `<div class="mine">
-      <div class="seg" role="group" aria-label="${t("carpool.myPlan")}">
+    html += `<div class="mine"><div class="mine-label">${t("carpool.myPlan")}</div>
+      <div class="segmented" role="group" aria-label="${t("carpool.myPlan")}">
         <button data-act="role" data-role="driver" aria-pressed="${myRole === "driver"}">${t("carpool.drive")}</button>
         <button data-act="role" data-role="rider" aria-pressed="${myRole === "rider"}">${t("carpool.ride")}</button>
         <button data-act="role" data-role="" aria-pressed="${!myRole}">${t("carpool.notNeeded")}</button>
@@ -408,34 +462,37 @@ function renderMatch(e) {
     html += `</div>`;
   }
 
-  // Cars: nearest to me first.
+  // Cars: nearest to me first; each seat is a passenger's avatar or an empty circle.
   const cars = [...st.cars].sort((a, b) => (b.id === me) - (a.id === me) || byDistance(a.id, b.id));
-  html += `<h4>${t("carpool.cars")}</h4>` + (cars.length ? cars.map(c => {
+  html += `<div><h4>${t("carpool.cars")}</h4>` + (cars.length ? cars.map(c => {
     const free = c.seats - c.riders.length;
     const canJoin = me && c.id !== me && free > 0 && !(myRole === "rider" && my.with === c.id) && myRole !== "driver";
+    const seats = Array.from({ length: Math.max(c.seats, c.riders.length) }, (_, i) =>
+      c.riders[i] ? avatarOf(c.riders[i]) : `<span class="seat-empty" title="${t("cp.seatFree")}"></span>`).join("");
     return `<div class="car ${c.id === me ? "me" : ""}">
-      <div class="top"><span class="who">🚗 ${esc(nameOf(c.id))}${dmLink(e, c.id, st)} ${placeLabel(c.id)}</span> ${distLabel(c.id)}
-        <span class="seats ${free <= 0 ? "full" : ""}">${free > 0 ? t("carpool.free", { free, seats: c.seats }) : t("carpool.full")}</span>
-        ${canJoin ? `<button class="small" data-act="join" data-id="${c.id}">${t("carpool.join")}</button>` : ""}</div>
-      ${c.note ? `<div class="note">🕘 ${esc(c.note)}</div>` : ""}
+      <div class="car-top">${avatarOf(c.id, " lg")}
+        <div class="car-who"><b>${esc(nameOf(c.id))}</b>${dmLink(e, c.id, st)}<div class="car-place">${placeLabel(c.id)} ${distLabel(c.id)}</div></div>
+        ${canJoin ? `<button class="action small" data-act="join" data-id="${c.id}">${t("carpool.join")}</button>` : ""}</div>
+      <div class="seat-row">${seats}<span class="seats-label ${free <= 0 ? "full" : ""}">${free > 0 ? t("carpool.free", { free, seats: c.seats }) : t("carpool.full")}</span></div>
+      ${c.note ? `<p class="note">🕘 ${esc(c.note)}</p>` : ""}
       ${c.riders.length ? `<div class="riders">${c.riders.map(r => `<span class="rider">${esc(nameOf(r))}${dmLink(e, r, st)} · ${esc(placeOf(r) || "?")}${distLabel(r) ? " " + distLabel(r) : ""}${
-        c.id === me ? ` <button class="small" data-act="drop" data-id="${r}" title="${t("carpool.dropTitle")}">✕</button>` : ""}</span>`).join("")}</div>` : ""}
+        c.id === me ? ` <button class="small ghost" data-act="drop" data-id="${r}" title="${t("carpool.dropTitle")}" aria-label="${t("carpool.dropTitle")}">${ic("x")}</button>` : ""}</span>`).join("")}</div>` : ""}
     </div>`;
-  }).join("") : `<div class="empty">${t("carpool.noDrivers")}</div>`);
+  }).join("") : `<div class="empty" style="margin-top:8px">${t("carpool.noDrivers")}</div>`) + `</div>`;
 
   // Riders without a car: nearest to me first, so drivers can pick them up.
   const myCar = st.cars.find(c => c.id === me);
   const iHaveRoom = myCar && myCar.seats - myCar.riders.length > 0;
   if (st.waiting.length) {
-    html += `<h4>${t("carpool.waiting")}</h4><ul class="list">` + [...st.waiting].sort(byDistance).map(id => `
-      <li><span class="who">🙋 ${esc(nameOf(id))}${dmLink(e, id, st)} ${placeLabel(id)}</span> ${distLabel(id)}
-        ${iHaveRoom ? `<button class="small" data-act="take" data-id="${id}">${t("carpool.take")}</button>` : ""}</li>`).join("") + `</ul>`;
+    html += `<div><h4>${t("carpool.waiting")}</h4><ul class="list">` + [...st.waiting].sort(byDistance).map(id => `
+      <li>${avatarOf(id)}<span class="who">${esc(nameOf(id))}${dmLink(e, id, st)} ${placeLabel(id)}</span> ${distLabel(id)}
+        ${iHaveRoom ? `<button class="action small" data-act="take" data-id="${id}">${t("carpool.take")}</button>` : ""}</li>`).join("") + `</ul></div>`;
   }
 
   // Available players who haven't said anything about transport yet.
   if (st.open.length) {
-    html += `<h4>${t("carpool.open")}</h4><ul class="list">` + [...st.open].sort(byDistance).map(id => `
-      <li><span class="who">${esc(nameOf(id))}${dmLink(e, id, st)} ${placeLabel(id)}</span> ${distLabel(id)}</li>`).join("") + `</ul>`;
+    html += `<div><h4>${t("carpool.open")}</h4><ul class="list">` + [...st.open].sort(byDistance).map(id => `
+      <li>${avatarOf(id)}<span class="who">${esc(nameOf(id))}${dmLink(e, id, st)} ${placeLabel(id)}</span> ${distLabel(id)}</li>`).join("") + `</ul></div>`;
   }
 
   el.innerHTML = html;
@@ -626,12 +683,14 @@ function render() {
   const key = a && a.dataset && a.dataset.key;
   const saved = key ? { value: a.value, sel: [a.selectionStart, a.selectionEnd] } : null;
 
+  if (!dataLoaded) { document.getElementById("matches").innerHTML = skeletonCards(3); return; }
   renderMe();
   renderPlaces();
   renderStats();
   renderMapSelect();
   drawMap(false);
   const wrap = document.getElementById("matches");
+  if (!dataLoaded) { wrap.innerHTML = skeletonCards(3); return; }
   wrap.innerHTML = "";
   const upcoming = EVENTS.filter(e => !isPast(e));
   upcoming.forEach(e => wrap.append(renderMatch(e)));

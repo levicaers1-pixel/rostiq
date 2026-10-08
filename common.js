@@ -127,6 +127,10 @@ function detailsHtml(e, extra = "", compact = false) {
 
 // ---- Shared state (mirror of teams/{TEAM_ID}) ----
 let root = {};
+let dataLoaded = false; // the team's data has arrived (until then pages show skeleton placeholders)
+const skeletonCards = n => Array.from({ length: n }, () => `<div class="skel-card" aria-hidden="true">
+  <div class="skel skel-block"></div><div class="skel-lines"><div class="skel" style="width:55%"></div><div class="skel" style="width:35%"></div>
+  <div class="skel" style="width:90%;height:8px;margin-top:14px"></div><div class="skel" style="width:40%"></div></div></div>`).join("");
 
 function defaultPlayers() {
   const players = {};
@@ -246,6 +250,7 @@ let es = null;
 async function connect(forceRefresh) {
   if (!DB) {
     root = { players: defaultPlayers() };
+    dataLoaded = true;
     document.getElementById("banner").hidden = false;
     setStatus("err", t("status.notConnected"));
     syncSession();
@@ -260,6 +265,7 @@ async function connect(forceRefresh) {
     apply(path, data, merge);
     if (!seeded && path === "/" && !merge) {
       seeded = true;
+      dataLoaded = true;
       if (!root.initialized && session.admin) {
         // A team's first visit: create the empty player rows (if the team wants any).
         const changes = { initialized: true };
@@ -283,6 +289,7 @@ function disconnect() {
   if (es) es.close();
   es = null;
   root = {};
+  dataLoaded = false;
 }
 
 // The group invite link lives in the database, so only signed-in teammates see it.
@@ -755,15 +762,20 @@ function injectAuthUI() {
   const brand = document.querySelector(".brand-inner");
   brand.insertAdjacentHTML("beforeend", `<div class="corner">
     <div class="account" id="account" hidden></div>
-    <div class="lang" role="group" aria-label="Language">
-      <button data-lang="nl" aria-pressed="${LANG === "nl"}">NL</button><button data-lang="en" aria-pressed="${LANG === "en"}">EN</button>
-    </div></div>`);
-  brand.querySelector(".lang").addEventListener("click", ev => {
+    <div class="lang" id="lang" role="group" aria-label="Language">${langButtons()}</div></div>`);
+  brand.querySelector(".corner").addEventListener("click", ev => {
     const b = ev.target.closest("[data-lang]");
     if (!b || b.dataset.lang === LANG) return;
     pref.set("lang", b.dataset.lang);
     location.reload();
   });
+  // Account menu: open/close, and close on a click elsewhere or Escape.
+  document.addEventListener("click", ev => {
+    const btn = ev.target.closest("#acct-btn");
+    if (btn) { acctOpen = !acctOpen; renderAccount(); return; }
+    if (acctOpen && !ev.target.closest("#acct-menu")) { acctOpen = false; renderAccount(); }
+  });
+  document.addEventListener("keydown", ev => { if (ev.key === "Escape" && acctOpen) { acctOpen = false; renderAccount(); document.getElementById("acct-btn")?.focus(); } });
   document.querySelector("main").insertAdjacentHTML("beforebegin", `<section class="gate" id="gate" hidden></section>`);
   if (!NO_TEAM_PAGE) document.querySelector("main .sub").insertAdjacentHTML("afterend",
     `<a class="wa-group" id="wa-group" hidden target="_blank" rel="noopener" title="${t("wa.title")}">${t("wa.open")}</a>`);
@@ -782,6 +794,31 @@ function gateMessage(text, err) { gateMsg = { text, err }; renderAuth(); }
 
 const appUrl = file => location.href.split(/[?#]/)[0].replace(/[^/]*$/, file);
 
+// ---- Account menu in the header (avatar button → name, role, switch team, RostiQ, language, sign out) ----
+let acctOpen = false;
+const langButtons = () => `<button data-lang="nl" aria-pressed="${LANG === "nl"}">NL</button><button data-lang="en" aria-pressed="${LANG === "en"}">EN</button>`;
+function renderAccount() {
+  const acct = document.getElementById("account"), u = session.user;
+  if (!acct) return;
+  if (!u) { acct.innerHTML = ""; acctOpen = false; return; }
+  const name = session.pid && root.players && root.players[session.pid] && root.players[session.pid].name || "";
+  const label = name || u.email || "";
+  const switchable = (session.teams || []).length > 1 || session.platformAdmin;
+  const role = session.platformAdmin ? t("menu.rolePlatform") : session.admin ? t("menu.roleAdmin") : t("menu.rolePlayer");
+  const initialsOf = s => String(s).replace(/@.*/, "").split(/[\s._-]+/).filter(Boolean).slice(0, 2).map(w => w[0]).join("").toUpperCase() || "?";
+  acct.innerHTML = `<button class="acct-btn" id="acct-btn" aria-haspopup="menu" aria-expanded="${acctOpen}" aria-label="${esc(t("menu.open"))}">
+      <span class="avatar-sm" style="background:${avColor(name || u.email || "")}">${esc(initialsOf(label))}</span>
+      <span class="nm">${esc(name || t("menu.account"))}</span>${ic("chevron-down")}</button>
+    <div class="acct-menu" id="acct-menu" role="menu"${acctOpen ? "" : " hidden"}>
+      <div class="menu-head"><b>${esc(label)}</b>${name && u.email ? `<span>${esc(u.email)}</span>` : ""}
+        <span class="pill ${session.platformAdmin ? "dark" : session.admin ? "cyan" : "gray"}">${role}</span></div>
+      ${switchable && TEAM_ID ? `<a class="menu-item" role="menuitem" href="${appUrl("index.html")}?pick">${ic("switch")} ${t("pick.switch")}</a>` : ""}
+      ${session.platformAdmin ? `<a class="menu-item" role="menuitem" href="${appUrl("rostiq.html")}">${ic("settings")} ${t("menu.platform")}</a>` : ""}
+      <div class="menu-lang"><span>${t("menu.language")}</span><div class="lang">${langButtons()}</div></div>
+      <button class="menu-item danger" role="menuitem" data-signout>${ic("x")} ${t("auth.signOut")}</button>
+    </div>`;
+}
+
 function renderAuth() {
   if (!AUTH_ON) return;
   const gate = document.getElementById("gate"), main = document.querySelector("main"), acct = document.getElementById("account");
@@ -790,18 +827,13 @@ function renderAuth() {
   const needClaim = u && !picking && !NO_TEAM_PAGE && (session.pending || (session.ready && !session.pid && !session.admin));
   const showGate = !u || picking || needClaim;
   gate.hidden = !showGate;
-  main.hidden = showGate || (u && !session.ready);
+  // Pages with skeleton placeholders show right away; others wait until the data is in.
+  main.hidden = showGate || (u && !session.ready && !window.SKELETON_PAGE);
 
   document.querySelectorAll(".admin-tab").forEach(a => { a.hidden = !session.admin; });
   acct.hidden = !u;
-  if (u) {
-    const who = session.pid && root.players && root.players[session.pid] ? esc(root.players[session.pid].name || "") : esc(u.email || "");
-    const switchable = (session.teams || []).length > 1 || session.platformAdmin;
-    acct.innerHTML = `<span>${who}${session.platformAdmin ? ' <span class="admin-tag">RostiQ</span>' : session.admin ? ' <span class="admin-tag">admin</span>' : ""}</span>
-      ${switchable && TEAM_ID ? `<a class="link switch" href="${appUrl("index.html")}?pick">⇄ ${t("pick.switch")}</a>` : ""}
-      ${session.platformAdmin ? `<a class="link switch" href="${appUrl("rostiq.html")}">⚙️ RostiQ</a>` : ""}
-      <button data-signout class="link">${t("auth.signOut")}</button>`;
-  }
+  document.getElementById("lang").hidden = !!u; // signed in: the language is in the account menu
+  renderAccount();
 
   const msg = gateMsg.text ? `<p class="gate-msg ${gateMsg.err ? "err" : ""}">${esc(gateMsg.text)}</p>` : "";
   if (!u) {

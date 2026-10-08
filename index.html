@@ -55,7 +55,8 @@
   .m-progress, .m-people, .m-mine, .m-team { grid-column: 1 / -1; }
   .bar { position: relative; height: 8px; }
   .bar .fill { display: flex; height: 100%; border-radius: 999px; overflow: hidden; background: color-mix(in srgb, var(--muted) 15%, var(--surface)); }
-  .bar .fill span { height: 100%; transition: width .45s var(--ease); }
+  .bar .fill span { height: 100%; }
+  @keyframes grow { from { width: var(--from); } }
   .bar .yes { background: var(--yes); }
   .bar .maybe { background: color-mix(in srgb, var(--maybe) 55%, var(--surface)); }
   .bar .min { position: absolute; top: -4px; bottom: -4px; width: 2px; margin-left: -1px; border-radius: 2px; background: var(--text); opacity: .5; }
@@ -289,6 +290,7 @@
   </form>
 </dialog>
 
+<script>window.SKELETON_PAGE = true;</script>
 <script src="icons.js"></script>
 <script src="config.js"></script>
 <script src="team.js"></script>
@@ -303,19 +305,41 @@ let showPast = pref.get("showPast", "0") === "1";
 
 // Avatars: initials on a colour that stays the same for a name.
 const initials = n => (n || "?").trim().split(/\s+/).map(w => w[0]).slice(0, 2).join("").toUpperCase();
-const avatar = (p, i) => `<span class="av" style="background:${avColor(p.name || "")}" title="${esc(displayName(p, i))}">${esc(initials(displayName(p, i)))}</span>`;
+const avatar = (p, i, popStyle) => `<span class="av${popStyle ? " pop" : ""}" style="background:${avColor(p.name || "")};${popStyle || ""}" title="${esc(displayName(p, i))}">${esc(initials(displayName(p, i)))}</span>`;
 const LEVEL_PILL = { ok: "yes", low: "maybe", short: "no" };
 const openTeams = new Set(); // match cards whose team list is unfolded (kept across live updates)
 
+// Remembered from the previous render, to animate what changed (bar widths, new avatars, my answer).
+const prevBar = {}, prevComing = {}, prevMine = {};
+// Running animations by key, with their start time: a re-render (e.g. when the database confirms the change)
+// continues them at the same point instead of cutting them off.
+const anim = {};
+const animStyle = (key, ms, extra = "") => {
+  const a = anim[key], t0 = a ? performance.now() - a.at : Infinity;
+  return t0 < ms ? `${extra}animation-delay:-${Math.round(t0)}ms;` : null;
+};
+
 function renderMatches(players, events) {
+  const box = document.getElementById("matches");
+  document.getElementById("table-view").hidden = !dataLoaded;
+  if (!dataLoaded) { box.innerHTML = skeletonCards(4); return; }
   const min = minPlayers(), named = players.filter(p => p.name), total = Math.max(named.length, min, 1);
   const pct = n => Math.min(100, n / total * 100);
   const me = AUTH_ON ? players.find(p => p.id === session.pid) : null;
   const order = { yes: 0, maybe: 1, no: 2, "": 3 };
-  document.getElementById("matches").innerHTML = events.map(e => {
+  box.innerHTML = events.map(e => {
     const c = tally(e, players);
     const coming = players.filter(p => p.avail[e.date] === "yes");
     const mine = me ? me.avail[e.date] || "" : null;
+    const now = performance.now(), w = [pct(c.yes), pct(c.maybe)], before = prevBar[e.date];
+    if (!before || before[0] !== w[0] || before[1] !== w[1]) anim["bar:" + e.date] = { at: now, from: before || [0, 0] };
+    prevBar[e.date] = w;
+    if (prevComing[e.date]) for (const p of coming) if (!prevComing[e.date].has(p.id)) anim[`pop:${e.date}:${p.id}`] = { at: now };
+    prevComing[e.date] = new Set(coming.map(p => p.id));
+    if (mine !== null && e.date in prevMine && prevMine[e.date] !== mine && mine) anim["just:" + e.date] = { at: now };
+    if (mine !== null) prevMine[e.date] = mine;
+    const ba = anim["bar:" + e.date];
+    const barStyle = i => `width:${w[i]}%;` + (animStyle("bar:" + e.date, 450, `--from:${ba ? ba.from[i] : 0}%;animation:grow .45s var(--ease) both;`) || "");
     const team = players.map((p, i) => ({ p, i, s: p.avail[e.date] || "" })).filter(x => x.p.name)
       .sort((a, b) => order[a.s] - order[b.s] || a.i - b.i);
     return `<article class="match${e.final ? " final" : ""}${isPast(e) ? " past" : ""}">
@@ -332,16 +356,16 @@ function renderMatches(players, events) {
         ${session.admin ? `<button data-edit="${e.date}" title="${t("details.edit")}" aria-label="${t("details.edit")}">${ic("pencil")}</button>` : ""}
       </div>
       <div class="m-progress">
-        <div class="bar"><div class="fill"><span class="yes" style="width:${pct(c.yes)}%"></span><span class="maybe" style="width:${pct(c.maybe)}%"></span></div>
+        <div class="bar" data-date="${e.date}"><div class="fill"><span class="yes" style="${barStyle(0)}"></span><span class="maybe" style="${barStyle(1)}"></span></div>
           <i class="min" style="left:${pct(min)}%" title="min. ${min}"></i></div>
         <div class="m-count"><span>${t("match.avail", { y: c.yes, min })}</span>${c.maybe ? `<span>· ${t("match.maybe", { n: c.maybe })}</span>` : ""}
           <span class="pill ${LEVEL_PILL[c.level]}">${t("level." + c.level)}</span></div>
       </div>
       <div class="m-people">${coming.length
-        ? `<span class="avatars">${coming.slice(0, 8).map(p => avatar(p, players.indexOf(p))).join("")}${coming.length > 8 ? `<span class="av more">+${coming.length - 8}</span>` : ""}</span>`
+        ? `<span class="avatars">${coming.slice(0, 8).map(p => avatar(p, players.indexOf(p), animStyle(`pop:${e.date}:${p.id}`, 350))).join("")}${coming.length > 8 ? `<span class="av more">+${coming.length - 8}</span>` : ""}</span>`
         : `<span>${t("match.nobody")}</span>`}</div>
       ${mine !== null && !isPast(e) ? `<div class="m-mine"><span>${t("match.mine")}</span><div class="answer" role="group" aria-label="${t("match.mine")}">${
-        ["yes", "maybe", "no"].map(a => `<button data-answer="${a}" data-date="${e.date}" data-a="${a}" aria-pressed="${mine === a}">${ic({ yes: "check", maybe: "help", no: "x" }[a])} ${t("answer." + a)}</button>`).join("")
+        ["yes", "maybe", "no"].map(a => `<button data-answer="${a}" data-date="${e.date}" data-a="${a}" aria-pressed="${mine === a}"${mine === a && animStyle("just:" + e.date, 300) ? ` class="just" style="${animStyle("just:" + e.date, 300)}"` : ""}>${ic({ yes: "check", maybe: "help", no: "x" }[a])} ${t("answer." + a)}</button>`).join("")
       }</div></div>` : ""}
       <details class="m-team" data-date="${e.date}"${openTeams.has(e.date) ? " open" : ""}>
         <summary>${ic("users")} ${t("match.everyone", { n: named.length })}${c.missing.length ? ` · ${t("match.noAnswer", { n: c.missing.length })}` : ""}${ic("chevron-down")}</summary>

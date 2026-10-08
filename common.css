@@ -208,9 +208,7 @@ a.dm-icon { text-decoration: none; font-size: .75rem; line-height: 1; padding: 2
 .account .link { color: var(--brand-text); opacity: .8; }
 .admin-tag { font-size: .7rem; font-weight: 700; background: var(--pampas); color: var(--brand); text-transform: uppercase; letter-spacing: .04em; border-radius: 999px; padding: 1px 8px; margin-left: 4px; }
 button.link { background: none; border: none; padding: 0; text-decoration: underline; color: inherit; font-size: inherit; }
-@media (max-width: 480px) {
-  .corner { position: static; margin-top: 8px; justify-content: space-between; }
-}
+
 
 /* Footer (both pages) */
 .site-footer { text-align: center; color: var(--muted); font-size: .8rem; padding: 8px 16px calc(28px + env(safe-area-inset-bottom)); }
@@ -275,3 +273,62 @@ button.link { background: none; border: none; padding: 0; text-decoration: under
 .toast.err { background: var(--no); color: #fff; }
 .toast.err svg.i { color: #fff; }
 @media (max-width: 700px) { body.has-bottom-nav .toast { bottom: calc(80px + env(safe-area-inset-bottom)); } }
+
+/* Account menu (header) */
+.account { position: relative; }
+.acct-btn { gap: 8px; padding: 4px 10px 4px 4px; border-radius: 999px; font-weight: 600; color: var(--brand-text);
+  background: color-mix(in srgb, var(--brand-text) 12%, transparent); border: 1px solid color-mix(in srgb, var(--brand-text) 22%, transparent); }
+.acct-btn:hover:not(:disabled) { background: color-mix(in srgb, var(--brand-text) 20%, transparent); border-color: color-mix(in srgb, var(--brand-text) 35%, transparent); }
+.acct-btn .nm { max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.acct-btn > svg.i { width: 1em; height: 1em; opacity: .8; transition: transform .2s var(--ease); }
+.acct-btn[aria-expanded="true"] > svg.i { transform: rotate(180deg); }
+.avatar-sm { width: 28px; height: 28px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
+  color: #fff; font-size: .7rem; font-weight: 700; }
+.acct-menu { position: absolute; right: 0; top: calc(100% + 8px); z-index: 40; min-width: 260px; max-width: calc(100vw - 24px);
+  background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 16px; box-shadow: var(--shadow); padding: 6px;
+  animation: menu-in .16s var(--ease); }
+@keyframes menu-in { from { opacity: 0; transform: translateY(-4px) scale(.98); } }
+.menu-head { display: grid; gap: 2px; justify-items: start; padding: 10px 10px 12px; margin-bottom: 4px; border-bottom: 1px solid var(--border); }
+.menu-head b { font-size: .95rem; overflow-wrap: anywhere; }
+.menu-head span:not(.pill) { font-size: .8rem; color: var(--muted); overflow-wrap: anywhere; }
+.menu-head .pill { margin-top: 6px; }
+.menu-item { display: flex; align-items: center; justify-content: flex-start; gap: 10px; width: 100%; padding: 9px 10px; border: none; border-radius: 10px;
+  background: none; color: var(--text); text-decoration: none; font-size: .9rem; font-weight: 500; }
+.menu-item:hover:not(:disabled) { background: color-mix(in srgb, var(--accent) 7%, var(--surface)); border: none; }
+.menu-item svg.i { color: var(--muted); }
+.menu-item.danger, .menu-item.danger svg.i { color: var(--no); }
+.menu-lang { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 6px 10px; font-size: .9rem; }
+.menu-lang .lang { border-color: var(--border); }
+.menu-lang .lang button { color: var(--text); }
+.menu-lang .lang button[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); }
+@media (max-width: 480px) {
+  .corner { position: absolute; top: max(14px, env(safe-area-inset-top)); margin: 0; }
+  .acct-btn { padding: 3px; } .acct-btn .nm, .acct-btn > svg.i { display: none; }
+  .brand-inner > a { padding-right: 56px; }
+}
+
+/* Skeleton placeholders while the data loads */
+.skel { height: 12px; border-radius: 6px; margin-bottom: 8px;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--muted) 12%, var(--surface)) 0%, color-mix(in srgb, var(--muted) 22%, var(--surface)) 50%, color-mix(in srgb, var(--muted) 12%, var(--surface)) 100%);
+  background-size: 200% 100%; animation: shimmer 1.3s infinite linear; }
+@keyframes shimmer { from { background-position: 100% 0; } to { background-position: -100% 0; } }
+.skel-card { display: flex; gap: 14px; padding: 16px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-sm); }
+.skel-block { width: 58px; height: 64px; border-radius: 12px; flex-shrink: 0; margin: 0; }
+.skel-lines { flex: 1; }
+
+/* Shared: avatars, three-way choice, foldable panels */
+.av { width: 30px; height: 30px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
+  font-size: .68rem; font-weight: 700; color: #fff; border: 2px solid var(--surface); }
+.av.pop { animation: pop .35s var(--ease); }
+@keyframes pop { from { transform: scale(.4); opacity: 0; } 60% { transform: scale(1.12); } }
+.segmented { display: flex; gap: 3px; padding: 3px; border-radius: 12px; background: color-mix(in srgb, var(--muted) 11%, var(--surface)); }
+.segmented button { flex: 1 1 0; min-width: 0; border: none; background: transparent; border-radius: 9px; padding: 8px 8px; font-weight: 600; color: var(--muted); }
+.segmented button:hover:not(:disabled) { background: var(--surface); border: none; }
+.segmented button[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); box-shadow: var(--shadow-sm); }
+.just { animation: press .3s var(--ease); }
+@keyframes press { 40% { transform: scale(.94); } }
+details.panel > summary { cursor: pointer; list-style: none; display: flex; align-items: center; gap: 8px; font-weight: 600; }
+details.panel > summary::-webkit-details-marker { display: none; }
+details.panel > summary::after { content: ""; margin-left: auto; width: 7px; height: 7px; border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted);
+  transform: translateY(-2px) rotate(45deg); transition: transform .2s var(--ease); }
+details.panel[open] > summary::after { transform: translateY(2px) rotate(-135deg); }

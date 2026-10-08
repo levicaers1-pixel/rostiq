@@ -87,6 +87,7 @@
   </form>
 </dialog>
 
+<script>window.SKELETON_PAGE = true;</script>
 <script src="icons.js"></script>
 <script src="config.js"></script>
 <script src="team.js"></script>
@@ -119,6 +120,7 @@ function render() {
   const players = sortedPlayers().filter(p => p.name)
     .filter(p => !q || [p.name, p.gemeente, p.email, p.fed].some(x => (x || "").toLowerCase().includes(q)));
   const grid = document.getElementById("grid");
+  if (!dataLoaded) { grid.innerHTML = skeletonCards(6); return; }
   if (!players.length) { grid.innerHTML = `<p class="empty">${t("team.none")}</p>`; return; }
   grid.innerHTML = players.map(p => {
     const st = statsFor(p), mine = AUTH_ON && p.id === session.pid, editable = canEdit(p.id);
