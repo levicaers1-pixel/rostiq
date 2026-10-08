@@ -197,6 +197,7 @@ async function write(path, value) {
   apply(path, value, false);
   refreshEvents();
   render();
+  shareProfile({ [path]: value });
   return send(value === null ? "DELETE" : "PUT", path, value === null ? undefined : value);
 }
 // Several paths in one atomic update, e.g. { "players/p01/uid": "...", "members/<uid>": "p01" }.
@@ -204,6 +205,7 @@ async function update(changes) {
   for (const [path, value] of Object.entries(changes)) apply(path, value, false);
   refreshEvents();
   render();
+  shareProfile(changes);
   return send("PATCH", "", changes);
 }
 // Outside the current team (e.g. the "my teams" index users/<uid>/teams/<id>).
@@ -317,9 +319,70 @@ function injectPhonePrompt() {
 let loginEmailFilled = false;
 function fillLoginEmail() {
   const pid = session.pid, email = session.user && session.user.email;
-  if (!AUTH_ON || loginEmailFilled || !pid || !email || !root.players || !root.players[pid]) return;
+  if (!AUTH_ON || loginEmailFilled || !pid || !email || !root.players || !root.players[pid] || !profile.data) return;
   loginEmailFilled = true;
-  if (!root.players[pid].email) write(`players/${pid}/email`, email.toLowerCase());
+  if (!root.players[pid].email && !profile.data.email) write(`players/${pid}/email`, email.toLowerCase());
+}
+
+// ---- My personal details, the same in all my teams ----
+// users/{uid}/profile holds phone, email, federation number and home town once per account; every team
+// keeps a copy in my player row. Changing them in one team updates the profile and my other teams; opening
+// a team (or getting approved) copies the profile into that team's row.
+const PROFILE_FIELDS = ["phone", "email", "fed", "gemeente", "geo"];
+const profile = { data: null, teams: {}, pending: null, applied: false };
+const sameValue = (a, b) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
+
+async function loadProfile(myTeams) {
+  const uid = session.user.uid;
+  profile.teams = myTeams || {};
+  const data = (await getAbs(`users/${uid}/profile`)) || {};
+  // First time: start from what my teams already know (the first team with a value wins).
+  const missing = PROFILE_FIELDS.filter(f => data[f] == null);
+  if (missing.length && Object.keys(profile.teams).length) {
+    const rows = await Promise.all(Object.entries(profile.teams).map(([tid, pid]) => getAbs(`teams/${tid}/players/${pid}`)));
+    const add = {};
+    for (const f of missing) { const row = rows.find(r => r && r[f] != null && r[f] !== ""); if (row) add[f] = row[f]; }
+    if (Object.keys(add).length && await send("PATCH", `users/${uid}/profile`, add, true)) Object.assign(data, add);
+  }
+  if (session.user && session.user.uid !== uid) return; // signed out meanwhile
+  profile.data = data;
+  if (profile.pending) { const p = profile.pending; profile.pending = null; shareProfile(p); } // edits made while loading
+  applyProfile();
+  fillLoginEmail();
+}
+
+// My own personal fields in `changes` (paths like "players/<my pid>/phone") → profile + my other teams.
+function shareProfile(changes) {
+  if (!AUTH_ON || !session.user || !session.pid) return;
+  const base = `players/${session.pid}/`, mine = {};
+  for (const [path, value] of Object.entries(changes)) {
+    const f = path.startsWith(base) ? path.slice(base.length) : null;
+    if (PROFILE_FIELDS.includes(f)) mine[path] = value;
+  }
+  if (!Object.keys(mine).length) return;
+  if (!profile.data) { profile.pending = { ...profile.pending, ...mine }; return; }
+  const fields = Object.fromEntries(Object.entries(mine).map(([path, v]) => [path.slice(base.length), v ?? null]));
+  const changed = Object.entries(fields).filter(([f, v]) => !sameValue(profile.data[f], v));
+  if (!changed.length) return;
+  for (const [f, v] of changed) { if (v === null) delete profile.data[f]; else profile.data[f] = v; }
+  const uid = session.user.uid, upd = Object.fromEntries(changed);
+  send("PATCH", `users/${uid}/profile`, upd, true);
+  // One request per team: a team I left (stale index) can't block the others.
+  for (const [tid, pid] of Object.entries(profile.teams)) {
+    if (tid === TEAM_ID) continue;
+    send("PATCH", `teams/${tid}/players/${pid}`, upd, true);
+  }
+}
+
+// Opening a team: bring my row up to date with my profile (once per page).
+function applyProfile() {
+  if (!AUTH_ON || profile.applied || !profile.data || !session.pid || !root.players || !root.players[session.pid]) return;
+  profile.applied = true;
+  profile.teams[TEAM_ID] = session.pid; // e.g. just approved in this team
+  const row = root.players[session.pid], changes = {};
+  for (const f of PROFILE_FIELDS)
+    if (profile.data[f] != null && !sameValue(row[f], profile.data[f])) changes[`players/${session.pid}/${f}`] = profile.data[f];
+  if (Object.keys(changes).length) update(changes);
 }
 
 function syncSession() {
@@ -332,6 +395,7 @@ function syncSession() {
     session.ready = true;
   }
   applyBranding();
+  applyProfile();
   fillLoginEmail();
   refreshEvents();
   renderCountdown();
@@ -545,6 +609,7 @@ async function initAuth() {
     session.pending = false;
     session.picking = false;
     session.ready = !user; // with a user, wait until we know the team and the membership
+    Object.assign(profile, { data: null, teams: {}, pending: null, applied: false, ready: null });
     if (user) afterSignIn(); else { stopApprovalWatch(); disconnect(); brandUnknown = false; applyBranding(); }
     renderAuth();
     render();
@@ -556,6 +621,7 @@ async function afterSignIn() {
   const uid = session.user.uid;
   const mine = (await getAbs(`users/${uid}/teams`)) || {};
   session.teams = Object.keys(mine);
+  profile.ready = loadProfile(mine).catch(() => {});
   if (session.platformAdmin) {
     const all = (await getAbs("teams")) || {};
     session.teams = [...new Set([...session.teams, ...Object.keys(all)])];
@@ -746,6 +812,10 @@ async function onGateSubmit(ev) {
     // Ask the team admin for access, with the name the player goes by in the team.
     const u = session.user;
     const req = { email: u.email || "", name: ev.target.name.value.trim().slice(0, 60), at: Date.now() };
+    // My details from my other teams travel along, so approval fills them in at once.
+    await profile.ready;
+    const mine = Object.fromEntries(PROFILE_FIELDS.filter(f => profile.data && profile.data[f] != null).map(f => [f, profile.data[f]]));
+    if (Object.keys(mine).length) req.profile = mine;
     try {
       const res = await fetch(await dbUrl(`requests/${u.uid}`), { method: "PUT", body: JSON.stringify(req) });
       if (!res.ok) throw new Error(res.status);

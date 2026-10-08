@@ -18,6 +18,38 @@
         "at": {
           ".validate": "newData.isNumber()"
         },
+        "profile": {
+          "phone": {
+            ".validate": "newData.isString() && newData.val().matches(/^[1-9][0-9]{7,14}$/)"
+          },
+          "email": {
+            ".validate": "newData.isString() && newData.val().length <= 100 && newData.val().matches(/^[^ @]+@[^ @]+\\.[^ @]+$/)"
+          },
+          "fed": {
+            ".validate": "newData.isString() && newData.val().matches(/^[A-Za-z0-9 .\\/-]{1,20}$/)"
+          },
+          "gemeente": {
+            ".validate": "newData.isString() && newData.val().length <= 60"
+          },
+          "geo": {
+            ".validate": "newData.hasChildren(['lat', 'lon', 'label'])",
+            "lat": {
+              ".validate": "newData.isNumber() && newData.val() >= -90 && newData.val() <= 90"
+            },
+            "lon": {
+              ".validate": "newData.isNumber() && newData.val() >= -180 && newData.val() <= 180"
+            },
+            "label": {
+              ".validate": "newData.isString() && newData.val().length <= 120"
+            },
+            "$other": {
+              ".validate": false
+            }
+          },
+          "$other": {
+            ".validate": false
+          }
+        },
         "$other": {
           ".validate": false
         }
@@ -266,6 +298,38 @@
             "at": {
               ".validate": "newData.isNumber()"
             },
+            "profile": {
+              "phone": {
+                ".validate": "newData.isString() && newData.val().matches(/^[1-9][0-9]{7,14}$/)"
+              },
+              "email": {
+                ".validate": "newData.isString() && newData.val().length <= 100 && newData.val().matches(/^[^ @]+@[^ @]+\\.[^ @]+$/)"
+              },
+              "fed": {
+                ".validate": "newData.isString() && newData.val().matches(/^[A-Za-z0-9 .\\/-]{1,20}$/)"
+              },
+              "gemeente": {
+                ".validate": "newData.isString() && newData.val().length <= 60"
+              },
+              "geo": {
+                ".validate": "newData.hasChildren(['lat', 'lon', 'label'])",
+                "lat": {
+                  ".validate": "newData.isNumber() && newData.val() >= -90 && newData.val() <= 90"
+                },
+                "lon": {
+                  ".validate": "newData.isNumber() && newData.val() >= -180 && newData.val() <= 180"
+                },
+                "label": {
+                  ".validate": "newData.isString() && newData.val().length <= 120"
+                },
+                "$other": {
+                  ".validate": false
+                }
+              },
+              "$other": {
+                ".validate": false
+              }
+            },
             "$other": {
               ".validate": false
             }
@@ -438,6 +502,39 @@
           "$tid": {
             ".write": "(auth != null && auth.token.email_verified === true && (auth.token.email === 'levicaers1@gmail.com')) || (auth != null && root.child('teams').child($tid).child('admins').child(auth.uid).val() === true)",
             ".validate": "newData.isString() && newData.val() === newData.parent().parent().parent().parent().child('teams').child($tid).child('members').child($uid).val()"
+          }
+        },
+        "profile": {
+          ".write": "auth != null && auth.uid === $uid",
+          "phone": {
+            ".validate": "newData.isString() && newData.val().matches(/^[1-9][0-9]{7,14}$/)"
+          },
+          "email": {
+            ".validate": "newData.isString() && newData.val().length <= 100 && newData.val().matches(/^[^ @]+@[^ @]+\\.[^ @]+$/)"
+          },
+          "fed": {
+            ".validate": "newData.isString() && newData.val().matches(/^[A-Za-z0-9 .\\/-]{1,20}$/)"
+          },
+          "gemeente": {
+            ".validate": "newData.isString() && newData.val().length <= 60"
+          },
+          "geo": {
+            ".validate": "newData.hasChildren(['lat', 'lon', 'label'])",
+            "lat": {
+              ".validate": "newData.isNumber() && newData.val() >= -90 && newData.val() <= 90"
+            },
+            "lon": {
+              ".validate": "newData.isNumber() && newData.val() >= -180 && newData.val() <= 180"
+            },
+            "label": {
+              ".validate": "newData.isString() && newData.val().length <= 120"
+            },
+            "$other": {
+              ".validate": false
+            }
+          },
+          "$other": {
+            ".validate": false
           }
         },
         "$other": {

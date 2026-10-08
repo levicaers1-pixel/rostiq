@@ -50,6 +50,17 @@ LOGO = (r"newData.isString() && newData.val().length <= 150000 && ("
         r"newData.val().matches(/^assets\/[a-z0-9-]+\.(png|webp|svg)$/))")
 
 
+def personal():
+    """Personal details: in each team's player row, and once per account in users/{uid}/profile."""
+    return {
+        "phone": {".validate": "newData.isString() && newData.val().matches(/^[1-9][0-9]{7,14}$/)"},
+        "email": {".validate": "newData.isString() && newData.val().length <= 100 && newData.val().matches(/^[^ @]+@[^ @]+\\.[^ @]+$/)"},  # rules regex has no \s
+        "fed": {".validate": "newData.isString() && newData.val().matches(/^[A-Za-z0-9 .\\/-]{1,20}$/)"},
+        "gemeente": s(60),
+        "geo": {".validate": "newData.hasChildren(['lat', 'lon', 'label'])", **LATLON, "label": s(120), "$other": NO},
+    }
+
+
 def player_rules(owner):
     """Rules for one player row; `owner` = who may edit their own fields."""
     own = lambda extra: {".write": owner, **extra}
@@ -57,11 +68,7 @@ def player_rules(owner):
         "uid": {".validate": "newData.isString()"},
         "order": {".validate": "newData.isNumber()"},
         "name": own(s(60)),
-        "phone": own({".validate": "newData.isString() && newData.val().matches(/^[1-9][0-9]{7,14}$/)"}),
-        "email": own({".validate": "newData.isString() && newData.val().length <= 100 && newData.val().matches(/^[^ @]+@[^ @]+\\.[^ @]+$/)"}),  # rules regex has no \s
-        "fed": own({".validate": "newData.isString() && newData.val().matches(/^[A-Za-z0-9 .\\/-]{1,20}$/)"}),
-        "gemeente": own(s(60)),
-        "geo": own({".validate": "newData.hasChildren(['lat', 'lon', 'label'])", **LATLON, "label": s(120), "$other": NO}),
+        **{k: own(v) for k, v in personal().items()},
         "avail": own({"$date": {".validate": "newData.val() === 'yes' || newData.val() === 'maybe' || newData.val() === 'no'"}}),
         "$other": NO,
     }
@@ -113,6 +120,8 @@ def request_rules(write, extra_validate="", admin=None):
         "email": {".validate": f"newData.isString() && ({email_ok})"},
         "name": s(60, 1),
         "at": {".validate": "newData.isNumber()"},
+        # The requester's personal details, so the admin's approval fills them in right away.
+        "profile": {**personal(), "$other": NO},
         "$other": NO}}
 
 
@@ -157,6 +166,8 @@ users = {"$uid": {
     "teams": {"$tid": {
         ".write": f"{PA} || (auth != null && root.child('teams').child($tid).child('admins').child(auth.uid).val() === true)",
         ".validate": "newData.isString() && newData.val() === newData.parent().parent().parent().parent().child('teams').child($tid).child('members').child($uid).val()"}},
+    # My personal details, shared by all my teams (each team keeps a copy in my player row).
+    "profile": {".write": "auth != null && auth.uid === $uid", **personal(), "$other": NO},
     "$other": NO,
 }}
 

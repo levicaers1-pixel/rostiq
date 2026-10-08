@@ -264,13 +264,16 @@ document.getElementById("requests").addEventListener("click", ev => {
     let pid = document.querySelector(`[data-req-select="${uid}"]`).value;
     if (!pid) return;
     const changes = { [`requests/${uid}`]: null };
+    // Their details from their other teams (phone, email, federation number, home town) come along.
+    const prof = r.profile && typeof r.profile === "object" ? r.profile : {};
     if (pid === "__new") {
       pid = "p" + Date.now().toString(36);
       const order = sortedPlayers().reduce((m, p) => Math.max(m, p.order || 0), 0) + 1;
-      changes[`players/${pid}`] = { order, name: (r.name || "?").slice(0, 60), uid, ...(r.email ? { email: r.email.toLowerCase() } : {}) };
-    } else if (r.email && !root.players[pid].email) {
-      // Their login email becomes the contact email, unless one is already filled in.
-      changes[`players/${pid}/email`] = r.email.toLowerCase();
+      changes[`players/${pid}`] = { order, name: (r.name || "?").slice(0, 60), uid, ...(r.email ? { email: r.email.toLowerCase() } : {}), ...prof };
+    } else {
+      for (const [f, v] of Object.entries(prof)) changes[`players/${pid}/${f}`] = v;
+      // Otherwise their login email becomes the contact email, unless one is already filled in.
+      if (!prof.email && r.email && !root.players[pid].email) changes[`players/${pid}/email`] = r.email.toLowerCase();
     }
     linkAccount(uid, pid, changes);
   }
