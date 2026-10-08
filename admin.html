@@ -47,6 +47,27 @@
   .settings { display: grid; gap: 14px; max-width: 640px; }
   .settings label { display: grid; gap: 4px; font-size: .85rem; color: var(--muted); }
 
+  /* Branding */
+  .brandform { display: grid; gap: 14px; max-width: 640px; }
+  .brandform label { display: grid; gap: 4px; font-size: .85rem; color: var(--muted); }
+  .brandform .two { display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(min(220px, 100%), 1fr)); }
+  .field-label { font-size: .85rem; color: var(--muted); margin: 0 0 6px; }
+  .logo-box { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  .logo-preview { background: var(--brand); border-bottom: 3px solid var(--pampas); border-radius: 8px; padding: 10px 14px; min-height: 64px; display: flex; align-items: center; max-width: 100%; }
+  .logo-preview img { display: block; height: 44px; width: auto; max-width: 100%; }
+  .logo-preview span { font-family: "Cormorant Garamond", Georgia, serif; font-weight: 600; font-size: 1.6rem; color: var(--brand-text); }
+  .brandform label.file-btn { position: relative; overflow: hidden; display: inline-block; cursor: pointer; font-size: .9rem; padding: 6px 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text); }
+  .file-btn input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+  .swatches { display: flex; gap: 8px; flex-wrap: wrap; }
+  .swatches button { width: 44px; height: 44px; padding: 0; border-radius: 10px; border: 2px solid var(--border); cursor: pointer;
+    background: linear-gradient(135deg, var(--a) 0 58%, var(--b) 58% 100%); }
+  .swatches button[aria-pressed=true] { border-color: var(--text); box-shadow: 0 0 0 2px var(--bg) inset; }
+  .colors { display: flex; gap: 18px; flex-wrap: wrap; margin-top: 10px; }
+  .brandform .colors label { display: flex; gap: 8px; align-items: center; color: var(--text); font-size: .9rem; }
+  .colors input[type=color] { width: 44px; height: 34px; padding: 2px; }
+  .brand-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .dirty-note { color: var(--maybe); font-size: .85rem; }
+
   /* Matches */
   .mlist { list-style: none; margin: 0 0 12px; padding: 0; }
   .mlist li { display: grid; grid-template-columns: 92px 1fr auto; gap: 4px 12px; align-items: center; padding: 8px 0; border-top: 1px solid var(--border); }
@@ -117,6 +138,44 @@
       </div>
     </section>
 
+    <!-- Branding -->
+    <section class="panel">
+      <h2 data-i18n="brand.title">Branding</h2>
+      <p class="help" data-i18n="brand.help"></p>
+      <form class="brandform" id="f-brand">
+        <div class="two">
+          <label><span data-i18n="brand.name">Team name</span><input name="brand" maxlength="60" required></label>
+          <label><span data-i18n="brand.short">Short name (in messages)</span><input name="shortName" maxlength="60"></label>
+          <label><span data-i18n="brand.calendar">Name in calendars</span><input name="calendarLabel" maxlength="60"></label>
+          <label><span data-i18n="brand.adminName">Admin name (players see this)</span><input name="adminName" maxlength="60"></label>
+        </div>
+        <div>
+          <p class="field-label" data-i18n="brand.logo">Logo</p>
+          <div class="logo-box">
+            <div class="logo-preview" id="logo-preview"></div>
+            <label class="file-btn"><span data-i18n="brand.upload">Choose image…</span><input type="file" id="logo-file" accept="image/png,image/jpeg,image/webp,image/svg+xml"></label>
+            <button type="button" class="link err" id="logo-remove" data-i18n="brand.logoRemove">Remove logo</button>
+          </div>
+          <p class="muted" data-i18n="brand.logoHelp"></p>
+          <p class="err" id="logo-err" hidden></p>
+        </div>
+        <div>
+          <p class="field-label" data-i18n="brand.colors">Colours</p>
+          <div class="swatches" id="swatches"></div>
+          <div class="colors">
+            <label><input type="color" name="main"> <span data-i18n="brand.main">Header</span></label>
+            <label><input type="color" name="highlight"> <span data-i18n="brand.highlight">Highlight</span></label>
+          </div>
+        </div>
+        <div class="brand-actions">
+          <button class="primary" data-i18n="admin.save">Save</button>
+          <button type="button" id="brand-cancel" data-i18n="brand.cancel">Cancel</button>
+          <span class="dirty-note" id="brand-dirty" hidden data-i18n="brand.dirty"></span>
+          <span class="msg"></span>
+        </div>
+      </form>
+    </section>
+
     <!-- Matches -->
     <section class="panel">
       <h2 data-i18n="admin.matches">Matches</h2>
@@ -168,6 +227,7 @@ function render() {
   renderRequests();
   renderPlayers();
   renderSettings();
+  renderBrand();
   renderMatches();
 }
 
@@ -311,6 +371,105 @@ document.getElementById("f-wa").addEventListener("submit", ev => {
   write("settings/waGroup", link); savedMsg(ev.target, true);
 });
 document.getElementById("wa-remove").onclick = () => write("settings/waGroup", null);
+
+// ---- Branding: name, logo and colours of this team (shown live while editing) ----
+const bf = document.getElementById("f-brand");
+const BRAND_TEXT = ["brand", "shortName", "calendarLabel", "adminName"];
+const LOGO_MAX = 140000; // characters of the stored image (the database rules allow 150 000)
+// Colours of the saved team (older teams only have the generated light/dark lists).
+const savedColors = () => {
+  const c = TEAM.colors, [, main, hi] = BRAND_PRESETS[0];
+  if (!c) return { main, highlight: hi };
+  return { main: c.main || (c.light && c.light["--brand"]) || main, highlight: c.highlight || (c.light && c.light["--pampas"]) || hi };
+};
+
+function renderBrand() {
+  if (!brandPreview) {
+    for (const k of BRAND_TEXT) if (document.activeElement !== bf[k]) bf[k].value = TEAM[k] || "";
+    const c = savedColors();
+    bf.main.value = c.main; bf.highlight.value = c.highlight;
+  }
+  const B = { ...TEAM, ...(brandPreview || {}) };
+  document.getElementById("logo-preview").innerHTML = B.logo
+    ? `<img src="${esc(B.logo)}" alt="">` : `<span>${esc(B.brand || "")}</span>`;
+  document.getElementById("logo-remove").hidden = !B.logo;
+  document.getElementById("brand-dirty").hidden = !brandPreview;
+  const main = bf.main.value.toLowerCase(), hi = bf.highlight.value.toLowerCase();
+  document.getElementById("swatches").innerHTML = BRAND_PRESETS.map(([key, a, b]) => {
+    const name = esc(t("brand.preset." + key));
+    return `<button type="button" data-preset="${key}" style="--a:${a};--b:${b}" title="${name}" aria-label="${name}" aria-pressed="${a === main && b === hi}"></button>`;
+  }).join("");
+}
+
+// Collect the form into a preview and show it everywhere on the page.
+function previewBrand(extra = {}) {
+  const text = Object.fromEntries(BRAND_TEXT.map(k => [k, bf[k].value.trim()]));
+  const main = bf.main.value.toLowerCase(), hi = bf.highlight.value.toLowerCase();
+  const isDefault = main === BRAND_PRESETS[0][1] && hi === BRAND_PRESETS[0][2];
+  brandPreview = { ...(brandPreview || {}), ...text, brand: text.brand || TEAM.brand,
+    colors: isDefault ? null : makePalette(main, hi), ...extra };
+  applyBranding();
+  renderBrand();
+}
+bf.addEventListener("input", ev => { if (ev.target.type !== "file") previewBrand(); });
+document.getElementById("swatches").addEventListener("click", ev => {
+  const b = ev.target.closest("[data-preset]");
+  if (!b) return;
+  const [, main, hi] = BRAND_PRESETS.find(p => p[0] === b.dataset.preset);
+  bf.main.value = main; bf.highlight.value = hi;
+  previewBrand();
+});
+document.getElementById("logo-remove").onclick = () => previewBrand({ logo: "" });
+document.getElementById("brand-cancel").onclick = () => {
+  brandPreview = null;
+  document.getElementById("logo-err").hidden = true;
+  bf.querySelector(".msg").textContent = "";
+  applyBranding(); renderBrand();
+};
+
+// Logo: scaled down in the browser (max 720x180) and stored with the team, so no file hosting is needed.
+document.getElementById("logo-file").addEventListener("change", async ev => {
+  const file = ev.target.files[0], err = document.getElementById("logo-err");
+  ev.target.value = "";
+  if (!file) return;
+  err.hidden = true;
+  try {
+    const img = await new Promise((ok, fail) => {
+      const i = new Image(), url = URL.createObjectURL(file);
+      i.onload = () => { URL.revokeObjectURL(url); ok(i); };
+      i.onerror = () => { URL.revokeObjectURL(url); fail(new Error("bad")); };
+      i.src = url;
+    });
+    const w0 = img.naturalWidth || 600, h0 = img.naturalHeight || 150;
+    const scale = Math.min(1, 720 / w0, 180 / h0);
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(w0 * scale));
+    canvas.height = Math.max(1, Math.round(h0 * scale));
+    canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+    let data = canvas.toDataURL("image/png");
+    if (data.length > LOGO_MAX) {
+      const webp = canvas.toDataURL("image/webp", .9); // smaller, keeps transparency (not on every browser)
+      if (webp.startsWith("data:image/webp")) data = webp;
+    }
+    if (data.length > LOGO_MAX) throw new Error("big");
+    previewBrand({ logo: data });
+  } catch (e) {
+    err.textContent = t(e && e.message === "big" ? "brand.logoBig" : "brand.logoBad");
+    err.hidden = false;
+  }
+});
+
+bf.addEventListener("submit", async ev => {
+  ev.preventDefault();
+  if (!brandPreview) previewBrand();
+  const p = brandPreview, changes = {};
+  for (const k of BRAND_TEXT) changes[`info/${k}`] = k === "brand" ? p.brand.slice(0, 60) : (p[k] || null);
+  changes["info/logo"] = p.logo === undefined ? (TEAM.logo || null) : (p.logo || null);
+  changes["info/colors"] = p.colors || null;
+  const ok = await update(changes);
+  if (ok) { brandPreview = null; mergeTeamInfo(root.info); applyBranding(); renderBrand(); }
+  savedMsg(bf, ok, ok ? "" : t("status.saveFailed"));
+});
 
 // ---- Matches (the first change copies the built-in list into the database) ----
 function scheduleUpdate(changes) {

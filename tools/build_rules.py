@@ -42,6 +42,12 @@ def num(lo, hi):
 NO = {".validate": False}
 HHMM = {".validate": "newData.isString() && newData.val().matches(/^([01][0-9]|2[0-3]):[0-5][0-9]$/)"}
 LATLON = {"lat": num(-90, 90), "lon": num(-180, 180)}
+COLOR = {".validate": "newData.isString() && newData.val().matches(/^#[0-9a-fA-F]{6}$/)"}
+PALETTE = {"$var": {".validate": "$var.matches(/^--[a-z-]{2,20}$/) && newData.isString() && newData.val().matches(/^#[0-9a-fA-F]{6}$/)"}}
+# Logo: an image stored inline (scaled down in the browser, max ~150 kB), or a file of this site (Pampas).
+LOGO = (r"newData.isString() && newData.val().length <= 150000 && ("
+        r"newData.val().matches(/^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+\/]+=*$/) || "
+        r"newData.val().matches(/^assets\/[a-z0-9-]+\.(png|webp|svg)$/))")
 
 
 def player_rules(owner):
@@ -115,12 +121,18 @@ team = {
     ".write": PA,
     ".validate": "$tid.matches(/^[a-z0-9][a-z0-9-]{1,39}$/)",
     # Name, logo, colours…: readable by anyone signed in (shown on the 'waiting for approval' screen).
+    # The team admin may change the branding fields (Admin → Branding); the rest is the Rostiq admin's.
     "info": {
         ".read": "auth != null",
         ".validate": "newData.hasChild('brand')",
-        "brand": s(60, 1), "shortName": s(60), "calendarLabel": s(60), "season": s(60), "adminName": s(60), "logo": s(200),
+        "brand": {".write": TA, **s(60, 1)}, "shortName": {".write": TA, **s(60)},
+        "calendarLabel": {".write": TA, **s(60)}, "adminName": {".write": TA, **s(60)},
+        "season": s(60),
+        "logo": {".write": TA, ".validate": LOGO},
         "teamSize": num(0, 60), "minPlayers": num(1, 50),
-        "colors": {}, "events": {},
+        # Only "#rrggbb" colours under "--css-variable" names: nothing else can reach the page's style sheet.
+        "colors": {".write": TA, "main": COLOR, "highlight": COLOR, "light": PALETTE, "dark": PALETTE, "$other": NO},
+        "events": {},
         "$other": NO,
     },
     "admins": {"$uid": {".read": "auth != null && auth.uid === $uid", ".validate": "newData.val() === true"}},

@@ -60,11 +60,7 @@
         <label><span data-i18n="rostiq.fAdminName">Admin name</span><input name="adminName" maxlength="60"></label>
         <label><span data-i18n="rostiq.fMin">Minimum players</span><input name="min" type="number" min="1" max="50" value="4" required></label>
         <label><span data-i18n="rostiq.fColor">Colours</span>
-          <select name="colors">
-            <option value="green" data-i18n="rostiq.colorGreen">Green & cream</option>
-            <option value="navy" data-i18n="rostiq.colorNavy">Navy & gold</option>
-            <option value="burgundy" data-i18n="rostiq.colorBurgundy">Burgundy & sand</option>
-          </select></label>
+          <select name="colors"></select></label>
         <div class="full"><button type="submit" class="primary" data-i18n="rostiq.create">Create team</button> <span class="msg"></span></div>
       </form>
     </section>
@@ -77,18 +73,6 @@
 <script src="i18n.js"></script>
 <script src="common.js"></script>
 <script>
-// Colour presets for new teams (green & cream is the Rostiq default, so it needs no overrides).
-const PRESETS = {
-  green: null,
-  navy: {
-    light: { "--brand": "#16324f", "--accent": "#1f4e79", "--pampas": "#c9a227", "--bg": "#f3f5f8", "--surface": "#fbfcfd", "--border": "#d9e0e8", "--brand-text": "#f3f5f8" },
-    dark: { "--brand": "#0d1b2a", "--accent": "#c9a227", "--pampas": "#c9a227", "--bg": "#101a26", "--surface": "#16263a", "--border": "#25384f" },
-  },
-  burgundy: {
-    light: { "--brand": "#5a1f2b", "--accent": "#7a2a3a", "--pampas": "#d8c3a5", "--bg": "#f6f1ec", "--surface": "#fcf9f6", "--border": "#e6dacd", "--brand-text": "#f6f1ec" },
-    dark: { "--brand": "#2a0f15", "--accent": "#d8c3a5", "--pampas": "#d8c3a5", "--bg": "#1e1416", "--surface": "#2a1c1f", "--border": "#3d2a2e" },
-  },
-};
 const ID_OK = /^[a-z0-9][a-z0-9-]{1,39}$/;
 let teams = null; // [{ id, info, members }]
 
@@ -130,8 +114,11 @@ document.getElementById("teams").addEventListener("click", ev => {
   b.textContent = t("rostiq.copied");
 });
 
-// Suggest an id from the team name.
+// Colour sets (team admins can fine-tune them later on their Admin page).
 const form = document.getElementById("new-team");
+form.colors.innerHTML = BRAND_PRESETS.map(([key]) => `<option value="${key}">${t("brand.preset." + key)}</option>`).join("");
+
+// Suggest an id from the team name.
 form.brand.addEventListener("input", () => {
   if (!form.id.dataset.touched) form.id.value = slug(form.brand.value).replace(/^-+|-+$/g, "").slice(0, 40);
 });
@@ -144,7 +131,8 @@ form.addEventListener("submit", async ev => {
   if (!ID_OK.test(id)) { msg.textContent = t("rostiq.idInvalid"); msg.className = "msg err"; return; }
   if (teams.some(x => x.id === id)) { msg.textContent = t("rostiq.idTaken"); msg.className = "msg err"; return; }
   const min = Math.min(50, Math.max(1, Math.round(Number(form.min.value) || 4)));
-  const colors = PRESETS[form.colors.value];
+  const preset = BRAND_PRESETS.find(p => p[0] === form.colors.value);
+  const colors = preset && preset !== BRAND_PRESETS[0] ? makePalette(preset[1], preset[2]) : null; // first = Rostiq default
   const info = { brand, season: season || brand, shortName: season || brand, calendarLabel: brand, teamSize: 0, minPlayers: min,
     ...(form.adminName.value.trim() ? { adminName: form.adminName.value.trim() } : {}), ...(colors ? { colors } : {}) };
   const ok = await writeAbs(`teams/${id}`, { info, settings: { minPlayers: min, scheduleInDb: true, seasonName: season || brand }, initialized: true });

@@ -408,13 +408,58 @@ const lines = arr => arr.filter(l => l === BLANK || (typeof l === "string" && l)
 // Link to a page of this team (used in messages and calendar files), e.g. ".../carpool.html?t=ic-heren-1".
 const pageUrl = file => location.href.split(/[?#]/)[0].replace(/[^/]*$/, file) + (TEAM_ID ? `?t=${TEAM_ID}` : "");
 
+// ---- Team colours: a full light + dark palette from two picks (header colour, highlight colour) ----
+const HEX = /^#[0-9a-fA-F]{6}$/;
+const BRAND_PRESETS = [ // [key, header, highlight]; the first is the Rostiq default (no overrides stored)
+  ["green", "#1f3a2e", "#cdb994"], ["navy", "#16324f", "#c9a227"], ["burgundy", "#5a1f2b", "#d8c3a5"],
+  ["black", "#161616", "#d4af37"], ["royal", "#1e3a8a", "#cbd5e1"], ["red", "#9f1d1d", "#e7d3b0"],
+  ["orange", "#9a3412", "#fcd34d"], ["purple", "#3b1f6b", "#c4b5fd"], ["teal", "#0f4c4f", "#9fd3c7"],
+];
+function hexToHsl(hex) {
+  const [r, g, b] = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16) / 255);
+  const max = Math.max(r, g, b), min = Math.min(r, g, b), l = (max + min) / 2, d = max - min;
+  if (!d) return [0, 0, l];
+  const s = d / (1 - Math.abs(2 * l - 1));
+  const h = max === r ? ((g - b) / d + 6) % 6 : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+  return [h * 60, s, l];
+}
+function hsl(h, s, l) {
+  const a = s * Math.min(l, 1 - l), f = n => { const k = (n + h / 30) % 12; return l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1)); };
+  return "#" + [0, 8, 4].map(n => Math.round(f(n) * 255).toString(16).padStart(2, "0")).join("");
+}
+const luminance = hex => [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16) / 255)
+  .map(c => (c <= .04 ? c / 12.92 : ((c + .055) / 1.055) ** 2.4)).reduce((sum, c, i) => sum + c * [.2126, .7152, .0722][i], 0);
+function makePalette(main, highlight) {
+  const [mh, ms, ml] = hexToHsl(main), [hh, hs, hl] = hexToHsl(highlight);
+  const darkHeader = luminance(main) < .18;
+  const bg = hsl(hh, Math.min(hs, .45), .93);
+  const accent = darkHeader ? hsl(mh, ms, Math.min(ml + .06, .35)) : hsl(mh, ms, .28);
+  const dBg = hsl(mh, Math.min(ms, .3), .11), dAccent = hsl(hh, hs, Math.max(hl, .65));
+  return {
+    main, highlight,
+    light: {
+      "--brand": main, "--brand-text": darkHeader ? bg : hsl(mh, .3, .12), "--accent": accent, "--on-accent": bg,
+      "--pampas": highlight, "--bg": bg, "--surface": hsl(hh, Math.min(hs, .45), .965), "--border": hsl(hh, Math.min(hs, .35), .83),
+      "--text": hsl(mh, Math.min(ms, .25), .14), "--muted": hsl(mh, Math.min(ms, .08), .44), "--final": hsl(hh, Math.min(hs, .4), .4),
+    },
+    dark: {
+      "--brand": hsl(mh, Math.min(ms, .35), .08), "--brand-text": hsl(hh, Math.min(hs, .4), .91), "--accent": dAccent, "--on-accent": dBg,
+      "--pampas": dAccent, "--bg": dBg, "--surface": hsl(mh, Math.min(ms, .3), .15), "--border": hsl(mh, Math.min(ms, .3), .23),
+      "--text": hsl(hh, Math.min(hs, .4), .91), "--muted": hsl(mh, .08, .67), "--final": dAccent,
+    },
+  };
+}
+
 // ---- Team branding: logo (or the team name as text), colours, page links carrying ?t= ----
+// brandPreview: unsaved changes on the Admin page, shown live until saved or cancelled.
+let brandPreview = null;
 function applyBranding() {
+  const B = { ...TEAM, ...(brandPreview || {}) };
   const home = document.querySelector(".brand-inner > a");
   if (home) {
     home.href = pageUrl("");
-    home.innerHTML = TEAM.logo ? `<img class="logo" src="${esc(TEAM.logo)}" alt="${esc(TEAM.brand)}">`
-      : `<span class="logo-text">${esc(TEAM.brand)}</span>`;
+    home.innerHTML = B.logo ? `<img class="logo" src="${esc(B.logo)}" alt="${esc(B.brand)}">`
+      : `<span class="logo-text">${esc(B.brand)}</span>`;
   }
   const tabs = document.querySelector(".tabs");
   if (tabs) tabs.hidden = !TEAM_ID; // no team chosen yet: nothing to navigate to
@@ -422,7 +467,9 @@ function applyBranding() {
     const file = (a.getAttribute("href") || "").split("?")[0];
     a.setAttribute("href", file + (TEAM_ID ? `?t=${TEAM_ID}` : ""));
   });
-  const c = TEAM.colors, vars = o => Object.entries(o || {}).map(([k, v]) => `${k}: ${v};`).join(" ");
+  // Only "--name: #rrggbb" pairs reach the style sheet (the database rules allow nothing else either).
+  const c = B.colors, vars = o => Object.entries(o || {}).filter(([k, v]) => /^--[a-z-]{2,20}$/.test(k) && HEX.test(v))
+    .map(([k, v]) => `${k}: ${v};`).join(" ");
   let style = document.getElementById("team-colors");
   if (!style) { style = document.createElement("style"); style.id = "team-colors"; document.head.append(style); }
   style.textContent = c ? `:root { ${vars(c.light)} } @media (prefers-color-scheme: dark) { :root { ${vars(c.dark)} } }` : "";

@@ -184,22 +184,27 @@
           ".read": "auth != null",
           ".validate": "newData.hasChild('brand')",
           "brand": {
+            ".write": "((auth != null && auth.token.email_verified === true && (auth.token.email === 'levicaers1@gmail.com')) || (auth != null && root.child('teams').child($tid).child('admins').child(auth.uid).val() === true))",
             ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 60"
           },
           "shortName": {
+            ".write": "((auth != null && auth.token.email_verified === true && (auth.token.email === 'levicaers1@gmail.com')) || (auth != null && root.child('teams').child($tid).child('admins').child(auth.uid).val() === true))",
             ".validate": "newData.isString() && newData.val().length <= 60"
           },
           "calendarLabel": {
+            ".write": "((auth != null && auth.token.email_verified === true && (auth.token.email === 'levicaers1@gmail.com')) || (auth != null && root.child('teams').child($tid).child('admins').child(auth.uid).val() === true))",
+            ".validate": "newData.isString() && newData.val().length <= 60"
+          },
+          "adminName": {
+            ".write": "((auth != null && auth.token.email_verified === true && (auth.token.email === 'levicaers1@gmail.com')) || (auth != null && root.child('teams').child($tid).child('admins').child(auth.uid).val() === true))",
             ".validate": "newData.isString() && newData.val().length <= 60"
           },
           "season": {
             ".validate": "newData.isString() && newData.val().length <= 60"
           },
-          "adminName": {
-            ".validate": "newData.isString() && newData.val().length <= 60"
-          },
           "logo": {
-            ".validate": "newData.isString() && newData.val().length <= 200"
+            ".write": "((auth != null && auth.token.email_verified === true && (auth.token.email === 'levicaers1@gmail.com')) || (auth != null && root.child('teams').child($tid).child('admins').child(auth.uid).val() === true))",
+            ".validate": "newData.isString() && newData.val().length <= 150000 && (newData.val().matches(/^data:image\\/(png|jpeg|webp);base64,[A-Za-z0-9+\\/]+=*$/) || newData.val().matches(/^assets\\/[a-z0-9-]+\\.(png|webp|svg)$/))"
           },
           "teamSize": {
             ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 60"
@@ -207,7 +212,28 @@
           "minPlayers": {
             ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 50"
           },
-          "colors": {},
+          "colors": {
+            ".write": "((auth != null && auth.token.email_verified === true && (auth.token.email === 'levicaers1@gmail.com')) || (auth != null && root.child('teams').child($tid).child('admins').child(auth.uid).val() === true))",
+            "main": {
+              ".validate": "newData.isString() && newData.val().matches(/^#[0-9a-fA-F]{6}$/)"
+            },
+            "highlight": {
+              ".validate": "newData.isString() && newData.val().matches(/^#[0-9a-fA-F]{6}$/)"
+            },
+            "light": {
+              "$var": {
+                ".validate": "$var.matches(/^--[a-z-]{2,20}$/) && newData.isString() && newData.val().matches(/^#[0-9a-fA-F]{6}$/)"
+              }
+            },
+            "dark": {
+              "$var": {
+                ".validate": "$var.matches(/^--[a-z-]{2,20}$/) && newData.isString() && newData.val().matches(/^#[0-9a-fA-F]{6}$/)"
+              }
+            },
+            "$other": {
+              ".validate": false
+            }
+          },
           "events": {},
           "$other": {
             ".validate": false
