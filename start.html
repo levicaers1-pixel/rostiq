@@ -19,24 +19,67 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Cormorant+Garamond:wght@600&display=swap">
 <link rel="stylesheet" href="common.css">
 <style>
-  .start { max-width: 620px; }
-  .start-form { display: grid; gap: 16px; padding: 20px; margin-top: 20px; }
-  .start-form label { display: grid; gap: 5px; font-size: .85rem; color: var(--muted); font-weight: 500; }
-  .start-form input, .start-form select { font: inherit; font-size: .95rem; color: var(--text); background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px 12px; }
-  .start-form .two { display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(min(240px, 100%), 1fr)); }
-  .start-form small { font-size: .78rem; color: var(--muted); font-weight: 400; }
-  .start-form small.ok { color: var(--yes); } .start-form small.err { color: var(--no); }
-  .idrow { display: flex; align-items: center; gap: 0; }
-  .idrow span { padding: 10px 0 10px 12px; color: var(--muted); font-size: .85rem; background: var(--bg); border: 1px solid var(--border); border-right: none; border-radius: var(--radius-sm) 0 0 var(--radius-sm); white-space: nowrap; }
-  .idrow input { flex: 1; min-width: 0; border-radius: 0 var(--radius-sm) var(--radius-sm) 0 !important; }
-  .swatches { display: flex; gap: 8px; flex-wrap: wrap; }
-  .swatches button { width: 42px; height: 42px; padding: 0; border-radius: 10px; border: 2px solid var(--border); background: linear-gradient(135deg, var(--a) 0 58%, var(--b) 58% 100%); }
-  .swatches button[aria-pressed="true"] { border-color: var(--text); box-shadow: 0 0 0 2px var(--bg) inset; }
-  .start-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-  .start-actions .primary { padding: 11px 20px; font-size: .95rem; }
-  .start-points { list-style: none; margin: 18px 0 0; padding: 0; display: grid; gap: 8px; color: var(--muted); font-size: .9rem; }
+  main.start { max-width: 640px; }
+  .start-points { list-style: none; margin: 16px 0 0; padding: 0; display: grid; gap: 8px; color: var(--muted); font-size: .9rem; }
   .start-points li { display: flex; gap: 10px; align-items: center; }
   .start-points svg.i { color: var(--accent); }
+
+  /* Wizard card */
+  .wizard { margin-top: 22px; padding: 0; overflow: hidden; }
+  .wiz-progress { display: flex; align-items: center; gap: 10px; padding: 16px 20px; border-bottom: 1px solid var(--border); }
+  .wiz-progress .bar { flex: 1; height: 6px; border-radius: 999px; background: color-mix(in srgb, var(--muted) 15%, var(--surface)); overflow: hidden; }
+  .wiz-progress .bar span { display: block; height: 100%; border-radius: 999px; background: var(--pampas); transition: width .3s var(--ease); }
+  .wiz-progress small { color: var(--muted); font-size: .8rem; font-weight: 600; white-space: nowrap; }
+  .step { padding: 20px; display: grid; gap: 18px; }
+  .step h2 { margin: 0; font-size: 1.25rem; }
+  .step > p.lead { margin: -10px 0 0; color: var(--muted); font-size: .9rem; }
+
+  /* Fields: always full width inside the card */
+  .fld { display: grid; gap: 6px; min-width: 0; }
+  .fld > span { font-size: .88rem; font-weight: 600; color: var(--text); }
+  .fld > span em { font-style: normal; font-weight: 400; color: var(--muted); }
+  .fld input { width: 100%; min-width: 0; font: inherit; font-size: 1rem; color: var(--text); background: var(--bg);
+    border: 1.5px solid var(--border); border-radius: 12px; padding: 12px 14px; }
+  .fld input.bad { border-color: var(--no) !important; }
+  .fld input.good { border-color: var(--yes) !important; }
+  .fld small { font-size: .8rem; color: var(--muted); line-height: 1.4; }
+  .fld small.ok { color: var(--yes); } .fld small.err { color: var(--no); }
+  .code-input { text-transform: uppercase; letter-spacing: .06em; font-weight: 700; }
+
+  /* Sport tiles */
+  .sports { display: grid; gap: 8px; grid-template-columns: repeat(auto-fill, minmax(min(130px, 100%), 1fr)); }
+  .sports button { flex-direction: column; gap: 4px; padding: 12px 6px; border-radius: 12px; font-size: .85rem; font-weight: 600; }
+  .sports button b { font-size: 1.5rem; line-height: 1; font-weight: 400; }
+  .sports button[aria-pressed="true"] { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, var(--surface)); box-shadow: 0 0 0 1px var(--accent); }
+
+  /* Team link preview */
+  .link-card { display: grid; gap: 4px; padding: 12px 14px; border-radius: 12px; background: var(--bg); border: 1.5px dashed var(--border); min-width: 0; }
+  .link-card code { font-size: .92rem; font-weight: 600; overflow-wrap: anywhere; color: var(--text); }
+  .link-card code b { color: var(--accent); }
+  .link-card .row { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+
+  /* Colours with a live preview */
+  .swatches { display: grid; gap: 8px; grid-template-columns: repeat(auto-fill, minmax(44px, 1fr)); }
+  .swatches button { aspect-ratio: 1; height: auto; padding: 0; border-radius: 12px; border: 2px solid var(--border);
+    background: linear-gradient(135deg, var(--a) 0 58%, var(--b) 58% 100%); }
+  .swatches button[aria-pressed="true"] { border-color: var(--text); box-shadow: 0 0 0 2px var(--surface) inset; }
+  .preview { border-radius: 14px; overflow: hidden; border: 1px solid var(--border); }
+  .preview .p-head { padding: 16px; border-bottom: 3px solid; font-weight: 700; font-size: 1.15rem; overflow-wrap: anywhere; }
+  .preview .p-body { padding: 14px 16px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: .85rem; }
+  .preview .p-btn { padding: 6px 12px; border-radius: 8px; font-weight: 600; }
+
+  /* Summary */
+  .summary { display: grid; gap: 0; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+  .summary div { display: flex; justify-content: space-between; gap: 12px; padding: 10px 14px; border-top: 1px solid var(--border); font-size: .9rem; }
+  .summary div:first-child { border-top: none; }
+  .summary dt { color: var(--muted); } .summary dd { margin: 0; font-weight: 600; text-align: right; overflow-wrap: anywhere; min-width: 0; }
+
+  /* Navigation */
+  .wiz-nav { display: flex; gap: 10px; justify-content: space-between; align-items: center; padding: 16px 20px; border-top: 1px solid var(--border);
+    background: color-mix(in srgb, var(--muted) 4%, var(--surface)); }
+  .wiz-nav button { padding: 11px 18px; font-size: .95rem; }
+  .wiz-nav .primary { margin-left: auto; }
+  .wiz-err { margin: 0 20px 16px; }
 </style>
 </head>
 <body>
@@ -52,28 +95,64 @@
     <li data-i18n-html="start.p1"></li><li data-i18n-html="start.p2"></li><li data-i18n-html="start.p3"></li>
   </ul>
 
-  <form class="panel start-form" id="start-form" hidden>
-    <label id="code-field"><span data-i18n="start.code">Pilot code</span>
-      <input name="code" autocomplete="off" autocapitalize="characters" maxlength="30" placeholder="PILOT-…">
-      <small id="code-msg" data-i18n="start.codeHelp"></small></label>
-    <div class="two">
-      <label><span data-i18n="start.name">Team name</span><input name="brand" maxlength="60" required autocomplete="off"></label>
-      <label><span data-i18n="fields.sport">Sport</span><select name="sport" id="sport"></select></label>
-    </div>
-    <label><span data-i18n="start.id">Team link</span>
-      <div class="idrow"><span id="id-prefix"></span><input name="id" maxlength="40" required autocomplete="off" pattern="[a-z0-9][a-z0-9\-]{1,39}"></div>
-      <small id="id-msg"></small></label>
-    <div class="two">
-      <label><span data-i18n="start.season">Season / competition (optional)</span><input name="season" maxlength="60" autocomplete="off"></label>
-      <label><span data-i18n="start.you">Your name in the team</span><input name="you" maxlength="60" required autocomplete="name"></label>
-    </div>
-    <div>
-      <p class="field-label" data-i18n="brand.colors">Colours</p>
+  <form class="panel wizard" id="wizard" hidden novalidate>
+    <div class="wiz-progress"><div class="bar"><span id="wiz-bar"></span></div><small id="wiz-count"></small></div>
+
+    <!-- 1. Pilot code (skipped when signup is open) -->
+    <section class="step" data-step="code">
+      <h2 data-i18n="start.s.code">Your pilot code</h2>
+      <p class="lead" data-i18n="start.codeHelp"></p>
+      <label class="fld"><span data-i18n="start.code">Pilot code</span>
+        <input name="code" class="code-input" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="30" placeholder="PILOT-…">
+        <small id="code-msg"></small></label>
+    </section>
+
+    <!-- 2. The team -->
+    <section class="step" data-step="team">
+      <h2 data-i18n="start.s.team">Your team</h2>
+      <label class="fld"><span data-i18n="start.name">Team name</span>
+        <input name="brand" maxlength="60" autocomplete="off" data-i18n-placeholder="start.namePh">
+        <small data-i18n="start.nameHelp"></small></label>
+      <div class="fld"><span data-i18n="fields.sport">Sport</span><div class="sports" id="sports" role="group" data-no-icons></div></div>
+      <label class="fld"><span><span data-i18n="start.seasonShort">Season / competition</span> <em data-i18n="start.optional">(optional)</em></span>
+        <input name="season" maxlength="60" autocomplete="off" data-i18n-placeholder="start.seasonPh">
+        <small data-i18n="start.seasonHelp"></small></label>
+    </section>
+
+    <!-- 3. You and the link -->
+    <section class="step" data-step="you">
+      <h2 data-i18n="start.s.you">You and your team link</h2>
+      <label class="fld"><span data-i18n="start.you">Your name in the team</span>
+        <input name="you" maxlength="60" autocomplete="name" data-i18n-placeholder="start.youPh">
+        <small data-i18n="start.youHelp"></small></label>
+      <div class="fld"><span data-i18n="start.id">Team link</span>
+        <div class="link-card">
+          <code id="link-preview"></code>
+          <div class="row"><small id="id-msg"></small><button type="button" class="link" id="edit-link" data-i18n="start.editLink">Change</button></div>
+        </div>
+        <label class="fld" id="id-field" hidden><input name="id" maxlength="40" autocomplete="off" spellcheck="false"><small data-i18n="start.idHelp"></small></label>
+      </div>
+    </section>
+
+    <!-- 4. Colours -->
+    <section class="step" data-step="colors">
+      <h2 data-i18n="start.s.colors">Colours</h2>
+      <p class="lead" data-i18n="start.colorsHelp"></p>
       <div class="swatches" id="swatches"></div>
-    </div>
-    <div class="start-actions">
-      <button class="primary" type="submit" id="create" data-i18n="start.create">Create team</button>
-      <small class="err" id="create-err" hidden></small>
+      <div class="preview" id="preview"></div>
+    </section>
+
+    <!-- 5. Check and create -->
+    <section class="step" data-step="check">
+      <h2 data-i18n="start.s.check">Everything right?</h2>
+      <dl class="summary" id="summary"></dl>
+      <p class="lead" data-i18n="start.afterCreate"></p>
+    </section>
+
+    <div class="gate-callout wiz-err" id="wiz-err" hidden></div>
+    <div class="wiz-nav">
+      <button type="button" id="back" data-i18n="start.back">Back</button>
+      <button type="submit" class="primary" id="next"></button>
     </div>
   </form>
 </main>
@@ -85,16 +164,16 @@
 <script src="i18n.js"></script>
 <script src="common.js"></script>
 <script>
-// Self-service: a signed-in person starts a team (with a pilot code while signup isn't open to all).
-// One write creates the team with them as admin and first player, their "my teams" entry, one of their
-// three "started" slots and one use less of the code. The database rules check all of that.
+// Self-service in a few small steps: (code) → team → you & link → colours → check. One write then creates
+// the team with the starter as its only admin and first player, their "my teams" entry, one of their three
+// "started" slots and one use less of the code. The database rules check all of that again.
 const ID_OK = /^[a-z0-9][a-z0-9-]{1,39}$/;
-const f = document.getElementById("start-form");
-const st = { open: null, code: { value: "", uses: null }, idTaken: false, idTouched: false, colors: BRAND_PRESETS[0][0], busy: false, loaded: false };
-
-f.sport.innerHTML = Object.keys(SPORTS).map(k => `<option value="${k}">${SPORTS[k].icon} ${t("sport." + k)}</option>`).join("");
-document.getElementById("create").textContent = t("start.create");
-document.getElementById("id-prefix").textContent = appUrl("").replace(/^https?:\/\//, "") + "?t=";
+const f = document.getElementById("wizard");
+const st = { open: null, loaded: false, step: 0, code: { value: "", uses: null, checking: false },
+  sport: "golf", id: { value: "", taken: null, touched: false, checking: false }, colors: BRAND_PRESETS[0][0], busy: false };
+const steps = () => (st.open ? ["team", "you", "colors", "check"] : ["code", "team", "you", "colors", "check"]);
+const cur = () => steps()[st.step];
+const linkBase = () => appUrl("").replace(/^https?:\/\//, "") + "?t=";
 
 async function load() {
   st.loaded = true;
@@ -103,73 +182,135 @@ async function load() {
   render();
 }
 
+// Is the current step complete? Returns an error text, or "" when it's fine.
+function problem(step) {
+  if (step === "code") return !st.code.value ? t("start.codeNeeded") : st.code.uses === null ? t("start.codeChecking") : st.code.uses > 0 ? "" : t("start.codeBad");
+  if (step === "team") return f.brand.value.trim().length < 2 ? t("start.nameNeeded") : "";
+  if (step === "you") {
+    if (!f.you.value.trim()) return t("start.youNeeded");
+    if (!ID_OK.test(st.id.value)) return t("rostiq.idInvalid");
+    if (st.id.checking || st.id.taken === null) return t("start.idChecking");
+    return st.id.taken ? t("start.idTaken") : "";
+  }
+  return "";
+}
+
 function render() {
   const signedIn = AUTH_ON ? !!session.user && session.ready : true;
   f.hidden = !signedIn;
   if (!signedIn) return;
   if (!st.loaded) { load(); return; }
-  document.getElementById("code-field").hidden = st.open === true;
-  const cm = document.getElementById("code-msg");
-  cm.className = st.code.uses === null ? "" : st.code.uses > 0 ? "ok" : "err";
-  cm.textContent = !st.code.value ? t("start.codeHelp") : st.code.uses === null ? "…" : st.code.uses > 0 ? t("start.codeOk", { n: st.code.uses }) : t("start.codeBad");
+  const list = steps(), now = cur();
+  f.querySelectorAll(".step").forEach(s => { s.hidden = s.dataset.step !== now; });
+  document.getElementById("wiz-bar").style.width = `${(st.step + 1) / list.length * 100}%`;
+  document.getElementById("wiz-count").textContent = t("start.stepOf", { n: st.step + 1, total: list.length });
+  document.getElementById("back").hidden = st.step === 0;
+  const last = st.step === list.length - 1;
+  const next = document.getElementById("next");
+  next.innerHTML = st.busy ? t("start.creating") : last ? `${ic("check")} ${t("start.create")}` : `${t("start.next")} ${ic("arrow-right")}`;
+  next.disabled = st.busy;
+
+  // code
+  const cm = document.getElementById("code-msg"), ci = f.code;
+  cm.className = !st.code.value || st.code.uses === null ? "" : st.code.uses > 0 ? "ok" : "err";
+  cm.textContent = !st.code.value ? t("start.codeExample") : st.code.uses === null ? t("start.codeChecking") : st.code.uses > 0 ? t("start.codeOk", { n: st.code.uses }) : t("start.codeBad");
+  ci.classList.toggle("good", st.code.uses > 0); ci.classList.toggle("bad", st.code.uses === 0);
+  // sports
+  document.getElementById("sports").innerHTML = Object.keys(SPORTS).map(k =>
+    `<button type="button" data-sport="${k}" aria-pressed="${k === st.sport}"><b>${SPORTS[k].icon}</b>${t("sport." + k)}</button>`).join("");
+  // link
+  document.getElementById("link-preview").innerHTML = `${esc(linkBase())}<b>${esc(st.id.value || "…")}</b>`;
   const im = document.getElementById("id-msg");
-  const id = f.id.value.trim();
-  im.className = !id ? "" : !ID_OK.test(id) || st.idTaken ? "err" : "ok";
-  im.textContent = !id ? t("start.idHelp") : !ID_OK.test(id) ? t("rostiq.idInvalid") : st.idTaken ? t("start.idTaken") : t("start.idFree");
+  const idState = !st.id.value ? "" : !ID_OK.test(st.id.value) ? "err" : st.id.checking || st.id.taken === null ? "" : st.id.taken ? "err" : "ok";
+  im.className = idState;
+  im.textContent = !st.id.value ? t("start.idFromName") : !ID_OK.test(st.id.value) ? t("rostiq.idInvalid")
+    : st.id.checking || st.id.taken === null ? t("start.idChecking") : st.id.taken ? t("start.idTaken") : t("start.idFree");
+  f.id.classList.toggle("bad", idState === "err"); f.id.classList.toggle("good", idState === "ok");
+  // colours + preview
   document.getElementById("swatches").innerHTML = BRAND_PRESETS.map(([key, a, b]) =>
     `<button type="button" data-preset="${key}" style="--a:${a};--b:${b}" title="${esc(t("brand.preset." + key))}" aria-label="${esc(t("brand.preset." + key))}" aria-pressed="${key === st.colors}"></button>`).join("");
-  document.getElementById("create").disabled = st.busy;
+  const [, main, hi] = BRAND_PRESETS.find(p => p[0] === st.colors), pal = makePalette(main, hi).light;
+  document.getElementById("preview").innerHTML = `<div class="p-head" style="background:${pal["--brand"]};color:${pal["--brand-text"]};border-color:${pal["--pampas"]}">${esc(f.brand.value.trim() || t("start.name"))}</div>
+    <div class="p-body" style="background:${pal["--bg"]};color:${pal["--text"]}"><span class="p-btn" style="background:${pal["--accent"]};color:${pal["--on-accent"]}">${t("answer.yes")}</span>
+      <span class="p-btn" style="background:${pal["--pampas"]};color:${pal["--brand"]}">${t("hero.carpool")}</span> <span>${esc(t("brand.preset." + st.colors))}</span></div>`;
+  // summary
+  document.getElementById("summary").innerHTML = [
+    [t("start.name"), f.brand.value.trim()], [t("fields.sport"), `${SPORTS[st.sport].icon} ${t("sport." + st.sport)}`],
+    [t("start.seasonShort"), f.season.value.trim() || "–"], [t("start.you"), f.you.value.trim()],
+    [t("start.id"), linkBase() + st.id.value], [t("brand.colors"), t("brand.preset." + st.colors)],
+    ...(st.open ? [] : [[t("start.code"), st.code.value]]),
+  ].map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join("");
 }
 
-// Checks while typing: is the code valid, is the link still free?
+function showErr(msg) {
+  const e = document.getElementById("wiz-err");
+  e.innerHTML = msg ? `${ic("x")} <span>${esc(msg)}</span>` : "";
+  e.hidden = !msg;
+}
+const focusStep = () => { const el = f.querySelector(`.step[data-step="${cur()}"] input:not([hidden])`); if (el && cur() !== "colors" && cur() !== "check") el.focus(); };
+
+// ---- Live checks ----
 let codeTimer, idTimer;
 f.code.addEventListener("input", () => {
   f.code.value = f.code.value.toUpperCase().replace(/[^A-Z0-9-]/g, "");
-  st.code = { value: f.code.value, uses: null }; render();
+  st.code = { value: f.code.value, uses: null }; showErr(""); render();
   clearTimeout(codeTimer);
   codeTimer = setTimeout(async () => {
     const v = f.code.value;
-    if (v.length < 3) return;
+    if (v.length < 3) { st.code.uses = 0; return render(); }
     const c = await getAbs(`signupCodes/${v}`);
     if (f.code.value === v) { st.code = { value: v, uses: c && typeof c.uses === "number" ? c.uses : 0 }; render(); }
-  }, 400);
+  }, 350);
 });
-const checkId = () => {
+function setId(v) {
+  st.id = { ...st.id, value: v, taken: null, checking: ID_OK.test(v) };
+  render();
   clearTimeout(idTimer);
-  st.idTaken = false; render();
+  if (!ID_OK.test(v)) return;
   idTimer = setTimeout(async () => {
-    const id = f.id.value.trim();
-    if (!ID_OK.test(id)) return;
-    const exists = await getAbs(`teams/${id}/info`);
-    if (f.id.value.trim() === id) { st.idTaken = !!exists; render(); }
-  }, 400);
-};
+    const exists = await getAbs(`teams/${v}/info`);
+    if (st.id.value === v) { st.id.taken = !!exists; st.id.checking = false; render(); }
+  }, 350);
+}
 f.brand.addEventListener("input", () => {
-  if (!st.idTouched) { f.id.value = slug(f.brand.value).replace(/^-+|-+$/g, "").slice(0, 40); checkId(); }
+  showErr("");
+  if (!st.id.touched) setId(slug(f.brand.value).replace(/^-+|-+$/g, "").slice(0, 40)); else render();
 });
-f.id.addEventListener("input", () => { st.idTouched = true; f.id.value = f.id.value.toLowerCase(); checkId(); });
-document.getElementById("swatches").addEventListener("click", ev => {
-  const b = ev.target.closest("[data-preset]");
-  if (b) { st.colors = b.dataset.preset; render(); }
-});
+f.season.addEventListener("input", render);
+f.you.addEventListener("input", () => { showErr(""); render(); });
+f.id.addEventListener("input", () => { st.id.touched = true; f.id.value = f.id.value.toLowerCase().replace(/[^a-z0-9-]/g, ""); showErr(""); setId(f.id.value); });
+document.getElementById("edit-link").onclick = () => {
+  const fld = document.getElementById("id-field");
+  fld.hidden = !fld.hidden;
+  if (!fld.hidden) { f.id.value = st.id.value; f.id.focus(); }
+};
+document.getElementById("sports").addEventListener("click", ev => { const b = ev.target.closest("[data-sport]"); if (b) { st.sport = b.dataset.sport; render(); } });
+document.getElementById("swatches").addEventListener("click", ev => { const b = ev.target.closest("[data-preset]"); if (b) { st.colors = b.dataset.preset; render(); } });
 
+// ---- Navigation: "Next" only moves on when the step is complete ----
+document.getElementById("back").onclick = () => { st.step = Math.max(0, st.step - 1); showErr(""); render(); focusStep(); };
 f.addEventListener("submit", async ev => {
   ev.preventDefault();
-  const err = document.getElementById("create-err");
-  const fail = msg => { err.textContent = msg; err.hidden = false; st.busy = false; render(); };
-  err.hidden = true;
-  const uid = session.user.uid, id = f.id.value.trim(), brand = f.brand.value.trim(), you = f.you.value.trim();
-  const season = f.season.value.trim(), code = f.code.value.trim(), sport = f.sport.value;
-  if (!brand || !you || !ID_OK.test(id)) return fail(t("start.fillIn"));
+  if (st.busy) return;
+  const p = problem(cur());
+  if (p) { showErr(p); return; }
+  showErr("");
+  if (st.step < steps().length - 1) { st.step++; render(); focusStep(); window.scrollTo({ top: f.offsetTop - 16, behavior: "smooth" }); return; }
+  create();
+});
+
+async function create() {
+  const fail = msg => { st.busy = false; render(); showErr(msg); };
   st.busy = true; render();
-  if (await getAbs(`teams/${id}/info`)) { st.idTaken = true; return fail(t("start.idTaken")); }
+  const uid = session.user.uid, id = st.id.value, brand = f.brand.value.trim(), you = f.you.value.trim(), season = f.season.value.trim();
+  if (await getAbs(`teams/${id}/info`)) { st.id.taken = true; st.step = steps().indexOf("you"); return fail(t("start.idTaken")); }
   const created = (await getAbs(`users/${uid}/created`)) || {};
   const slot = ["s1", "s2", "s3"].find(k => !created[k]);
   if (!slot) return fail(t("start.max"));
-  let codeUses = null;
+  let codeUses = null, code = st.code.value;
   if (!st.open) {
     const c = code && await getAbs(`signupCodes/${code}`);
-    if (!c || !(c.uses > 0)) return fail(t("start.codeBad"));
+    if (!c || !(c.uses > 0)) { st.step = 0; return fail(t("start.codeBad")); }
     codeUses = c.uses;
   }
   const preset = BRAND_PRESETS.find(p => p[0] === st.colors);
@@ -177,7 +318,7 @@ f.addEventListener("submit", async ev => {
   const team = {
     info: { brand, season: season || brand, shortName: season || brand, calendarLabel: brand, teamSize: 0, minPlayers: 3,
       adminName: you.split(/\s+/)[0], ...(colors ? { colors } : {}) },
-    settings: { minPlayers: 3, scheduleInDb: true, seasonName: season || brand, sport },
+    settings: { minPlayers: 3, scheduleInDb: true, seasonName: season || brand, sport: st.sport },
     initialized: true,
     admins: { [uid]: true },
     members: { [uid]: "p1" },
@@ -188,10 +329,10 @@ f.addEventListener("submit", async ev => {
   const changes = { [`teams/${id}`]: team, [`users/${uid}/teams/${id}`]: "p1", [`users/${uid}/created/${slot}`]: id,
     ...(codeUses !== null ? { [`signupCodes/${code}/uses`]: codeUses - 1 } : {}) };
   const ok = await send("PATCH", "", changes, true, true);
-  if (ok !== true) return fail(t("start.failed"));
+  if (ok !== true) return fail(t(isOffline() ? "fb.offline" : "start.failed"));
   pref.set("team", id);
   location.href = appUrl("index.html") + "?t=" + encodeURIComponent(id); // the setup checklist takes it from here
-});
+}
 
 start();
 </script>
