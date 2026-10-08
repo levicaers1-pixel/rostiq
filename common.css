@@ -3,16 +3,16 @@
    white fails WCAG AA); cyan is the highlight, and the accent in dark mode.
    Teams override the colour variables with their own (Admin → Branding). */
 :root {
-  --bg: #f8fafc;
+  --bg: #f6f7fa;
   --surface: #ffffff;
-  --text: #0f172a;
+  --text: #0b0d14;
   --muted: #64748b;
   --border: #e2e8f0;
   --accent: #1e1b4b;
   --on-accent: #ffffff;
   --brand: #1e1b4b;
-  --brand-text: #f8fafc;
-  --pampas: #22d3ee;
+  --brand-text: #f6f7fa;
+  --pampas: #00d4ff;
   --yes: #2f7a4a;
   --yes-bg: #e1ecdc;
   --maybe: #9c7424;
@@ -28,23 +28,23 @@
 }
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #0f172a;
+    --bg: #0b0d14;
     --surface: #172036;
     --text: #f1f5f9;
     --muted: #94a3b8;
     --border: #283449;
-    --accent: #22d3ee;
-    --on-accent: #0f172a;
+    --accent: #00d4ff;
+    --on-accent: #0b0d14;
     --brand: #1e1b4b;
-    --brand-text: #f8fafc;
-    --pampas: #22d3ee;
+    --brand-text: #f6f7fa;
+    --pampas: #00d4ff;
     --yes: #83c99c;
     --yes-bg: #20402f;
     --maybe: #e0b766;
     --maybe-bg: #3e3421;
     --no: #e58b72;
     --no-bg: #452821;
-    --final: #a78bfa;
+    --final: #8b7cff;
   }
 }
 html.font-serif {
@@ -109,7 +109,8 @@ button:disabled { cursor: default; opacity: .5; }
 html.font-serif .brand .logo-text { font-size: 2.4rem; line-height: 1.2; letter-spacing: .04em; }
 /* RostiQ itself: "Rosti" in Inter ExtraBold + the cyan Q mark, its ring resting on the baseline */
 .brand .logo-text.rostiq { font-family: Inter, system-ui, sans-serif; font-weight: 800; letter-spacing: -.02em; white-space: nowrap; }
-.brand .logo-text.rostiq .q { height: 1.11em; width: auto; margin-left: .17em; vertical-align: -.09em; }
+.brand .logo.rostiq-logo { height: 44px; }
+@media (max-width: 480px) { .brand .logo.rostiq-logo { height: 34px; } }
 @media (max-width: 480px) {
   .brand .logo { height: 42px; }
   .brand .logo-text { font-size: 1.8rem; }

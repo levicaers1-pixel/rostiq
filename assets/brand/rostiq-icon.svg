@@ -1,9 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
-  <title>RostiQ Icon</title>
-  <!-- Electric Cyan Q mark -->
-  <g transform="translate(100, 100)">
-    <circle cx="0" cy="0" r="70" fill="none" stroke="#22D3EE" stroke-width="18"/>
-    <line x1="40" y1="40" x2="85" y2="80" stroke="#22D3EE" stroke-width="18" stroke-linecap="round"/>
-    <circle cx="0" cy="0" r="12" fill="#22D3EE"/>
-  </g>
-</svg>

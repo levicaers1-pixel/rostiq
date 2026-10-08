@@ -505,7 +505,7 @@ const pageUrl = file => location.href.split(/[?#]/)[0].replace(/[^/]*$/, file) +
 // ---- Team colours: a full light + dark palette from two picks (header colour, highlight colour) ----
 const HEX = /^#[0-9a-fA-F]{6}$/;
 const BRAND_PRESETS = [ // [key, header, highlight]; the first is the RostiQ default (no overrides stored)
-  ["rostiq", "#1e1b4b", "#22d3ee"], ["green", "#1f3a2e", "#cdb994"], ["navy", "#16324f", "#c9a227"], ["burgundy", "#5a1f2b", "#d8c3a5"],
+  ["rostiq", "#1e1b4b", "#00d4ff"], ["green", "#1f3a2e", "#cdb994"], ["navy", "#16324f", "#c9a227"], ["burgundy", "#5a1f2b", "#d8c3a5"],
   ["black", "#161616", "#d4af37"], ["royal", "#1e3a8a", "#cbd5e1"], ["red", "#9f1d1d", "#e7d3b0"],
   ["orange", "#9a3412", "#fcd34d"], ["purple", "#3b1f6b", "#c4b5fd"], ["teal", "#0f4c4f", "#9fd3c7"],
 ];
@@ -545,7 +545,7 @@ function makePalette(main, highlight) {
 }
 
 // ---- Team branding: logo (or the team name as text), colours, page links carrying ?t= ----
-const ROSTIQ_LOGO = `<span class="logo-text rostiq">Rosti<img class="q" src="assets/q.svg" alt="Q"></span>`;
+const ROSTIQ_LOGO = `<img class="logo rostiq-logo" src="assets/rostiq-logo-header.png" alt="RostiQ">`;
 // brandPreview: unsaved changes on the Admin page, shown live until saved or cancelled.
 let brandPreview = null;
 function applyBranding() {
