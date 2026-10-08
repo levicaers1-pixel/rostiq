@@ -1,4 +1,10 @@
-# Team Availability
+# Rostiq
+
+Rostiq is a team planner by [Caersultancy](https://www.caersultancy.com): availability, calendar,
+carpool and WhatsApp sharing for sports teams. This repo also hosts the first team,
+**Pampas · Winter Midam 26-27** (live address below).
+
+## Pampas · Winter Midam 26-27
 
 A shared schedule and availability grid for the 2026–2027 season (15 players by default, more can be added).
 

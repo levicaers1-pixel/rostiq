@@ -1,4 +1,4 @@
-// Shared by all pages: schedule, database connection and helpers.
+// Rostiq – shared by all pages: schedule, database connection and helpers.
 // Each page defines a global render() that is called whenever the data changes.
 
 // Team settings come from team.js (window.TEAM). The built-in schedule is used until the admin

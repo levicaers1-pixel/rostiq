@@ -678,7 +678,7 @@ const fold = line => line.length <= 70 ? line : line.match(/.{1,70}/gu).join("\r
 function buildIcs(events, statusOf = () => "", player = "") {
   const stamp = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d+/, "");
   const url = location.href.split(/[?#]/)[0];
-  const lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//team-availability//EN", "CALSCALE:GREGORIAN", "METHOD:PUBLISH", ...VTIMEZONE];
+  const lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Caersultancy//Rostiq//EN", "CALSCALE:GREGORIAN", "METHOD:PUBLISH", ...VTIMEZONE];
   for (const e of events) {
     const d = e.date.replace(/-/g, "");
     const m = matchInfo(e), v = m.venue;

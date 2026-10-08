@@ -1,4 +1,4 @@
-"""Build a ready-to-deploy site for one team from teams/<id>/team.json.
+"""Rostiq: build a ready-to-deploy site for one team from teams/<id>/team.json.
 
     python tools/build_team.py <id>
     cd dist/<id> && npx firebase-tools deploy --project <projectId> --only hosting,database
@@ -76,6 +76,9 @@ def make_og(team, out, bg, fg, accent):
         tw = d.textlength(text, font=f)
         d.text(((W - tw) / 2, y), text, font=f, fill=color)
         y += size + 26
+    # Small product mark, bottom right.
+    f = font(["segoeuib.ttf", "DejaVuSans-Bold.ttf"], 26)
+    d.text((W - 40 - d.textlength("Rostiq", font=f), H - 64), "Rostiq", font=f, fill=accent)
     img.convert("RGB").save(os.path.join(out, "og-image.png"), optimize=True)
 
 

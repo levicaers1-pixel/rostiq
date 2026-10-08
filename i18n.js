@@ -312,7 +312,7 @@ const T = {
     "msg.open": "❔ Transport not arranged yet",
     "msg.noCars": "🚗 No drivers yet – who can drive?",
     "msg.carpoolLink": ({ url }) => `👉 Arrange your ride: ${url}`,
-    "footer": `This is a <a href="https://www.caersultancy.com" target="_blank" rel="noopener">Caersultancy</a> project`,
+    "footer": `<b class="product">Rostiq</b> · a <a href="https://www.caersultancy.com" target="_blank" rel="noopener">Caersultancy</a> project`,
     // phone numbers & direct WhatsApp chats
     "phone.label": "📱 My mobile number (for WhatsApp)",
     "phone.ph": "e.g. 0470 12 34 56",
@@ -619,7 +619,7 @@ const T = {
     "msg.open": "❔ Vervoer nog niet geregeld",
     "msg.noCars": "🚗 Nog geen chauffeurs – wie kan rijden?",
     "msg.carpoolLink": ({ url }) => `👉 Regel je vervoer: ${url}`,
-    "footer": `Dit is een <a href="https://www.caersultancy.com" target="_blank" rel="noopener">Caersultancy</a>-project`,
+    "footer": `<b class="product">Rostiq</b> · een <a href="https://www.caersultancy.com" target="_blank" rel="noopener">Caersultancy</a>-project`,
     "phone.label": "📱 Mijn gsm-nummer (voor WhatsApp)",
     "phone.ph": "bv. 0470 12 34 56",
     "phone.save": "Bewaren",
