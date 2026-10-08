@@ -477,15 +477,15 @@ function renderWelcome(players) {
   const wa = root.settings && root.settings.waGroup;
   const pl = onb.place;
   const steps = [
-    ...(upcoming.length ? [{ icon: "help", done: answered === upcoming.length, title: t("onb.answer"), sub: t("onb.answerSub", { n: answered, total: upcoming.length }),
+    ...(upcoming.length ? [{ icon: "help", checkable: true, done: answered === upcoming.length, title: t("onb.answer"), sub: t("onb.answerSub", { n: answered, total: upcoming.length }),
       action: `<button class="primary" data-onb="answer">${t("onb.do")}</button>` }] : []),
-    { icon: "pin", done: !!me.geo, title: t("onb.place"), sub: me.geo ? esc(me.geo.label) : t("onb.placeSub"),
+    { icon: "pin", checkable: true, done: !!me.geo, title: t("onb.place"), sub: me.geo ? esc(me.geo.label) : t("onb.placeSub"),
       extra: `<input id="onb-place" placeholder="${t("carpool.gemeentePh")}" autocomplete="address-level2" enterkeyhint="search"><button data-onb="find">${t("carpool.find")}</button>
         ${pl.status === "loading" ? `<div class="results"><small class="muted">${t("carpool.searching")}</small></div>` : ""}
         ${pl.status === "none" ? `<div class="results"><small class="warn">${t("carpool.noPlace")}</small></div>` : ""}
         ${pl.status === "error" ? `<div class="results"><small class="warn">${t("carpool.searchFailed")}</small></div>` : ""}
         ${pl.status === "results" ? `<div class="results">${pl.results.map((r, i) => `<button data-onb-pick="${i}">${ic("pin")} ${esc(r.label)}${r.country ? ` · ${esc(r.country)}` : ""}</button>`).join("")}</div>` : ""}` },
-    { icon: "phone", done: !!me.phone, title: t("onb.phone"), sub: me.phone ? "+" + esc(me.phone) : t("onb.phoneSub"),
+    { icon: "phone", checkable: true, done: !!me.phone, title: t("onb.phone"), sub: me.phone ? "+" + esc(me.phone) : t("onb.phoneSub"),
       extra: `<input id="onb-phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="${t("phone.ph")}"><button data-onb="phone">${t("phone.save")}</button>
         ${onb.phoneErr ? `<div class="results"><small class="err">${t("phone.invalid")}</small></div>` : ""}` },
     ...(wa && WA_LINK.test(wa) ? [{ icon: "message", done: !!pref.get(flagKey("onbWa"), ""), title: t("onb.wa"), sub: t("onb.waSub"),
@@ -493,7 +493,9 @@ function renderWelcome(players) {
     { icon: "calendar-plus", done: !!pref.get(flagKey("onbCal"), ""), title: t("onb.calendar"), sub: t("onb.calendarSub"),
       action: `<button data-onb="cal">${t("onb.download")}</button>` },
   ];
-  if (steps.every(s => s.done)) { el.hidden = true; return; }
+  // Only when something checkable is still missing (answers, location, phone): players who are complete
+  // don't get a "welcome" just because the group / calendar steps can't be verified.
+  if (steps.every(s => s.done) || steps.filter(s => s.checkable).every(s => s.done)) { el.hidden = true; return; }
   // Keep what someone is typing in the card across live updates.
   const keep = ["onb-place", "onb-phone"].map(id => document.getElementById(id)).filter(x => x && x.value).map(x => [x.id, x.value, document.activeElement === x]);
   el.hidden = false;
