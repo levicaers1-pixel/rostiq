@@ -18,8 +18,9 @@ const NO_TEAM_PAGE = !!window.PLATFORM_PAGE; // the RostiQ admin page works acro
 
 // True while the team's name/logo aren't known yet on this device: the header stays empty instead of showing "RostiQ".
 let brandUnknown = false;
+let teamInfoKnown = false; // the team's name/logo are known (from the database or remembered on this device)
 function mergeTeamInfo(info) {
-  if (info) brandUnknown = false;
+  if (info) { brandUnknown = false; teamInfoKnown = true; }
   for (const k of Object.keys(TEAM)) if (k !== "id") delete TEAM[k];
   Object.assign(TEAM, TEAM_DEFAULTS, info || {}, { id: TEAM_ID });
   // Remember the branding on this device, so the next page shows it before the data arrives (boot.js).
@@ -617,6 +618,7 @@ function applyBranding() {
     home.href = pageUrl("");
     home.innerHTML = !TEAM_ID || NO_TEAM_PAGE ? ROSTIQ_LOGO // RostiQ itself: team picker, RostiQ admin page
       : brandUnknown ? `<span class="logo-text">&nbsp;</span>`
+      : !teamInfoKnown ? ROSTIQ_LOGO // signed out on a team we know nothing about yet
       : B.logo ? `<img class="logo" src="${esc(B.logo)}" alt="${esc(B.brand)}">`
       : `<span class="logo-text">${esc(B.brand)}</span>`;
   }
@@ -863,50 +865,77 @@ function renderAuth() {
   document.getElementById("lang").hidden = !!u; // signed in: the language is in the account menu
   renderAccount();
 
-  const msg = gateMsg.text ? `<p class="gate-msg ${gateMsg.err ? "err" : ""}">${esc(gateMsg.text)}</p>` : "";
+  document.body.classList.toggle("gated", !!showGate); // no tabs to go to yet
+  const msg = !gateMsg.text ? ""
+    : gateMsg.err ? `<p class="gate-msg err">${ic("x")} <span>${esc(gateMsg.text)}</span></p>`
+    : `<div class="gate-callout">${ic("mail")} <span>${esc(gateMsg.text)}</span></div>`;
+  // Top band: the team's logo/colours when known (signed in, or remembered on this device), else RostiQ.
+  const teamKnown = TEAM_ID && !NO_TEAM_PAGE && teamInfoKnown;
+  const band = (sub = "") => `<div class="gate-brand">${teamKnown
+      ? (TEAM.logo ? `<img src="${esc(TEAM.logo)}" alt="${esc(TEAM.brand)}">` : `<span class="gate-team">${esc(TEAM.brand)}</span>`)
+      : `<img src="assets/rostiq-logo-header.png" alt="RostiQ">`}
+    ${sub ? `<p>${sub}</p>` : ""}</div>`;
+  const signOutRow = extra => `<p class="gate-foot">${extra || ""}<button class="link" data-signout-gate>${t("auth.signOut")}</button></p>`;
   if (!u) {
     gate.innerHTML = `<div class="gate-card">
-      <h1>${t("auth.signIn")}</h1>
-      <p class="sub">${t("auth.signInSub")}</p>
-      <button class="google" data-google>
-        <svg viewBox="0 0 48 48" width="18" height="18" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>
-        ${t("auth.google")}</button>
-      <div class="or">${t("auth.orEmail")}</div>
-      <form class="email-form">
-        <input type="email" name="email" required placeholder="you@example.com" autocomplete="email" value="${esc(pref.get("signinEmail", ""))}">
-        <button type="submit">${t("auth.sendLink")}</button>
-      </form>
-      ${msg}
-      <p class="hint">${t(standalone() ? "auth.hintApp" : "auth.hintBrowser")}</p>
+      ${band(teamKnown ? esc(TEAM.season || "") : t("gate.tagline"))}
+      <div class="gate-body">
+        <h1>${t("auth.signIn")}</h1>
+        <p class="sub">${t("auth.signInSub")}</p>
+        <button class="google" data-google>
+          <svg viewBox="0 0 48 48" width="20" height="20" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>
+          ${t("auth.google")}</button>
+        <div class="or"><span>${t("auth.orEmail")}</span></div>
+        <form class="email-form stacked">
+          <input type="email" name="email" required placeholder="you@example.com" autocomplete="email" value="${esc(pref.get("signinEmail", ""))}">
+          <button type="submit" class="primary">${ic("mail")} ${t("auth.sendLink")}</button>
+        </form>
+        ${msg}
+        <ul class="gate-features">
+          <li>${ic("check")} ${t("gate.feat1")}</li><li>${ic("car")} ${t("gate.feat2")}</li><li>${ic("calendar-plus")} ${t("gate.feat3")}</li>
+        </ul>
+        <p class="hint">${t(standalone() ? "auth.hintApp" : "auth.hintBrowser")}</p>
+      </div>
     </div>`;
   } else if (picking) {
     const list = session.pickerTeams || [];
     gate.innerHTML = `<div class="gate-card">
-      <h1>${t("pick.title")}</h1>
-      ${msg}
-      ${list.length ? `<div class="team-list">${list.map(x => `
-        <button data-team="${esc(x.id)}"><b>${esc(x.info.brand || x.id)}</b>${x.info.season ? `<span>${esc(x.info.season)}</span>` : ""}</button>`).join("")}</div>`
-        : `<p class="sub">${t("pick.none")}</p>`}
-      ${session.platformAdmin ? `<p class="hint"><a href="${appUrl("rostiq.html")}">⚙️ ${t("pick.manage")}</a></p>` : ""}
-      <p class="hint"><button class="link" data-signout-gate>${t("auth.signOut")}</button></p>
+      ${band(t("gate.tagline"))}
+      <div class="gate-body">
+        <h1>${t("pick.title")}</h1>
+        ${msg}
+        ${list.length ? `<div class="team-list">${list.map(x => {
+          const c = (x.info.colors && x.info.colors.light && x.info.colors.light["--brand"]) || BRAND_PRESETS[0][1];
+          return `<button data-team="${esc(x.id)}"><span class="team-swatch" style="background:${HEX.test(c) ? c : BRAND_PRESETS[0][1]}">${esc(initials0(x.info.brand || x.id))}</span>
+            <span class="team-name"><b>${esc(x.info.brand || x.id)}</b>${x.info.season ? `<small>${esc(x.info.season)}</small>` : ""}</span>${ic("arrow-right")}</button>`;
+        }).join("")}</div>` : `<p class="sub">${t("pick.none")}</p>`}
+        ${signOutRow(session.platformAdmin ? `<a href="${appUrl("rostiq.html")}">${ic("settings")} ${t("pick.manage")}</a> · ` : "")}
+      </div>
     </div>`;
   } else if (needClaim) {
-    const r = session.request;
+    const r = session.request, sent = !!(r && r.name);
+    const step = (n, label, state) => `<li class="${state}"><span>${state === "done" ? ic("check") : n}</span>${label}</li>`;
     gate.innerHTML = `<div class="gate-card">
-      <p class="team-chip">${esc(TEAM.brand)}${TEAM.season ? " · " + esc(TEAM.season) : ""}</p>
-      <h1>${t("pending.title")}</h1>
-      <p class="sub">${t("pending.text", { email: esc(u.email || "") })}</p>
-      ${r && r.name ? `<p class="gate-msg">${t("pending.sent", { name: esc(r.name) })}</p>` : ""}
-      <form class="email-form request-form">
-        <input name="name" required maxlength="60" autocomplete="name" placeholder="${t("pending.name")}"
-          value="${esc((r && r.name) || u.displayName || "")}">
-        <button type="submit">${t(r ? "pending.update" : "pending.send")}</button>
-      </form>
-      ${msg}
-      <p class="hint">${(session.teams || []).length ? `<a href="${appUrl("index.html")}?pick">⇄ ${t("pick.switch")}</a> · ` : ""}<button class="link" data-signout-gate>${t("auth.signOut")}</button></p>
+      ${band(esc(TEAM.season || ""))}
+      <div class="gate-body">
+        <h1>${t("pending.title")}</h1>
+        <ol class="stepper">
+          ${step(1, t("gate.step1"), "done")}${step(2, t("gate.step2"), sent ? "done" : "now")}${step(3, t("gate.step3"), sent ? "now" : "")}${step(4, t("gate.step4"), "")}
+        </ol>
+        <p class="sub">${t("pending.text", { email: esc(u.email || "") })}</p>
+        ${sent ? `<div class="gate-callout live">${ic("clock")} <span>${t("pending.sent", { name: esc(r.name) })}</span></div>` : ""}
+        <form class="email-form stacked request-form">
+          <input name="name" required maxlength="60" autocomplete="name" placeholder="${t("pending.name")}"
+            value="${esc((r && r.name) || u.displayName || "")}">
+          <button type="submit" class="${sent ? "" : "primary"}">${ic("send")} ${t(sent ? "pending.update" : "pending.send")}</button>
+        </form>
+        ${msg}
+        ${signOutRow((session.teams || []).length ? `<a href="${appUrl("index.html")}?pick">${ic("switch")} ${t("pick.switch")}</a> · ` : "")}
+      </div>
     </div>`;
   }
 }
+const initials0 = s => String(s).split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]).join("").toUpperCase();
 
 async function onGateClick(ev) {
   if (ev.target.closest("[data-google]")) {

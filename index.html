@@ -105,18 +105,8 @@
 
   /* Match cards: date, details, progress towards the minimum, who's coming, my answer, the whole team */
   .matches { display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(min(380px, 100%), 1fr)); align-items: start; }
-  .match { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-sm);
-    padding: 16px; display: grid; grid-template-columns: 58px 1fr auto; gap: 14px 14px; transition: box-shadow .2s var(--ease); }
-  .match:hover { box-shadow: var(--shadow); }
-  .match.final { border-color: color-mix(in srgb, var(--final) 45%, var(--border)); }
-  .match.past { opacity: .55; }
-  .m-date { height: 68px; border-radius: 12px; background: color-mix(in srgb, var(--accent) 8%, var(--surface));
-    display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1; }
-  .m-date b { font-family: var(--font-head); font-weight: var(--head-weight); font-size: 1.55rem; color: var(--accent); font-variant-numeric: lining-nums; }
-  .m-date span { font-size: .62rem; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); white-space: nowrap; }
-  .m-date b { margin: 3px 0 2px; }
+  .match { display: grid; grid-template-columns: 58px 1fr auto; gap: 14px; }
   .m-body { min-width: 0; }
-  .m-title { font-weight: 700; font-size: 1.08rem; line-height: 1.3; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; overflow-wrap: anywhere; }
   .m-meta .details { display: grid; gap: 3px; margin-top: 6px; }
   .m-actions { display: flex; gap: 2px; align-items: flex-start; }
   .m-actions button { border-color: transparent; background: transparent; color: var(--muted); padding: 7px; position: relative; }
@@ -135,11 +125,6 @@
   .m-count b { color: var(--text); font-size: 1.05rem; }
   .m-count .pill { margin-left: auto; }
   .m-people { display: flex; align-items: center; gap: 10px; min-height: 30px; font-size: .82rem; color: var(--muted); }
-  .avatars { display: flex; }
-  .av { width: 30px; height: 30px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
-    font-size: .68rem; font-weight: 700; color: #fff; border: 2px solid var(--surface); margin-left: -8px; }
-  .av:first-child { margin-left: 0; }
-  .av.more { background: color-mix(in srgb, var(--muted) 18%, var(--surface)); color: var(--muted); }
   .m-mine { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding-top: 14px; border-top: 1px solid var(--border); }
   .m-mine > span { font-size: .8rem; font-weight: 600; color: var(--muted); margin-right: auto; }
   .answer { display: inline-flex; gap: 3px; padding: 3px; border-radius: 12px; background: color-mix(in srgb, var(--muted) 11%, var(--surface)); }
@@ -164,74 +149,66 @@
   .section-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin: 44px 0 14px; }
   .section-head h2 { margin: 0; }
   .head-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-  .tag { font-size: .7rem; font-weight: 600; color: var(--final); border: 1px solid var(--final); border-radius: 999px; padding: 0 6px; margin-left: 6px; white-space: nowrap; vertical-align: 1px; }
 
   /* Toolbar */
   .toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 12px; }
   .legend { display: flex; flex-wrap: wrap; gap: 12px; color: var(--muted); font-size: .85rem; margin-right: auto; }
   .legend span { display: inline-flex; align-items: center; gap: 6px; }
 
-  /* Grid */
-  .grid-wrap { overflow-x: auto; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-sm); }
-  tbody td:not(.name) { padding: 3px; }
-  table { border-collapse: collapse; width: 100%; min-width: 900px; }
+  /* Overview table: sticky header row, player column and totals; next match column highlighted */
+  .grid-wrap { overflow: auto; max-height: min(78vh, 820px); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-sm); }
+  table { border-collapse: separate; border-spacing: 0; width: 100%; }
   th, td { border-bottom: 1px solid var(--border); text-align: center; padding: 0; }
-  thead th { font-size: .75rem; font-weight: 600; color: var(--muted); padding: 8px 4px; vertical-align: bottom; line-height: 1.25; }
-  thead th .opp { display: block; color: var(--text); font-size: .78rem; }
+  tbody td:not(.name) { padding: 3px; }
+  thead th { position: sticky; top: 0; z-index: 2; background: var(--surface); padding: 10px 4px 8px; vertical-align: bottom; line-height: 1.25;
+    font-size: .72rem; font-weight: 600; color: var(--muted); }
+  thead th .d { display: block; font-size: .66rem; letter-spacing: .05em; text-transform: uppercase; }
+  thead th .opp { display: block; max-width: 104px; margin: 2px auto 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text); font-size: .8rem; font-weight: 700; }
   thead th.final .opp { color: var(--final); }
-  thead th .time { display: block; font-weight: 400; }
-  th.name, td.name {
-    position: sticky; left: 0; z-index: 1; background: var(--surface);
-    text-align: left; min-width: 170px; border-right: 1px solid var(--border);
-  }
+  thead th .time { display: block; font-weight: 500; }
+  th.next, td.next { background: color-mix(in srgb, var(--pampas) 9%, var(--surface)); }
+  thead th.next .d { color: color-mix(in srgb, var(--pampas) 50%, var(--text)); }
+  th.name, td.name { position: sticky; left: 0; z-index: 1; background: var(--surface); text-align: left; min-width: 180px; border-right: 1px solid var(--border); }
+  thead th.name { z-index: 3; vertical-align: bottom; padding-left: 12px; }
+  tfoot td.name { z-index: 3; }
   td.name { display: flex; align-items: center; gap: 4px; padding: 2px 4px 2px 8px; }
-  td.name .num { color: var(--muted); font-size: .75rem; width: 18px; font-variant-numeric: tabular-nums; }
-  td.name input {
-    flex: 1; min-width: 0; font: inherit; color: var(--text); background: transparent;
-    border: 1px solid transparent; border-radius: 6px; padding: 6px;
-  }
+  td.name .num { color: var(--muted); font-size: .72rem; width: 18px; font-variant-numeric: tabular-nums; }
+  td.name input { flex: 1; min-width: 0; font: inherit; color: var(--text); background: transparent; border: 1px solid transparent; border-radius: 8px; padding: 6px; }
   td.name input:hover { border-color: var(--border); }
-  td.name input:focus { outline: none; border-color: var(--accent); }
-  td.name .del { border: none; background: none; color: var(--muted); padding: 4px 6px; visibility: hidden; }
-  tr:hover td.name .del { visibility: visible; }
-  td.name .cal { border: none; background: none; padding: 4px 6px; font-size: .95rem; }
-  td.name .cal:disabled { opacity: .25; cursor: default; }
-  td.name .del:hover { color: var(--no); }
-
-  .cell {
-    width: 100%; min-width: 60px; height: 34px; border: none; border-radius: 8px; padding: 0;
-    background: transparent; font-size: .95rem; font-weight: 700; color: var(--muted);
-  }
-  .cell:hover { background: var(--bg); }
+  td.name input[readonly] { cursor: default; }
+  td.name input[readonly]:hover { border-color: transparent; }
+  td.name .cal { border: none; background: none; padding: 5px; color: var(--muted); }
+  td.name .cal:hover:not(:disabled) { color: var(--accent); background: none; }
+  td.name .cal:disabled { opacity: .25; }
+  tbody tr:hover td, tbody tr:hover td.name { background: color-mix(in srgb, var(--accent) 4%, var(--surface)); }
+  tbody tr:hover td.next { background: color-mix(in srgb, var(--pampas) 13%, var(--surface)); }
+  tr.me td.name { box-shadow: inset 3px 0 0 var(--accent); }
+  tr.me td.name input { font-weight: 700; }
+  .cell { width: 100%; min-width: 56px; height: 32px; border: none; border-radius: 8px; padding: 0; background: transparent;
+    font-size: .92rem; font-weight: 700; color: color-mix(in srgb, var(--muted) 60%, transparent); }
+  .cell:hover:not(:disabled) { background: color-mix(in srgb, var(--muted) 12%, var(--surface)); }
   .cell[data-s="yes"]   { background: var(--yes-bg);   color: var(--yes); }
   .cell[data-s="maybe"] { background: var(--maybe-bg); color: var(--maybe); }
   .cell[data-s="no"]    { background: var(--no-bg);    color: var(--no); }
-  .swatch { width: 14px; height: 14px; border-radius: 4px; display: inline-block; }
-
-  tfoot td { font-size: .8rem; padding: 8px 4px; font-variant-numeric: tabular-nums; border-bottom: none; }
-  tfoot td.name { font-weight: 600; }
-  tfoot .y { color: var(--yes); font-weight: 700; font-size: .95rem; }
-  tfoot .m { color: var(--maybe); }
-  tfoot .n { color: var(--no); }
-
+  .cell:disabled { opacity: 1; cursor: default; }
+  tfoot td { position: sticky; bottom: 0; z-index: 2; background: var(--surface); border-top: 1px solid var(--border); border-bottom: none;
+    padding: 8px 4px; font-size: .74rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+  tfoot td.name { font-weight: 600; color: var(--text); font-size: .8rem; padding-left: 12px; }
+  .tot { display: inline-flex; align-items: baseline; gap: 1px; padding: 2px 10px; border-radius: 999px; font-size: .9rem; font-weight: 800; }
+  .tot small { font-weight: 600; font-size: .7rem; opacity: .75; }
+  .tot.ok { background: var(--yes-bg); color: var(--yes); }
+  .tot.low { background: var(--maybe-bg); color: var(--maybe); }
+  .tot.short { background: var(--no-bg); color: var(--no); }
+  .tot-sub { display: block; margin-top: 3px; }
+  tfoot .remind { border: none; background: none; padding: 2px 6px; margin-top: 2px; font-size: .72rem; color: var(--muted); gap: 3px; }
+  tfoot .remind:hover:not(:disabled) { color: var(--accent); background: none; }
+  /* Compact: smaller cells for long seasons */
+  .compact .cell { height: 24px; min-width: 36px; font-size: .78rem; border-radius: 6px; }
+  .compact tbody td:not(.name) { padding: 2px; }
+  .compact td.name input { padding: 3px 6px; font-size: .85rem; }
+  .compact thead th .time, .compact .tot-sub { display: none; }
+  .compact thead th .opp { max-width: 70px; font-size: .72rem; }
   .note { color: var(--muted); font-size: .8rem; margin-top: 10px; }
-
-  /* Past matches */
-  .month li.past { opacity: .45; }
-  .month li.past .opp-name { text-decoration: line-through; }
-
-  /* Toolbar controls */
-  .seg { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
-  .seg button { border: none; border-radius: 0; }
-  .seg button[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); }
-  .min { display: inline-flex; align-items: center; gap: 6px; font-size: .85rem; color: var(--muted); }
-  .min input { width: 56px; font: inherit; padding: 5px 6px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text); }
-
-  /* Totals colored against the minimum */
-  tfoot td.ok, .badge.ok       { background: var(--yes-bg); }
-  tfoot td.low, .badge.low     { background: var(--maybe-bg); }
-  tfoot td.short, .badge.short { background: var(--no-bg); }
-  .remind { border: none; background: none; padding: 2px 4px; font-size: .9rem; }
 
   /* Answer chips (the whole team, in a match card) */
   .chips { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -239,7 +216,6 @@
   .chip[data-s="yes"]   { background: var(--yes-bg);   color: var(--yes);   border-color: transparent; }
   .chip[data-s="maybe"] { background: var(--maybe-bg); color: var(--maybe); border-color: transparent; }
   .chip[data-s="no"]    { background: var(--no-bg);    color: var(--no);    border-color: transparent; }
-  .badge { font-size: .8rem; font-weight: 700; border-radius: 999px; padding: 2px 10px; font-variant-numeric: tabular-nums; white-space: nowrap; }
 
   /* Read-only (other players' answers when logged in) */
   .cell:disabled, .chip:disabled { opacity: 1; cursor: default; }
@@ -250,18 +226,6 @@
   tr.me td.name input { font-weight: 700; }
   .chip.me { font-weight: 700; outline: 2px solid var(--accent); outline-offset: 1px; }
 
-  /* Admin: accounts */
-  .accounts { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-sm); padding: 12px 14px; margin-top: 24px; }
-  .accounts h2 { margin-top: 0; }
-  .accounts ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px 16px; grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr)); }
-  .accounts li { display: flex; align-items: center; gap: 8px; font-size: .9rem; padding: 3px 0; }
-  .accounts li .who { flex: 1; }
-  .accounts .muted { color: var(--muted); font-size: .8rem; }
-  .wa-setting { margin-top: 16px; border-top: 1px solid var(--border); padding-top: 12px; }
-  .wa-setting label { font-weight: 600; font-size: .9rem; }
-  .wa-setting .search-row { display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap; }
-  .wa-setting input { flex: 1 1 240px; min-width: 0; font: inherit; font-size: .9rem; color: var(--text); background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 7px 8px; }
-  .wa-setting .err { color: var(--no); }
 
 
   /* Admin: match details dialog */
@@ -281,7 +245,6 @@
   .details-dlg .warn { color: var(--maybe); }
   .details-dlg .row { margin-top: 16px; align-items: center; }
   .details-dlg .spacer { flex: 1; }
-  .details-dlg .primary { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
   .link-danger { background: none; border: none; padding: 0; color: var(--no); text-decoration: underline; font-size: .85rem; }
 </style>
 </head>
@@ -320,6 +283,7 @@
         <span class="pill maybe" data-i18n="legend.maybe">? Maybe</span>
         <span class="pill no" data-i18n="legend.no">✗ Not available</span>
       </div>
+      <button id="compact" aria-pressed="false" data-i18n="view.compact">Compact</button>
       <button id="export" data-i18n="export">Export CSV</button>
     </div>
   </div>
@@ -376,6 +340,7 @@ const CYCLE = ["", "yes", "maybe", "no"];
 const SYMBOL = { "": "–", yes: "✓", maybe: "?", no: "✗" };
 const LABEL = { "": "", yes: t("label.yes"), maybe: t("label.maybe"), no: t("label.no") };
 
+let compact = pref.get("compact", "") === "1";
 let showPast = pref.get("showPast", "0") === "1";
 
 // Avatars: initials on a colour that stays the same for a name.
@@ -657,11 +622,15 @@ function render() {
   renderMatches(players, events);
   renderControls();
 
-  document.querySelector("#table-view table").style.minWidth = `${180 + events.length * 72}px`;
+  document.querySelector("#table-view table").style.minWidth = `${180 + events.length * (compact ? 44 : 68)}px`;
+  const nextDate = (EVENTS.find(x => !isPast(x)) || {}).date;
+  const tv = document.getElementById("table-view");
+  tv.classList.toggle("compact", compact);
+  document.getElementById("compact").setAttribute("aria-pressed", compact);
   document.getElementById("head").innerHTML =
     `<th class="name">${t("player")}</th>` +
-    events.map(e => `<th class="${e.final ? "final" : ""}">
-      ${fmt(e.date, { weekday: "short", day: "numeric", month: "short" })}
+    events.map(e => `<th class="${e.final ? "final" : ""}${e.date === nextDate ? " next" : ""}" title="${esc(e.opp)}">
+      <span class="d">${fmt(e.date, { weekday: "short", day: "numeric", month: "short" })}</span>
       <span class="opp">${esc(e.opp)}${e.final ? " 🏆" : ""}</span>
       ${matchInfo(e).start ? `<span class="time">${esc(matchInfo(e).start)}</span>` : ""}</th>`).join("");
 
@@ -698,6 +667,7 @@ function render() {
 
     for (const e of events) {
       const td = document.createElement("td");
+      if (e.date === nextDate) td.className = "next";
       const btn = document.createElement("button");
       btn.className = "cell";
       const s = p.avail[e.date] || "";
@@ -721,10 +691,10 @@ function render() {
     `<td class="name">${t("foot.available", { min: minPlayers() })}</td>` +
     events.map(e => {
       const c = tally(e, players);
-      return `<td class="${c.level}"><div class="y">${c.yes}</div>
-        <div><span class="m">${c.maybe}?</span> · <span class="n">${c.no}✗</span></div>
-        <button class="remind" data-date="${e.date}" title="${t("remind.title", { n: c.missing.length })}"
-          ${c.missing.length ? "" : "disabled"}>📣${c.missing.length ? " " + c.missing.length : ""}</button></td>`;
+      return `<td class="${e.date === nextDate ? "next" : ""}"><span class="tot ${c.level}">${c.yes}<small>/${minPlayers()}</small></span>
+        <span class="tot-sub">${c.maybe} ? · ${c.no} ✗</span>
+        <button class="remind" data-date="${e.date}" title="${t("remind.title", { n: c.missing.length })}" aria-label="${t("remind.short")}"
+          ${c.missing.length ? "" : "disabled"}>${ic("bell")}${c.missing.length ? " " + c.missing.length : ""}</button></td>`;
     }).join("");
 }
 
@@ -747,6 +717,7 @@ function renderControls() {
 }
 
 
+document.getElementById("compact").onclick = () => { compact = !compact; pref.set("compact", compact ? "1" : ""); render(); };
 document.getElementById("past").onclick = () => {
   showPast = !showPast; pref.set("showPast", showPast ? "1" : "0"); render();
 };
