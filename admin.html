@@ -1,0 +1,301 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title data-i18n-doc="admin.pageTitle">Pampas · Admin</title>
+<meta name="theme-color" content="#1f3a2e">
+<meta name="robots" content="noindex">
+<link rel="icon" type="image/png" href="assets/favicon.png">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Winter Midam">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600&display=swap">
+<link rel="stylesheet" href="common.css">
+<style>
+  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; margin-top: 16px; }
+  .panel h2 { margin: 0 0 4px; }
+  .help { color: var(--muted); font-size: .85rem; margin: 0 0 12px; }
+  .muted { color: var(--muted); font-size: .8rem; }
+  .ok { color: var(--yes); }
+  .err { color: var(--no); }
+  input, select { font: inherit; font-size: .9rem; color: var(--text); background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 7px 8px; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .row input[type=text], .row input[type=url], .row input:not([type]) { flex: 1 1 220px; min-width: 0; }
+  .primary { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+  .danger { color: var(--no); border-color: var(--no); }
+
+  /* Players */
+  .plist { list-style: none; margin: 0 0 12px; padding: 0; }
+  .plist li { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; align-items: center; padding: 8px 0; border-top: 1px solid var(--border); }
+  .plist li:first-child { border-top: none; }
+  .plist .name { font-weight: 600; }
+  .plist .flags { display: flex; gap: 10px; flex-wrap: wrap; font-size: .8rem; color: var(--muted); }
+  .plist .flags .off { opacity: .45; text-decoration: line-through; }
+  .plist .acts { display: flex; gap: 12px; align-items: center; grid-row: span 2; }
+
+  /* Settings */
+  .settings { display: grid; gap: 14px; max-width: 640px; }
+  .settings label { display: grid; gap: 4px; font-size: .85rem; color: var(--muted); }
+
+  /* Matches */
+  .mlist { list-style: none; margin: 0 0 12px; padding: 0; }
+  .mlist li { display: grid; grid-template-columns: 92px 1fr auto; gap: 4px 12px; align-items: center; padding: 8px 0; border-top: 1px solid var(--border); }
+  .mlist li:first-child { border-top: none; }
+  .mlist li.past { opacity: .5; }
+  .mlist .when { font-variant-numeric: tabular-nums; color: var(--muted); font-size: .85rem; }
+  .mlist .opp { font-weight: 600; }
+  .mlist .details { margin-top: 2px; }
+  .mlist .acts { display: flex; gap: 6px; align-items: center; }
+  .mlist .acts a, .mlist .acts button { font-size: .85rem; padding: 4px 8px; text-decoration: none; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text); }
+  .tag { font-size: .7rem; font-weight: 600; color: var(--final); border: 1px solid var(--final); border-radius: 999px; padding: 0 6px; margin-left: 6px; white-space: nowrap; }
+  .addmatch { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .addmatch input[name=opp] { flex: 1 1 200px; min-width: 0; }
+  @media (max-width: 480px) {
+    .mlist li { grid-template-columns: 1fr auto; }
+    .mlist .when { grid-column: 1 / -1; }
+  }
+</style>
+</head>
+<body>
+<header class="brand">
+  <div class="brand-inner">
+    <a href="./"><img class="logo" src="assets/wordmark-light.png" alt="Pampas" width="720" height="213"></a>
+    <nav class="tabs"><a href="./" data-i18n="tab.availability">Availability</a><a href="carpool.html" data-i18n="tab.carpool">🚗 Carpool</a><a href="admin.html" class="admin-tab" aria-current="page" hidden data-i18n="tab.admin">⚙️ Admin</a></nav>
+  </div>
+</header>
+<main>
+  <h1 data-i18n="admin.title">Admin</h1>
+  <p class="sub"><span data-i18n="admin.sub"></span> · <span class="status" id="status" data-i18n="status.connecting">Connecting…</span></p>
+  <p class="banner" id="banner" hidden data-i18n-html="banner.noDb"></p>
+  <p class="banner" id="no-access" hidden data-i18n="admin.noAccess"></p>
+
+  <div id="admin" hidden>
+    <!-- Players & accounts -->
+    <section class="panel">
+      <h2 data-i18n="admin.players">Players & accounts</h2>
+      <p class="help" data-i18n="admin.playersHelp"></p>
+      <ul class="plist" id="players"></ul>
+      <form class="row" id="add-player">
+        <input name="name" maxlength="60" data-i18n-placeholder="admin.addPh" autocomplete="off" required>
+        <button type="submit" class="primary" data-i18n="admin.add">+ Add</button>
+      </form>
+    </section>
+
+    <!-- Settings -->
+    <section class="panel">
+      <h2 data-i18n="admin.settings">Settings</h2>
+      <div class="settings">
+        <form id="f-season"><label><span data-i18n="admin.season">Season name</span>
+          <span class="row"><input name="v" maxlength="60" required> <button data-i18n="admin.save">Save</button> <span class="msg"></span></span></label></form>
+        <form id="f-min"><label><span data-i18n="admin.min">Minimum players</span>
+          <span class="row"><input name="v" type="number" min="1" max="50" inputmode="numeric" required style="width:90px"> <button data-i18n="admin.save">Save</button> <span class="msg"></span></span></label></form>
+        <form id="f-wa"><label><span data-i18n="wa.setting">WhatsApp group link</span>
+          <span class="row"><input name="v" type="url" placeholder="https://chat.whatsapp.com/…" autocomplete="off"> <button data-i18n="admin.save">Save</button> <button type="button" id="wa-remove" data-i18n="wa.remove">Remove</button> <span class="msg"></span></span></label>
+          <span class="muted" data-i18n="wa.help"></span></form>
+      </div>
+    </section>
+
+    <!-- Matches -->
+    <section class="panel">
+      <h2 data-i18n="admin.matches">Matches</h2>
+      <p class="help" data-i18n="admin.matchesHelp"></p>
+      <ul class="mlist" id="matches"></ul>
+      <form class="addmatch" id="add-match">
+        <input name="date" type="date" required data-i18n-title="admin.date">
+        <input name="opp" maxlength="60" required data-i18n-placeholder="admin.opp" autocomplete="off">
+        <label class="muted"><input name="final" type="checkbox"> <span data-i18n="admin.final">Final</span></label>
+        <button type="submit" class="primary" data-i18n="admin.addMatch">+ Add match</button>
+        <span class="msg err"></span>
+      </form>
+    </section>
+
+    <!-- Backup -->
+    <section class="panel">
+      <h2 data-i18n="admin.backup">Backup</h2>
+      <p class="help" data-i18n="admin.backupHelp"></p>
+      <button id="backup" data-i18n="admin.backupBtn">⬇️ Download backup</button>
+    </section>
+
+    <!-- New season -->
+    <section class="panel">
+      <h2 data-i18n="admin.newSeason">New season</h2>
+      <p class="help" data-i18n="admin.newSeasonHelp"></p>
+      <button id="new-season" class="danger" data-i18n="admin.newSeasonBtn">Start a new season…</button>
+      <span class="msg ok" id="new-season-msg"></span>
+    </section>
+  </div>
+</main>
+
+<script src="config.js"></script>
+<script src="i18n.js"></script>
+<script src="common.js"></script>
+<script>
+const flag = (on, text) => `<span class="${on ? "" : "off"}">${text}</span>`;
+const savedMsg = (form, ok, text) => {
+  const m = form.querySelector(".msg");
+  m.textContent = text || (ok ? t("admin.saved") : "");
+  m.className = "msg " + (ok ? "ok" : "err");
+};
+
+// ---- Rendering ----
+function render() {
+  document.getElementById("no-access").hidden = session.admin || !session.ready;
+  document.getElementById("admin").hidden = !session.admin;
+  if (!session.admin) return;
+  renderPlayers();
+  renderSettings();
+  renderMatches();
+}
+
+function renderPlayers() {
+  const me = session.user && session.user.uid;
+  document.getElementById("players").innerHTML = sortedPlayers().map((p, i) => `
+    <li>
+      <div><span class="name">${esc(displayName(p, i))}</span>
+        <div class="flags">
+          ${AUTH_ON ? (p.uid ? `<span>🔗 ${t("accounts.linked")}${p.uid === me ? " " + t("accounts.you") : ""}</span>` : flag(false, "🔗 " + t("accounts.notLinked"))) : ""}
+          ${flag(!!p.phone, t("admin.hasPhone"))}
+          ${flag(!!(p.geo || p.gemeente), t("admin.hasPlace"))}
+        </div></div>
+      <div class="acts">
+        ${AUTH_ON && p.uid ? `<button class="link" data-reset="${p.id}">${t("accounts.reset")}</button>` : ""}
+        ${AUTH_ON && !p.uid && p.name && !session.pid ? `<button class="link" data-mine="${p.id}">${t("accounts.mine")}</button>` : ""}
+        <button class="link err" data-remove="${p.id}">${t("admin.remove")}</button>
+      </div>
+    </li>`).join("");
+}
+
+function renderSettings() {
+  const s = root.settings || {};
+  const set = (id, v) => { const inp = document.querySelector(`#${id} [name=v]`); if (document.activeElement !== inp) inp.value = v; };
+  set("f-season", seasonName());
+  set("f-min", s.minPlayers || 3);
+  set("f-wa", s.waGroup || "");
+  document.getElementById("wa-remove").hidden = !s.waGroup;
+}
+
+function renderMatches() {
+  document.getElementById("matches").innerHTML = EVENTS.length ? EVENTS.map(e => `
+    <li class="${isPast(e) ? "past" : ""}">
+      <span class="when">${esc(fmt(e.date, { weekday: "short", day: "numeric", month: "short", year: "numeric" }))}</span>
+      <div><span class="opp">${esc(e.opp)}</span>${e.final ? `<span class="tag">${t("final")}</span>` : ""}${detailsHtml(e, "", true)}</div>
+      <div class="acts">
+        <a href="./#edit=${e.date}" title="${t("details.edit")}">✏️</a>
+        <button data-del-match="${e.date}" title="${t("admin.remove")}">🗑️</button>
+      </div>
+    </li>`).join("") : `<li class="muted">${t("admin.noMatches")}</li>`;
+}
+
+// ---- Players ----
+document.getElementById("players").addEventListener("click", ev => {
+  const mine = ev.target.closest("[data-mine]");
+  if (mine) {
+    const uid = session.user.uid;
+    return update({ [`players/${mine.dataset.mine}/uid`]: uid, [`users/${uid}/pid`]: mine.dataset.mine }).then(syncSession);
+  }
+  const reset = ev.target.closest("[data-reset]");
+  if (reset) {
+    const p = root.players[reset.dataset.reset];
+    if (confirm(t("accounts.unlinkConfirm", { name: p.name || "" })))
+      update({ [`players/${reset.dataset.reset}/uid`]: null, [`users/${p.uid}`]: null });
+  }
+  const rm = ev.target.closest("[data-remove]");
+  if (rm) {
+    const p = root.players[rm.dataset.remove];
+    if (!confirm(t("admin.removeConfirm", { name: p.name || "?" }))) return;
+    const changes = { [`players/${rm.dataset.remove}`]: null };
+    if (p.uid) changes[`users/${p.uid}`] = null;
+    for (const [date, entries] of Object.entries(root.carpool || {}))
+      if (entries[rm.dataset.remove]) changes[`carpool/${date}/${rm.dataset.remove}`] = null;
+    update(changes);
+  }
+});
+document.getElementById("add-player").addEventListener("submit", ev => {
+  ev.preventDefault();
+  const name = ev.target.name.value.trim();
+  if (!name) return;
+  const order = sortedPlayers().reduce((m, p) => Math.max(m, p.order || 0), 0) + 1;
+  write(`players/p${Date.now().toString(36)}`, { order, name: name.slice(0, 60) });
+  ev.target.reset();
+});
+
+// ---- Settings ----
+document.getElementById("f-season").addEventListener("submit", ev => {
+  ev.preventDefault();
+  const v = ev.target.v.value.trim().slice(0, 60);
+  if (!v) return;
+  write("settings/seasonName", v); savedMsg(ev.target, true);
+});
+document.getElementById("f-min").addEventListener("submit", ev => {
+  ev.preventDefault();
+  const n = Math.round(Number(ev.target.v.value));
+  if (n >= 1 && n <= 50) { write("settings/minPlayers", n); savedMsg(ev.target, true); }
+});
+document.getElementById("f-wa").addEventListener("submit", ev => {
+  ev.preventDefault();
+  const link = ev.target.v.value.trim().replace(/[?#].*$/, "");
+  if (!WA_LINK.test(link)) return savedMsg(ev.target, false, t("wa.invalid"));
+  write("settings/waGroup", link); savedMsg(ev.target, true);
+});
+document.getElementById("wa-remove").onclick = () => write("settings/waGroup", null);
+
+// ---- Matches (the first change copies the built-in list into the database) ----
+function scheduleUpdate(changes) {
+  const base = {};
+  if (!(root.settings && root.settings.scheduleInDb)) {
+    base["settings/scheduleInDb"] = true;
+    for (const e of EVENTS) base[`schedule/${e.date}`] = { opp: e.opp, ...(e.final ? { final: true } : {}) };
+  }
+  return update({ ...base, ...changes });
+}
+document.getElementById("add-match").addEventListener("submit", ev => {
+  ev.preventDefault();
+  const f = ev.target, date = f.date.value, opp = f.opp.value.trim().slice(0, 60);
+  if (!date || !opp) return;
+  if (EVENTS.some(e => e.date === date)) { f.querySelector(".msg").textContent = t("admin.matchExists"); return; }
+  f.querySelector(".msg").textContent = "";
+  scheduleUpdate({ [`schedule/${date}`]: { opp, ...(f.final.checked ? { final: true } : {}) } });
+  f.reset();
+});
+document.getElementById("matches").addEventListener("click", ev => {
+  const b = ev.target.closest("[data-del-match]");
+  if (!b) return;
+  const e = EVENTS.find(x => x.date === b.dataset.delMatch);
+  if (!confirm(t("admin.removeMatchConfirm", { opp: e.opp, when: fmt(e.date, { day: "numeric", month: "long", year: "numeric" }) }))) return;
+  scheduleUpdate({ [`schedule/${e.date}`]: null, [`matches/${e.date}`]: null });
+});
+
+// ---- Backup & new season ----
+function downloadBackup() {
+  const data = { exportedAt: new Date().toISOString(), season: seasonName(), data: root };
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }));
+  a.download = `pampas-backup-${TODAY}.json`;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+document.getElementById("backup").onclick = downloadBackup;
+
+document.getElementById("new-season").onclick = () => {
+  const word = t("admin.newSeasonWord");
+  if ((prompt(t("admin.newSeasonPrompt")) || "").trim().toUpperCase() !== word) return;
+  downloadBackup();
+  // Clear answers, carpools, match details and the schedule; keep players, logins, phones, places and settings.
+  const changes = { "settings/scheduleInDb": true, schedule: null, matches: null };
+  for (const id of Object.keys(root.players || {})) if (root.players[id].avail) changes[`players/${id}/avail`] = null;
+  for (const [date, entries] of Object.entries(root.carpool || {}))
+    for (const pid of Object.keys(entries)) changes[`carpool/${date}/${pid}`] = null;
+  update(changes);
+  document.getElementById("new-season-msg").textContent = t("admin.newSeasonDone");
+};
+
+start();
+</script>
+</body>
+</html>

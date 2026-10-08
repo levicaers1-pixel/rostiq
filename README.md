@@ -30,7 +30,15 @@ also shows each player's distance to the venue.
 Dutch and English (NL | EN switch in the header; default follows the browser language).
 All interface texts live in `i18n.js`.
 
-To change the schedule, edit the `EVENTS` array in `common.js`.
+### Admin tab (admin only)
+
+Players & accounts (add/remove, login links, phone/gemeente status), settings (season name,
+minimum players, WhatsApp group link), matches (add/remove dates and opponents; ✏️ opens the
+time/venue window), a backup download, and "new season" (backup, then clear answers, carpools
+and matches while keeping players and settings).
+
+The built-in schedule in `common.js` (`DEFAULT_EVENTS`) is only used until the admin edits
+matches on the Admin page; from then on the schedule lives in the database.
 
 ## One-time setup: Firebase (free, ~5 minutes)
 

@@ -1,7 +1,9 @@
-// Shared by index.html and carpool.html: schedule, database connection and helpers.
+// Shared by all pages: schedule, database connection and helpers.
 // Each page defines a global render() that is called whenever the data changes.
 
-const EVENTS = [
+// Built-in schedule. Once the admin edits matches on the Admin page, the list in the
+// database (schedule/{date}: { opp, final }) is used instead.
+const DEFAULT_EVENTS = [
   { date: "2026-11-14", opp: "Mormal" },
   { date: "2026-11-21", opp: "Hainaut" },
   { date: "2026-12-13", opp: "Lille Métropole" },
@@ -14,6 +16,16 @@ const EVENTS = [
   { date: "2027-03-06", opp: "Keerbergen" },
   { date: "2027-03-13", opp: "Rigenée", final: true },
 ];
+let EVENTS = DEFAULT_EVENTS.slice();
+function refreshEvents() {
+  const s = root.schedule || {};
+  const fromDb = (root.settings && root.settings.scheduleInDb) || Object.keys(s).length;
+  EVENTS = fromDb
+    ? Object.keys(s).sort().map(date => ({ date, opp: s[date].opp || "?", ...(s[date].final ? { final: true } : {}) }))
+    : DEFAULT_EVENTS.slice();
+}
+const DEFAULT_SEASON = "Winter Midam 26-27";
+const seasonName = () => (root.settings && root.settings.seasonName) || DEFAULT_SEASON;
 const TEAM_SIZE = 15;
 
 const DB = (window.FIREBASE_DB_URL || "").trim().replace(/\/+$/, "");
@@ -163,6 +175,7 @@ async function send(method, path, value) {
 
 async function write(path, value) {
   apply(path, value, false);
+  refreshEvents();
   render();
   return send(value === null ? "DELETE" : "PUT", path, value === null ? undefined : value);
 }
@@ -170,6 +183,7 @@ async function write(path, value) {
 // Several paths in one atomic update, e.g. { "players/p01/uid": "...", "users/abc/pid": "p01" }.
 async function update(changes) {
   for (const [path, value] of Object.entries(changes)) apply(path, value, false);
+  refreshEvents();
   render();
   return send("PATCH", "", changes);
 }
@@ -283,6 +297,9 @@ function syncSession() {
     session.pid = pid && root.players && root.players[pid] ? pid : null;
     session.ready = true;
   }
+  refreshEvents();
+  renderCountdown();
+  renderSeasonTitle();
   renderWaGroup();
   renderPhonePrompt();
   renderAuth();
@@ -291,13 +308,23 @@ function syncSession() {
 
 // ---- Countdown to the next match, above the page title ----
 function injectCountdown() {
+  document.querySelector("main h1").insertAdjacentHTML("beforebegin", `<div class="countdown" id="countdown" hidden></div>`);
+  renderCountdown();
+}
+function renderCountdown() {
+  const el = document.getElementById("countdown");
   const next = EVENTS.find(e => !isPast(e));
+  el.hidden = !next;
   if (!next) return;
   const n = Math.round((parse(next.date) - parse(TODAY)) / 864e5);
   const opp = next.opp + (next.final ? " 🏆" : "");
   const text = n === 0 ? t("countdown.today", { opp }) : n === 1 ? t("countdown.tomorrow", { opp }) : t("countdown.days", { n, opp });
-  document.querySelector("main h1").insertAdjacentHTML("beforebegin",
-    `<div class="countdown${n <= 1 ? " soon" : ""}">${esc(text)} <span>· ${esc(fmt(next.date, { weekday: "short", day: "numeric", month: "short" }))}</span></div>`);
+  el.className = "countdown" + (n <= 1 ? " soon" : "");
+  el.innerHTML = `${esc(text)} <span>· ${esc(fmt(next.date, { weekday: "short", day: "numeric", month: "short" }))}</span>`;
+}
+// Page title that follows the season name set on the Admin page.
+function renderSeasonTitle() {
+  document.querySelectorAll("[data-season]").forEach(el => { el.textContent = seasonName(); });
 }
 
 // ---- Share window: an editable message to send to the team group (both pages) ----
@@ -441,6 +468,7 @@ function renderAuth() {
   gate.hidden = !showGate;
   main.hidden = showGate || (u && !session.ready);
 
+  document.querySelectorAll(".admin-tab").forEach(a => { a.hidden = !session.admin; });
   acct.hidden = !u;
   if (u) {
     const who = session.pid ? esc(root.players[session.pid].name || "") : esc(u.email || "");

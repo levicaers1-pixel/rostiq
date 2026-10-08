@@ -188,11 +188,11 @@
 <header class="brand">
   <div class="brand-inner">
     <a href="./"><img class="logo" src="assets/wordmark-light.png" alt="Pampas" width="720" height="213"></a>
-    <nav class="tabs"><a href="./" aria-current="page" data-i18n="tab.availability">Availability</a><a href="carpool.html" data-i18n="tab.carpool">🚗 Carpool</a></nav>
+    <nav class="tabs"><a href="./" aria-current="page" data-i18n="tab.availability">Availability</a><a href="carpool.html" data-i18n="tab.carpool">🚗 Carpool</a><a href="admin.html" class="admin-tab" hidden data-i18n="tab.admin">⚙️ Admin</a></nav>
   </div>
 </header>
 <main>
-  <h1>Winter Midam 26-27</h1>
+  <h1 data-season>Winter Midam 26-27</h1>
   <p class="sub"><span data-i18n="avail.sub">Tap a cell to set your availability</span> · <span class="status" id="status" data-i18n="status.connecting">Connecting…</span></p>
   <p class="banner" id="banner" hidden data-i18n-html="banner.noDb"></p>
 
@@ -212,13 +212,10 @@
       <span><i class="swatch" style="background:var(--maybe-bg);border:1px solid var(--maybe)"></i><span data-i18n="legend.maybe">? Maybe</span></span>
       <span><i class="swatch" style="background:var(--no-bg);border:1px solid var(--no)"></i><span data-i18n="legend.no">✗ Not available</span></span>
     </div>
-    <label class="min" data-i18n-title="min.title"><span data-i18n="min">Min. players</span>
-      <input type="number" id="min" min="1" max="50" inputmode="numeric"></label>
     <button id="past" hidden></button>
     <div class="seg" role="group" aria-label="View">
       <button data-view="table" data-i18n="view.table">Table</button><button data-view="cards" data-i18n="view.cards">Cards</button>
     </div>
-    <button id="add" data-i18n="add">+ Add player</button>
     <button id="export" data-i18n="export">Export CSV</button>
   </div>
   <div class="cards" id="cards" hidden></div>
@@ -231,20 +228,6 @@
   </div>
   <p class="note" data-i18n="note"></p>
 
-  <section class="accounts" id="accounts" hidden>
-    <h2><span data-i18n="accounts">Accounts</span> <span class="muted" data-i18n="accounts.onlyYou"></span></h2>
-    <p class="muted" data-i18n="accounts.help"></p>
-    <ul id="accounts-list"></ul>
-    <form class="wa-setting" id="wa-form">
-      <label for="wa-input" data-i18n="wa.setting">WhatsApp group link</label>
-      <div class="search-row">
-        <input id="wa-input" type="url" placeholder="https://chat.whatsapp.com/…" autocomplete="off">
-        <button type="submit" data-i18n="wa.save">Save</button>
-        <button type="button" id="wa-remove" data-i18n="wa.remove">Remove</button>
-      </div>
-      <p class="muted" id="wa-msg" data-i18n="wa.help"></p>
-    </form>
-  </section>
 </main>
 
 
@@ -383,13 +366,6 @@ function render() {
       clearTimeout(nameTimers[p.id]);
       nameTimers[p.id] = setTimeout(() => write(`players/${p.id}/name`, input.value || null), 400);
     });
-    const del = document.createElement("button");
-    del.className = "del"; del.title = t("removePlayer"); del.textContent = "✕";
-    del.addEventListener("click", () => {
-      if (!confirm(t("removeConfirm", { name: displayName(p, i) }))) return;
-      update({ [`players/${p.id}`]: null, ...(p.uid ? { [`users/${p.uid}`]: null } : {}) });
-    });
-    del.hidden = !session.admin;
     const mine = events.filter(e => p.avail[e.date] === "yes" || p.avail[e.date] === "maybe");
     const cal = document.createElement("button");
     cal.className = "cal";
@@ -400,7 +376,7 @@ function render() {
       const who = slug(p.name || `player-${i + 1}`);
       downloadIcs(mine, `${who}-matches.ics`, e => p.avail[e.date], p.name);
     });
-    nameTd.append(input, cal, del);
+    nameTd.append(input, cal);
     tr.append(nameTd);
 
     for (const e of events) {
@@ -468,12 +444,18 @@ function renderCards(players, events) {
   }
 }
 
+// Coming from the Admin page: ./#edit=YYYY-MM-DD opens that match's details once the data is loaded.
+let pendingEdit = location.hash.startsWith("#edit=") ? location.hash.slice(6) : "";
+function openPendingEdit() {
+  if (!pendingEdit || !session.admin || !session.ready || !root.players) return;
+  const e = EVENTS.find(x => x.date === pendingEdit);
+  pendingEdit = "";
+  history.replaceState(null, "", location.pathname);
+  if (e) setTimeout(() => openDetails(e), 0);
+}
+
 function renderControls() {
-  const minInput = document.getElementById("min");
-  if (document.activeElement !== minInput) minInput.value = minPlayers();
-  minInput.disabled = !session.admin;
-  document.getElementById("add").hidden = !session.admin;
-  renderAccounts();
+  openPendingEdit();
   const pastCount = EVENTS.filter(isPast).length;
   const pastBtn = document.getElementById("past");
   pastBtn.hidden = !pastCount;
@@ -483,47 +465,7 @@ function renderControls() {
   document.getElementById("table-view").hidden = view !== "table";
 }
 
-function renderAccounts() {
-  const box = document.getElementById("accounts");
-  box.hidden = !(AUTH_ON && session.admin);
-  if (box.hidden) return;
-  const waInput = document.getElementById("wa-input");
-  if (document.activeElement !== waInput) waInput.value = (root.settings && root.settings.waGroup) || "";
-  document.getElementById("wa-remove").hidden = !(root.settings && root.settings.waGroup);
-  document.getElementById("accounts-list").innerHTML = sortedPlayers().filter(p => p.name).map(p => `
-    <li><span class="who">${esc(p.name)}</span>
-      ${p.uid ? `<span class="muted">${t("accounts.linked")}${p.uid === session.user.uid ? " " + t("accounts.you") : ""}</span>
-        <button class="link" data-reset="${p.id}">${t("accounts.reset")}</button>` : `<span class="muted">${t("accounts.notLinked")}</span>
-        ${session.pid ? "" : `<button class="link" data-mine="${p.id}">${t("accounts.mine")}</button>`}`}</li>`).join("");
-}
-document.getElementById("accounts-list").addEventListener("click", ev => {
-  const mine = ev.target.closest("[data-mine]");
-  if (mine) {
-    const uid = session.user.uid;
-    return update({ [`players/${mine.dataset.mine}/uid`]: uid, [`users/${uid}/pid`]: mine.dataset.mine }).then(syncSession);
-  }
-  const b = ev.target.closest("[data-reset]");
-  if (!b) return;
-  const p = root.players[b.dataset.reset];
-  if (!confirm(t("accounts.unlinkConfirm", { name: p.name }))) return;
-  update({ [`players/${b.dataset.reset}/uid`]: null, [`users/${p.uid}`]: null });
-});
 
-document.getElementById("wa-form").addEventListener("submit", ev => {
-  ev.preventDefault();
-  const link = document.getElementById("wa-input").value.trim().replace(/[?#].*$/, "");
-  const msg = document.getElementById("wa-msg");
-  if (!WA_LINK.test(link)) { msg.textContent = t("wa.invalid"); msg.className = "err"; return; }
-  write("settings/waGroup", link);
-  msg.textContent = t("wa.saved"); msg.className = "muted";
-});
-document.getElementById("wa-remove").onclick = () => write("settings/waGroup", null);
-
-document.getElementById("min").addEventListener("change", ev => {
-  const n = Math.round(Number(ev.target.value));
-  if (n >= 1 && n <= 50) write("settings/minPlayers", n);
-  else ev.target.value = minPlayers();
-});
 document.getElementById("past").onclick = () => {
   showPast = !showPast; pref.set("showPast", showPast ? "1" : "0"); render();
 };
@@ -570,7 +512,7 @@ function overviewMessage() {
       `   ${t("msg.counts", { y: c.yes, min: minPlayers(), m: c.maybe, none: c.missing.length })}`,
     ]);
   });
-  return lines([`*${t("msg.overviewHead")}*`, BLANK, rows.join("\n\n"), BLANK, t("msg.fill", { url: pageUrl("") })]);
+  return lines([`*${t("msg.overviewHead", { season: seasonName() })}*`, BLANK, rows.join("\n\n"), BLANK, t("msg.fill", { url: pageUrl("") })]);
 }
 document.getElementById("share-overview").onclick = () => openShare(t("share.overviewTitle"), overviewMessage());
 
@@ -703,15 +645,6 @@ form.addEventListener("submit", () => {
   write(`matches/${draft.e.date}`, Object.keys(data).length ? data : null);
 });
 
-document.getElementById("add").onclick = async () => {
-  const players = sortedPlayers();
-  const order = players.reduce((m, p) => Math.max(m, p.order || 0), 0) + 1;
-  const id = "p" + Date.now().toString(36);
-  if (view !== "table") { view = "table"; pref.set("view", view); }
-  await write(`players/${id}`, { order });
-  const inputs = document.querySelectorAll("td.name input");
-  inputs[inputs.length - 1].focus();
-};
 
 document.getElementById("export").onclick = () => {
   const rows = [[t("csv.player"), ...EVENTS.map(e => `${e.date} ${e.opp}`)]];
