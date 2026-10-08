@@ -65,9 +65,9 @@ colours are two picks (header + highlight) from which a full light and dark pale
 (`makePalette` in `common.js`). The database rules only accept `#rrggbb` colours and PNG/JPEG/WebP
 images (or a file in `assets/`, like Pampas' wordmark).
 
-RostiQ's own look follows the brand package in `assets/brand/` (deep indigo `#1E1B4B`, electric cyan
-`#22D3EE`, soft violet `#A78BFA`, near black `#0F172A`, off white `#F8FAFC`, font Inter, the "Rosti" + cyan Q
-logo; `assets/q.svg` is the Q mark) and is the default for every team without its own colours. A team can also choose classic serif headings
+RostiQ's own look follows the preferred brand package in `assets/brand/` (gradient R mark + "RostiQ"
+wordmark; deep indigo `#1E1B4B`, electric cyan `#00D4FF`, soft violet `#8B7CFF`, near black `#0B0D14`,
+off white `#F6F7FA`; font Inter) and is the default for every team without its own colours. A team can also choose classic serif headings
 (`info/font = "serif"`, as Pampas does).
 
 `python tools/make_brand.py` regenerates the RostiQ mark, app icons and link preview.

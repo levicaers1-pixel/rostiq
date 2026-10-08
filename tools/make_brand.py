@@ -10,7 +10,7 @@ Writes
 Team logos (e.g. assets/wordmark-light.png for Pampas) are separate and not touched.
 """
 import os
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ASSETS = os.path.join(ROOT, "assets")
@@ -30,7 +30,11 @@ cols = [any(alpha.getpixel((x, y)) > 0 for y in range(primary.height)) for x in 
 r_end = next(x for x in range(primary.width // 10, primary.width) if not cols[x])  # first empty column after the R
 dark = primary.copy()
 word = Image.new("RGBA", (primary.width - r_end, primary.height), WHITE + (255,))
-word.putalpha(alpha.crop((r_end, 0, primary.width, primary.height)))
+# The package PNG was cut out of an image: its transparency has loose pixels around the letters and hard,
+# jagged edges. Drop the strays (median), firm up the shapes, then smooth the edges a little.
+wa = alpha.crop((r_end, 0, primary.width, primary.height)).filter(ImageFilter.MedianFilter(3))
+wa = wa.point(lambda v: 0 if v < 80 else 255 if v > 180 else round((v - 80) * 255 / 100))
+word.putalpha(wa.filter(ImageFilter.GaussianBlur(0.7)))
 dark.paste(word, (r_end, 0))
 dark.save(os.path.join(ASSETS, "rostiq-logo-header.png"), optimize=True)
 
