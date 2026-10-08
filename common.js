@@ -16,9 +16,22 @@ const WANT_PICKER = QUERY.has("pick");
 let TEAM_ID = WANT_PICKER ? "" : (QUERY.get("t") || pref.get("team", "") || "").toLowerCase();
 const NO_TEAM_PAGE = !!window.PLATFORM_PAGE; // the Rostiq admin page works across teams
 
+// True while the team's name/logo aren't known yet on this device: the header stays empty instead of showing "Rostiq".
+let brandUnknown = false;
 function mergeTeamInfo(info) {
+  if (info) brandUnknown = false;
   for (const k of Object.keys(TEAM)) if (k !== "id") delete TEAM[k];
   Object.assign(TEAM, TEAM_DEFAULTS, info || {}, { id: TEAM_ID });
+  // Remember the branding on this device, so the next page shows it before the data arrives (boot.js).
+  if (info && TEAM_ID && !NO_TEAM_PAGE) {
+    const { events, ...brand } = info, v = JSON.stringify(brand);
+    if (pref.get("brand:" + TEAM_ID) !== v) pref.set("brand:" + TEAM_ID, v);
+  }
+}
+// The branding remembered from an earlier visit (or null).
+function cachedTeamInfo() {
+  if (!TEAM_ID || NO_TEAM_PAGE) return null;
+  try { return JSON.parse(pref.get("brand:" + TEAM_ID, "null")); } catch { return null; }
 }
 
 // Schedule: the team's list in the database (schedule/{date}); TEAM.events only as a fallback.
@@ -458,7 +471,8 @@ function applyBranding() {
   const home = document.querySelector(".brand-inner > a");
   if (home) {
     home.href = pageUrl("");
-    home.innerHTML = B.logo ? `<img class="logo" src="${esc(B.logo)}" alt="${esc(B.brand)}">`
+    home.innerHTML = brandUnknown && TEAM_ID ? `<span class="logo-text">&nbsp;</span>`
+      : B.logo ? `<img class="logo" src="${esc(B.logo)}" alt="${esc(B.brand)}">`
       : `<span class="logo-text">${esc(B.brand)}</span>`;
   }
   const tabs = document.querySelector(".tabs");
@@ -485,7 +499,9 @@ function chooseTeam(id) {
 
 // Kick off: with login, wait for the user; otherwise connect straight away.
 function start() {
-  mergeTeamInfo(null);
+  const cached = cachedTeamInfo();
+  mergeTeamInfo(cached);
+  brandUnknown = !!TEAM_ID && !NO_TEAM_PAGE && !cached;
   applyStaticTexts();
   applyBranding();
   injectAuthUI();
@@ -529,7 +545,7 @@ async function initAuth() {
     session.pending = false;
     session.picking = false;
     session.ready = !user; // with a user, wait until we know the team and the membership
-    if (user) afterSignIn(); else { stopApprovalWatch(); disconnect(); }
+    if (user) afterSignIn(); else { stopApprovalWatch(); disconnect(); brandUnknown = false; applyBranding(); }
     renderAuth();
     render();
   });
@@ -554,6 +570,8 @@ async function afterSignIn() {
 async function showPicker(message) {
   session.picking = true;
   session.ready = true;
+  brandUnknown = false;
+  applyBranding(); // no team (yet): the Rostiq header
   session.pickerTeams = await Promise.all((session.teams || []).map(async id => ({ id, info: (await getAbs(`teams/${id}/info`)) || {} })));
   session.pickerTeams.sort((a, b) => (a.info.brand || a.id).localeCompare(b.info.brand || b.id));
   if (message) gateMsg = { text: message, err: true };

@@ -17,6 +17,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600&display=swap">
 <link rel="stylesheet" href="common.css">
+<script src="boot.js"></script>
 <style>
   .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; margin-top: 16px; }
   .panel h2 { margin: 0 0 4px; }
@@ -94,6 +95,7 @@
     <nav class="tabs"><a href="./" data-i18n="tab.availability">Availability</a><a href="carpool.html" data-i18n="tab.carpool">🚗 Carpool</a><a href="ploeg.html" data-i18n="tab.team">👥 Team</a><a href="admin.html" class="admin-tab" aria-current="page" hidden data-i18n="tab.admin">⚙️ Admin</a></nav>
   </div>
 </header>
+<script>rostiqBootHeader()</script>
 <main>
   <h1 data-i18n="admin.title">Admin</h1>
   <p class="sub"><span data-i18n="admin.sub"></span> · <span class="status" id="status" data-i18n="status.connecting">Connecting…</span></p>
