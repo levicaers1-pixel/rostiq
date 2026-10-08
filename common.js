@@ -180,22 +180,128 @@ async function dbUrlAbs(path, forceRefresh) {
 }
 // … and a path inside the current team (e.g. "players/p01" → teams/<id>/players/p01).
 const dbUrl = (path, forceRefresh) => dbUrlAbs(`teams/${TEAM_ID}${path ? "/" + path : ""}`, forceRefresh);
-const getAbs = async path => fetch(await dbUrlAbs(path)).then(r => (r.ok ? r.json() : null)).catch(() => null);
-
-async function send(method, path, value, abs) {
-  if (!DB) return false;
+// netDown: the last request failed because of the network (offline / no reception), not because it was refused.
+let netDown = false;
+const isOffline = () => !navigator.onLine || netDown;
+async function getAbs(path) {
   try {
-    const res = await fetch(await (abs ? dbUrlAbs(path) : dbUrl(path)), {
-      method,
-      body: value === undefined ? undefined : JSON.stringify(value),
-    });
-    if (!res.ok) throw new Error(res.status);
-    return true;
-  } catch (e) {
-    setStatus("err", t(AUTH_ON ? "status.notSavedOwnRow" : "status.saveFailed"));
-    return false;
+    const r = await fetch(await dbUrlAbs(path));
+    netDown = false;
+    return r.ok ? r.json() : null;
+  } catch { netDown = true; return null; }
+}
+
+// Returns true (saved), "queued" (no network: kept in the outbox, sent later) or false (refused).
+async function send(method, path, value, abs, noQueue) {
+  if (!DB) return false;
+  const full = abs ? path : `teams/${TEAM_ID}${path ? "/" + path : ""}`;
+  // Only what the user did goes into the outbox; automatic saves (profile sync, login email…) are redone online anyway.
+  const queueable = !noQueue && userActed();
+  let res;
+  try {
+    res = await fetch(await dbUrlAbs(full), { method, body: value === undefined ? undefined : JSON.stringify(value) });
+  } catch {
+    netDown = true;
+    if (!queueable) return false;
+    queueWrite({ method, path: full, value });
+    return "queued";
+  }
+  netDown = false;
+  if (!res.ok) { setStatus("err", t(AUTH_ON ? "status.notSavedOwnRow" : "status.saveFailed")); return false; }
+  return true;
+}
+
+// ---- Offline: changes wait in an outbox on this device; the team's last-known data stays readable ----
+const outbox = {
+  get() { try { return JSON.parse(pref.get("outbox", "[]")) || []; } catch { return []; } },
+  set(list) { pref.set("outbox", JSON.stringify(list)); },
+};
+function queueWrite(item) {
+  // The same thing changed twice offline: only the last value needs sending.
+  const rest = item.method === "PATCH" ? outbox.get() : outbox.get().filter(x => !(x.method !== "PATCH" && x.path === item.path));
+  outbox.set([...rest, { ...item, at: Date.now() }]);
+  renderOffline();
+}
+let flushing = false;
+async function flushOutbox() {
+  if (flushing || !navigator.onLine) return;
+  const items = outbox.get();
+  if (!items.length) return;
+  flushing = true;
+  let sent = 0;
+  while (outbox.get().length) {
+    const [item, ...rest] = outbox.get();
+    const ok = await send(item.method, item.path, item.value, true, true);
+    if (!ok && netDown) break; // still no network: try again later
+    outbox.set(rest);           // sent, or refused (e.g. no permission): either way it leaves the outbox
+    if (ok) sent++; else toast(t("status.saveFailed"), "err");
+  }
+  flushing = false;
+  if (sent) toast(t("toast.synced", { n: sent }));
+  renderOffline();
+}
+// Changes still in the outbox are shown on top of fresh data from the server (until they're sent).
+function reapplyOutbox() {
+  const base = `teams/${TEAM_ID}`;
+  for (const it of outbox.get()) {
+    if (it.path !== base && !it.path.startsWith(base + "/")) continue;
+    const rel = it.path.slice(base.length + 1);
+    if (it.method === "PATCH") for (const [k, v] of Object.entries(it.value || {})) apply(rel ? `${rel}/${k}` : k, v, false);
+    else apply(rel, it.method === "DELETE" ? null : it.value, false);
   }
 }
+// Last-known team data, per team, for reading offline.
+let snapTimer = null, snapshotAt = 0, offlineView = false;
+function saveSnapshot() {
+  clearTimeout(snapTimer);
+  snapTimer = setTimeout(() => { try { localStorage.setItem("snap:" + TEAM_ID, JSON.stringify({ at: Date.now(), root })); } catch {} }, 1500);
+}
+function loadSnapshot() {
+  try { return JSON.parse(localStorage.getItem("snap:" + TEAM_ID) || "null"); } catch { return null; }
+}
+// No connection: show the stored data (if any) and the offline bar.
+function goOffline() {
+  netDown = true;
+  if (!dataLoaded && TEAM_ID) {
+    const snap = loadSnapshot();
+    if (snap && snap.root) { root = snap.root; snapshotAt = snap.at; dataLoaded = true; }
+  }
+  if (dataLoaded) { offlineView = true; reapplyOutbox(); syncSession(); }
+  setStatus("err", t("status.offline"));
+  renderOffline();
+}
+function renderOffline() {
+  let bar = document.getElementById("offline-bar");
+  if (!bar) {
+    bar = document.createElement("div");
+    bar.id = "offline-bar"; bar.className = "offline-bar"; bar.setAttribute("role", "status");
+    document.body.append(bar);
+  }
+  const n = outbox.get().length, off = isOffline();
+  bar.hidden = !off && !n;
+  if (bar.hidden) return;
+  const since = snapshotAt && offlineView ? new Date(snapshotAt).toLocaleTimeString(LOCALE, { hour: "2-digit", minute: "2-digit" }) : "";
+  bar.innerHTML = off
+    ? `${ic("x")} <span>${t("offline.bar", { since })}${n ? ` · ${t("offline.waiting", { n })}` : ""}</span>`
+    : `${ic("send")} <span>${t("offline.sending", { n })}</span>`;
+  bar.classList.toggle("sending", !off);
+}
+window.addEventListener("offline", () => goOffline());
+window.addEventListener("online", async () => {
+  netDown = false;
+  renderOffline();
+  await flushOutbox();
+  if (session.user && !profile.data) reloadProfile();
+  // Reconnect the live data (it was showing the stored copy, or the connection dropped).
+  if (session.user && TEAM_ID && !NO_TEAM_PAGE && (offlineView || !es || es.readyState === 2)) { offlineView = false; checkMembership(); }
+});
+// Every 20 s while something is pending: send the outbox, and try to get live data again after an offline start.
+setInterval(async () => {
+  if (!navigator.onLine) return;
+  if (outbox.get().length) await flushOutbox();
+  if (session.user && !profile.data && !netDown) reloadProfile();
+  if (offlineView && session.user && TEAM_ID && !NO_TEAM_PAGE) { offlineView = false; checkMembership(); }
+}, 20000);
 
 // Writes inside the current team (applied locally first, so the page reacts immediately).
 async function write(path, value) {
@@ -220,7 +326,7 @@ async function saved(pending) {
   const acted = userActed(); // read now: the request takes a moment
   const ok = await pending;
   if (!ok) toast(t("status.saveFailed"), "err");
-  else if (acted) toast(t("toast.saved"));
+  else if (acted) toast(t(ok === "queued" ? "toast.queued" : "toast.saved"));
   return ok;
 }
 let toastTimer = null;
@@ -258,15 +364,21 @@ async function connect(forceRefresh) {
     return;
   }
   if (es) es.close();
-  let seeded = false;
-  const stream = es = new EventSource(await dbUrl("", forceRefresh));
+  let seeded = false, url;
+  try { url = await dbUrl("", forceRefresh); } catch { return goOffline(); } // e.g. the login token can't be refreshed offline
+  const stream = es = new EventSource(url);
   const onEvent = merge => e => {
     if (stream !== es) return;
     const { path, data } = JSON.parse(e.data);
     apply(path, data, merge);
+    reapplyOutbox();
+    saveSnapshot();
+    netDown = false; offlineView = false; snapshotAt = 0;
+    renderOffline();
     if (!seeded && path === "/" && !merge) {
       seeded = true;
       dataLoaded = true;
+      flushOutbox();
       if (!root.initialized && session.admin) {
         // A team's first visit: create the empty player rows (if the team wants any).
         const changes = { initialized: true };
@@ -283,7 +395,11 @@ async function connect(forceRefresh) {
   // Login tokens expire after an hour; reconnect with a fresh one.
   stream.addEventListener("auth_revoked", () => { if (stream === es) connect(true); });
   stream.onopen = () => setStatus("live", t("status.live"));
-  stream.onerror = () => setStatus("err", t("status.reconnecting"));
+  stream.onerror = () => {
+    if (stream !== es) return;
+    if (!navigator.onLine || !dataLoaded) return goOffline(); // no data yet: show the stored copy meanwhile
+    setStatus("err", t("status.reconnecting"));
+  };
 }
 
 function disconnect() {
@@ -398,6 +514,7 @@ async function loadProfile(myTeams) {
   const teams = Object.entries(profile.teams);
   const [stored, ...rows] = await Promise.all([getAbs(`users/${uid}/profile`),
     ...teams.map(([tid, pid]) => getAbs(`teams/${tid}/players/${pid}`))]);
+  if (!stored && netDown) { profile.teams = myTeams || {}; return; } // offline: no profile sync now, retried when online
   const data = stored || {};
   // My own edits always update the profile and all my teams together. So a team row that differs from the
   // profile was changed by a team admin since then: that's the newer value. Fields the profile doesn't
@@ -422,6 +539,12 @@ async function loadProfile(myTeams) {
   if (profile.pending) { const p = profile.pending; profile.pending = null; shareProfile(p); } // edits made while loading
   applyProfile();
   fillLoginEmail();
+}
+
+// After an offline start: load the profile (and sync it) once the connection is back.
+async function reloadProfile() {
+  const mine = await getAbs(`users/${session.user.uid}/teams`);
+  if (mine) profile.ready = loadProfile(mine).catch(() => {});
 }
 
 // My own personal fields in `changes` (paths like "players/<my pid>/phone") → profile + my other teams.
@@ -661,6 +784,8 @@ function chooseTeam(id) {
 
 // Kick off: with login, wait for the user; otherwise connect straight away.
 function start() {
+  if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost"))
+    navigator.serviceWorker.register("sw.js").catch(() => {});
   const cached = cachedTeamInfo();
   mergeTeamInfo(cached);
   brandUnknown = !!TEAM_ID && !NO_TEAM_PAGE && !cached;
@@ -750,6 +875,7 @@ function stopApprovalWatch() { if (approvalEs) approvalEs.close(); approvalEs = 
 async function checkMembership() {
   const uid = session.user.uid;
   const info = await getAbs(`teams/${TEAM_ID}/info`);
+  if (!info && isOffline()) return goOffline();
   if (!info) { pref.set("team", ""); TEAM_ID = ""; return showPicker(t("pick.notFound")); }
   mergeTeamInfo(info);
   applyBranding();
@@ -801,6 +927,7 @@ function injectAuthUI() {
   });
   // Account menu: open/close, and close on a click elsewhere or Escape.
   document.addEventListener("click", ev => {
+    if (ev.target.closest("[data-install]")) { acctOpen = false; renderAccount(); installApp(); return; }
     const btn = ev.target.closest("#acct-btn");
     if (btn) { acctOpen = !acctOpen; renderAccount(); return; }
     if (acctOpen && !ev.target.closest("#acct-menu")) { acctOpen = false; renderAccount(); }
@@ -826,6 +953,24 @@ const appUrl = file => location.href.split(/[?#]/)[0].replace(/[^/]*$/, file);
 
 // ---- Account menu in the header (avatar button → name, role, switch team, RostiQ, language, sign out) ----
 let acctOpen = false;
+// Install as an app: Chrome/Android offer a prompt; iPhone/iPad need "Share → Add to Home Screen".
+let installPrompt = null;
+window.addEventListener("beforeinstallprompt", ev => { ev.preventDefault(); installPrompt = ev; renderAccount(); });
+window.addEventListener("appinstalled", () => { installPrompt = null; renderAccount(); toast(t("install.done")); });
+const isIOS = () => /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+const canInstall = () => !standalone() && (!!installPrompt || isIOS());
+async function installApp() {
+  if (installPrompt) { installPrompt.prompt(); await installPrompt.userChoice.catch(() => {}); installPrompt = null; renderAccount(); return; }
+  let dlg = document.getElementById("install-dlg");
+  if (!dlg) {
+    document.body.insertAdjacentHTML("beforeend", `<dialog id="install-dlg" class="install-dlg"><h3>${t("install.iosTitle")}</h3>
+      <ol><li>${t("install.ios1")}</li><li>${t("install.ios2")}</li><li>${t("install.ios3")}</li></ol>
+      <div class="row"><button class="primary" data-close>${t("install.ok")}</button></div></dialog>`);
+    dlg = document.getElementById("install-dlg");
+    dlg.addEventListener("click", ev => { if (ev.target.closest("[data-close]") || ev.target === dlg) dlg.close(); });
+  }
+  dlg.showModal();
+}
 const langButtons = () => `<button data-lang="nl" aria-pressed="${LANG === "nl"}">NL</button><button data-lang="en" aria-pressed="${LANG === "en"}">EN</button>`;
 function renderAccount() {
   const acct = document.getElementById("account"), u = session.user;
@@ -844,6 +989,7 @@ function renderAccount() {
         <span class="pill ${session.platformAdmin ? "dark" : session.admin ? "cyan" : "gray"}">${role}</span></div>
       ${switchable && TEAM_ID ? `<a class="menu-item" role="menuitem" href="${appUrl("index.html")}?pick">${ic("switch")} ${t("pick.switch")}</a>` : ""}
       ${session.platformAdmin ? `<a class="menu-item" role="menuitem" href="${appUrl("rostiq.html")}">${ic("settings")} ${t("menu.platform")}</a>` : ""}
+      ${canInstall() ? `<button class="menu-item" role="menuitem" data-install>${ic("download")} ${t("menu.install")}</button>` : ""}
       <div class="menu-lang"><span>${t("menu.language")}</span><div class="lang">${langButtons()}</div></div>
       <button class="menu-item danger" role="menuitem" data-signout>${ic("x")} ${t("auth.signOut")}</button>
     </div>`;

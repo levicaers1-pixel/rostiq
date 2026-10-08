@@ -377,3 +377,13 @@ details.panel[open] > summary::after { transform: translateY(2px) rotate(-135deg
 .avatars .av { margin-left: -8px; }
 .avatars .av:first-child { margin-left: 0; }
 .av.more { background: color-mix(in srgb, var(--muted) 18%, var(--surface)); color: var(--muted); }
+
+/* Offline bar */
+.offline-bar { position: fixed; left: 50%; top: calc(10px + env(safe-area-inset-top)); z-index: 35; transform: translateX(-50%);
+  display: inline-flex; align-items: center; gap: 8px; width: max-content; max-width: calc(100vw - 24px);
+  padding: 8px 14px; border-radius: 999px; font-size: .82rem; font-weight: 600; box-shadow: var(--shadow);
+  background: var(--text); color: var(--bg); }
+.offline-bar.sending { background: var(--pampas); color: var(--brand); }
+.offline-bar svg.i { flex-shrink: 0; }
+/* Install help (iPhone) */
+.install-dlg ol { margin: 0 0 6px; padding-left: 20px; display: grid; gap: 8px; font-size: .92rem; }
