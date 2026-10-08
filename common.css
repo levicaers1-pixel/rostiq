@@ -392,3 +392,11 @@ details.panel[open] > summary::after { transform: translateY(2px) rotate(-135deg
 .start-own { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 12px; padding: 12px; border-radius: 14px;
   border: 1.5px dashed color-mix(in srgb, var(--accent) 35%, var(--border)); color: var(--accent); font-weight: 600; text-decoration: none; }
 .start-own:hover { background: color-mix(in srgb, var(--accent) 5%, var(--surface)); }
+
+/* Feedback dialog */
+.fb-dlg { width: min(520px, calc(100vw - 32px)); }
+.fb-dlg .hint { color: var(--muted); font-size: .82rem; margin: 0 0 12px; }
+.fb-types { margin-bottom: 12px; }
+.fb-dlg textarea { min-height: 120px; }
+.fb-contact { display: flex; align-items: center; gap: 8px; margin: 12px 0 6px; font-size: .88rem; }
+.fb-dlg .err { color: var(--no); font-size: .85rem; margin: 6px 0 0; }

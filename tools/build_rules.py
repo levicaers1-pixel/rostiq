@@ -237,7 +237,34 @@ users = {"$uid": {
     "$other": NO,
 }}
 
-final = {"rules": {"teams": {".read": PA, "$tid": team}, "users": users, "signup": signup, "signupCodes": signup_codes, "$other": NO}}
+# ---- Feedback from users to the RostiQ admin: anyone signed in may send, only the RostiQ admin reads ----
+# Max one message per minute per person: each message must stamp feedbackLast/{uid} with the server time in the
+# same write, and that stamp may only move on when the previous one is at least 60 s old.
+feedback = {
+    ".read": PA,
+    "$id": {
+        ".write": f"{PA} || (auth != null && !data.exists() && newData.child('uid').val() === auth.uid"
+                  " && newData.parent().parent().child('feedbackLast').child(auth.uid).val() === now)",
+        ".validate": "$id.matches(/^[a-z0-9]{8,30}$/) && newData.hasChildren(['uid', 'type', 'text', 'at', 'status'])",
+        "uid": {".validate": "newData.isString()"},
+        "type": {".validate": "newData.val() === 'idea' || newData.val() === 'bug' || newData.val() === 'praise'"},
+        "text": s(1000, 1),
+        "at": {".validate": "newData.isNumber()"},
+        "status": {".validate": f"newData.val() === 'new' || ({PA} && (newData.val() === 'seen' || newData.val() === 'done'))"},
+        "contact": {".validate": "newData.isBoolean()"},
+        "email": {".validate": f"newData.isString() && (newData.val() === auth.token.email || {PA})"},
+        "name": s(60), "team": s(40), "page": s(40), "device": s(120), "lang": s(5), "version": s(20),
+        "$other": NO,
+    },
+}
+feedback_last = {"$uid": {
+    ".read": "auth != null && auth.uid === $uid",
+    ".write": "auth != null && auth.uid === $uid",
+    ".validate": "newData.isNumber() && newData.val() === now && (!data.exists() || now - data.val() >= 60000)",
+}}
+
+final = {"rules": {"teams": {".read": PA, "$tid": team}, "users": users, "signup": signup, "signupCodes": signup_codes,
+                   "feedback": feedback, "feedbackLast": feedback_last, "$other": NO}}
 
 # ---- Transition: also allow the old single-team structure at the root (Pampas, pre-migration) ----
 L_OWNER = "(auth != null && root.child('players').child($pid).child('uid').val() === auth.uid)"

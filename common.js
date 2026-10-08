@@ -834,7 +834,7 @@ function start() {
     injectCountdown();
     injectPhonePrompt();
   }
-  document.body.insertAdjacentHTML("beforeend", `<footer class="site-footer">${t("footer")}</footer>`);
+  document.body.insertAdjacentHTML("beforeend", `<footer class="site-footer">${t("footer")} · <a href="#" data-feedback>${t("fb.footer")}</a></footer>`);
   injectShareDialog();
   if (AUTH_ON) initAuth(); else if (!NO_TEAM_PAGE) connect(); else render();
 }
@@ -884,6 +884,7 @@ async function afterSignIn() {
   session.teams = Object.keys(mine);
   profile.ready = loadProfile(mine).catch(() => {});
   if (session.platformAdmin) {
+    getAbs("feedback").then(fb => { session.feedbackNew = Object.values(fb || {}).filter(x => x && x.status === "new").length; renderAccount(); });
     const all = (await getAbs("teams")) || {};
     session.teams = [...new Set([...session.teams, ...Object.keys(all)])];
   }
@@ -966,6 +967,7 @@ function injectAuthUI() {
   // Account menu: open/close, and close on a click elsewhere or Escape.
   document.addEventListener("click", ev => {
     if (ev.target.closest("[data-install]")) { acctOpen = false; renderAccount(); installApp(); return; }
+    if (ev.target.closest("#acct-menu [data-feedback]")) { ev.preventDefault(); acctOpen = false; renderAccount(); openFeedback(); return; }
     const btn = ev.target.closest("#acct-btn");
     if (btn) { acctOpen = !acctOpen; renderAccount(); return; }
     if (acctOpen && !ev.target.closest("#acct-menu")) { acctOpen = false; renderAccount(); }
@@ -989,6 +991,66 @@ function gateMessage(text, err) { gateMsg = { text, err }; renderAuth(); }
 
 const appUrl = file => location.href.split(/[?#]/)[0].replace(/[^/]*$/, file);
 
+// ---- Feedback to RostiQ (account menu, footer): only the RostiQ admin reads it ----
+const APP_VERSION = "2026.10.8";
+function deviceText() {
+  const ua = navigator.userAgent;
+  const os = /iPhone/.test(ua) ? "iPhone" : /iPad/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1) ? "iPad"
+    : /Android/.test(ua) ? "Android" : /Mac/.test(ua) ? "Mac" : /Windows/.test(ua) ? "Windows" : /Linux/.test(ua) ? "Linux" : "?";
+  const br = /Edg\//.test(ua) ? "Edge" : /CriOS|Chrome\//.test(ua) ? "Chrome" : /FxiOS|Firefox\//.test(ua) ? "Firefox" : /Safari\//.test(ua) ? "Safari" : "?";
+  return [os, br, standalone() ? "app" : "browser", `${innerWidth}px`].join(" · ").slice(0, 120);
+}
+let fbType = "idea";
+function openFeedback() {
+  if (!session.user) return toast(t("fb.signIn"), "err");
+  let dlg = document.getElementById("fb-dlg");
+  if (!dlg) {
+    document.body.insertAdjacentHTML("beforeend", `<dialog id="fb-dlg" class="fb-dlg"><form method="dialog" id="fb-form">
+      <h3>${t("fb.title")}</h3><p class="hint">${t("fb.sub")}</p>
+      <div class="segmented fb-types" role="group">${["idea", "bug", "praise"].map(k =>
+        `<button type="button" data-fbtype="${k}" aria-pressed="${k === fbType}">${t("fb.type." + k)}</button>`).join("")}</div>
+      <textarea name="text" rows="5" maxlength="1000" required></textarea>
+      <label class="fb-contact"><input type="checkbox" name="contact" checked> <span>${t("fb.contact", { email: esc(session.user.email || "") })}</span></label>
+      <p class="hint">${t("fb.context")}</p>
+      <p class="err" id="fb-err" hidden></p>
+      <div class="row"><button type="button" data-close>${t("details.cancel")}</button><button type="submit" class="primary">${ic("send")} ${t("fb.send")}</button></div>
+    </form></dialog>`);
+    dlg = document.getElementById("fb-dlg");
+    dlg.addEventListener("click", ev => {
+      if (ev.target.closest("[data-close]") || ev.target === dlg) dlg.close();
+      const tb = ev.target.closest("[data-fbtype]");
+      if (tb) { fbType = tb.dataset.fbtype; dlg.querySelectorAll("[data-fbtype]").forEach(b => b.setAttribute("aria-pressed", b.dataset.fbtype === fbType)); setFbPlaceholder(); }
+    });
+    dlg.querySelector("form").addEventListener("submit", sendFeedback);
+  }
+  setFbPlaceholder();
+  document.getElementById("fb-err").hidden = true;
+  dlg.showModal();
+  dlg.querySelector("textarea").focus();
+}
+function setFbPlaceholder() { const ta = document.querySelector("#fb-form textarea"); if (ta) ta.placeholder = t("fb.ph." + fbType); }
+async function sendFeedback(ev) {
+  ev.preventDefault();
+  const form = ev.target, err = document.getElementById("fb-err"), text = form.text.value.trim();
+  const show = msg => { err.textContent = msg; err.hidden = false; };
+  if (!text) return show(t("fb.empty"));
+  const last = Number(pref.get("fbLast", "0"));
+  if (Date.now() - last < 60000) return show(t("fb.wait"));
+  const u = session.user, me = session.pid && root.players && root.players[session.pid];
+  const id = (Date.now().toString(36) + Math.random().toString(36).slice(2, 8)).slice(0, 20);
+  const TS = { ".sv": "timestamp" };
+  const item = { uid: u.uid, type: fbType, text: text.slice(0, 1000), at: TS, status: "new",
+    page: (location.pathname.split("/").pop() || "index.html").replace(".html", "").slice(0, 40) || "index",
+    team: (TEAM_ID || "").slice(0, 40), device: deviceText(), lang: LANG, version: APP_VERSION,
+    ...(form.contact.checked && u.email ? { contact: true, email: u.email.slice(0, 100), ...(me && me.name ? { name: me.name.slice(0, 60) } : {}) } : {}) };
+  const ok = await send("PATCH", "", { [`feedback/${id}`]: item, [`feedbackLast/${u.uid}`]: TS }, true, true);
+  if (ok !== true) return show(t(isOffline() ? "fb.offline" : "fb.failed"));
+  pref.set("fbLast", String(Date.now()));
+  form.reset();
+  document.getElementById("fb-dlg").close();
+  toast(t("fb.thanks"));
+}
+
 // ---- Account menu in the header (avatar button → name, role, switch team, RostiQ, language, sign out) ----
 let acctOpen = false;
 // Install as an app: Chrome/Android offer a prompt; iPhone/iPad need "Share → Add to Home Screen".
@@ -1010,6 +1072,10 @@ async function installApp() {
   dlg.showModal();
 }
 const langButtons = () => `<button data-lang="nl" aria-pressed="${LANG === "nl"}">NL</button><button data-lang="en" aria-pressed="${LANG === "en"}">EN</button>`;
+document.addEventListener("click", ev => {
+  const fbl = ev.target.closest(".site-footer [data-feedback]");
+  if (fbl) { ev.preventDefault(); openFeedback(); }
+});
 function renderAccount() {
   const acct = document.getElementById("account"), u = session.user;
   if (!acct) return;
@@ -1026,8 +1092,10 @@ function renderAccount() {
       <div class="menu-head"><b>${esc(label)}</b>${name && u.email ? `<span>${esc(u.email)}</span>` : ""}
         <span class="pill ${session.platformAdmin ? "dark" : session.admin ? "cyan" : "gray"}">${role}</span></div>
       ${switchable && TEAM_ID ? `<a class="menu-item" role="menuitem" href="${appUrl("index.html")}?pick">${ic("switch")} ${t("pick.switch")}</a>` : ""}
-      ${session.platformAdmin ? `<a class="menu-item" role="menuitem" href="${appUrl("rostiq.html")}">${ic("settings")} ${t("menu.platform")}</a>` : ""}
+      ${session.platformAdmin ? `<a class="menu-item" role="menuitem" href="${appUrl("rostiq.html")}">${ic("settings")} ${t("menu.platform")}${
+        session.feedbackNew ? ` <span class="pill cyan">${t("fb.newCount", { n: session.feedbackNew })}</span>` : ""}</a>` : ""}
       <a class="menu-item" role="menuitem" href="${appUrl("start.html")}">${ic("plus")} ${t("menu.newTeam")}</a>
+      <button class="menu-item" role="menuitem" data-feedback>${ic("message")} ${t("fb.menu")}</button>
       ${canInstall() ? `<button class="menu-item" role="menuitem" data-install>${ic("download")} ${t("menu.install")}</button>` : ""}
       <div class="menu-lang"><span>${t("menu.language")}</span><div class="lang">${langButtons()}</div></div>
       <button class="menu-item danger" role="menuitem" data-signout>${ic("x")} ${t("auth.signOut")}</button>

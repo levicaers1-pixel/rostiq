@@ -423,6 +423,62 @@
         }
       }
     },
+    "feedback": {
+      ".read": "(auth != null && auth.token.email_verified === true && (auth.token.email === 'levicaers1@gmail.com'))",
+      "$id": {
+        ".write": "(auth != null && auth.token.email_verified === true && (auth.token.email === 'levicaers1@gmail.com')) || (auth != null && !data.exists() && newData.child('uid').val() === auth.uid && newData.parent().parent().child('feedbackLast').child(auth.uid).val() === now)",
+        ".validate": "$id.matches(/^[a-z0-9]{8,30}$/) && newData.hasChildren(['uid', 'type', 'text', 'at', 'status'])",
+        "uid": {
+          ".validate": "newData.isString()"
+        },
+        "type": {
+          ".validate": "newData.val() === 'idea' || newData.val() === 'bug' || newData.val() === 'praise'"
+        },
+        "text": {
+          ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 1000"
+        },
+        "at": {
+          ".validate": "newData.isNumber()"
+        },
+        "status": {
+          ".validate": "newData.val() === 'new' || ((auth != null && auth.token.email_verified === true && (auth.token.email === 'levicaers1@gmail.com')) && (newData.val() === 'seen' || newData.val() === 'done'))"
+        },
+        "contact": {
+          ".validate": "newData.isBoolean()"
+        },
+        "email": {
+          ".validate": "newData.isString() && (newData.val() === auth.token.email || (auth != null && auth.token.email_verified === true && (auth.token.email === 'levicaers1@gmail.com')))"
+        },
+        "name": {
+          ".validate": "newData.isString() && newData.val().length <= 60"
+        },
+        "team": {
+          ".validate": "newData.isString() && newData.val().length <= 40"
+        },
+        "page": {
+          ".validate": "newData.isString() && newData.val().length <= 40"
+        },
+        "device": {
+          ".validate": "newData.isString() && newData.val().length <= 120"
+        },
+        "lang": {
+          ".validate": "newData.isString() && newData.val().length <= 5"
+        },
+        "version": {
+          ".validate": "newData.isString() && newData.val().length <= 20"
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
+    },
+    "feedbackLast": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid",
+        ".validate": "newData.isNumber() && newData.val() === now && (!data.exists() || now - data.val() >= 60000)"
+      }
+    },
     "$other": {
       ".validate": false
     }
