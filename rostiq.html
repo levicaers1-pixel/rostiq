@@ -3,15 +3,15 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title data-i18n-doc="rostiq.pageTitle">Rostiq · Teams</title>
-<meta name="theme-color" content="#1f3a2e">
+<title data-i18n-doc="rostiq.pageTitle">RostiQ · Teams</title>
+<meta name="theme-color" content="#1e1b4b">
 <meta name="robots" content="noindex">
 <link rel="icon" type="image/png" href="assets/favicon.png">
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Cormorant+Garamond:wght@600&display=swap">
 <link rel="stylesheet" href="common.css">
 <style>
   .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; margin-top: 16px; }
@@ -36,11 +36,11 @@
 <body>
 <header class="brand">
   <div class="brand-inner">
-    <a href="./"><span class="logo-text">Rostiq</span></a>
+    <a href="./"><span class="logo-text rostiq"><img src="assets/mark.svg" alt="">RostiQ</span></a>
   </div>
 </header>
 <main>
-  <h1 data-i18n="rostiq.title">Rostiq</h1>
+  <h1 data-i18n="rostiq.title">RostiQ</h1>
   <p class="sub"><span data-i18n="rostiq.sub"></span></p>
   <p class="banner" id="no-access" hidden data-i18n="rostiq.noAccess"></p>
 
@@ -95,7 +95,7 @@ function render() {
   if (!ok) return;
   if (!teams) { teams = []; loadTeams(); return; }
   document.getElementById("teams").innerHTML = teams.length ? teams.map(x => {
-    const color = (x.info.colors && x.info.colors.light && x.info.colors.light["--brand"]) || "#1f3a2e";
+    const color = (x.info.colors && x.info.colors.light && x.info.colors.light["--brand"]) || "#1e1b4b";
     const link = appUrl("index.html") + "?t=" + x.id;
     return `<li>
       <span class="swatch" style="background:${esc(color)}"></span>
@@ -132,7 +132,7 @@ form.addEventListener("submit", async ev => {
   if (teams.some(x => x.id === id)) { msg.textContent = t("rostiq.idTaken"); msg.className = "msg err"; return; }
   const min = Math.min(50, Math.max(1, Math.round(Number(form.min.value) || 4)));
   const preset = BRAND_PRESETS.find(p => p[0] === form.colors.value);
-  const colors = preset && preset !== BRAND_PRESETS[0] ? makePalette(preset[1], preset[2]) : null; // first = Rostiq default
+  const colors = preset && preset !== BRAND_PRESETS[0] ? makePalette(preset[1], preset[2]) : null; // first = RostiQ default
   const info = { brand, season: season || brand, shortName: season || brand, calendarLabel: brand, teamSize: 0, minPlayers: min,
     ...(form.adminName.value.trim() ? { adminName: form.adminName.value.trim() } : {}), ...(colors ? { colors } : {}) };
   const ok = await writeAbs(`teams/${id}`, { info, settings: { minPlayers: min, scheduleInDb: true, seasonName: season || brand }, initialized: true });

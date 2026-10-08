@@ -3,19 +3,19 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title data-i18n-doc="admin.pageTitle">Rostiq · Admin</title>
-<meta name="theme-color" content="#1f3a2e">
+<title data-i18n-doc="admin.pageTitle">RostiQ · Admin</title>
+<meta name="theme-color" content="#1e1b4b">
 <meta name="robots" content="noindex">
 <link rel="icon" type="image/png" href="assets/favicon.png">
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Rostiq">
+<meta name="apple-mobile-web-app-title" content="RostiQ">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Cormorant+Garamond:wght@600&display=swap">
 <link rel="stylesheet" href="common.css">
 <script src="boot.js"></script>
 <style>
@@ -56,7 +56,7 @@
   .logo-box { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
   .logo-preview { background: var(--brand); border-bottom: 3px solid var(--pampas); border-radius: 8px; padding: 10px 14px; min-height: 64px; display: flex; align-items: center; max-width: 100%; }
   .logo-preview img { display: block; height: 44px; width: auto; max-width: 100%; }
-  .logo-preview span { font-family: "Cormorant Garamond", Georgia, serif; font-weight: 600; font-size: 1.6rem; color: var(--brand-text); }
+  .logo-preview span { font-family: var(--font-head); font-weight: var(--head-weight); font-size: 1.6rem; color: var(--brand-text); }
   .brandform label.file-btn { position: relative; overflow: hidden; display: inline-block; cursor: pointer; font-size: .9rem; padding: 6px 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text); }
   .file-btn input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
   .swatches { display: flex; gap: 8px; flex-wrap: wrap; }
@@ -91,7 +91,7 @@
 <body>
 <header class="brand">
   <div class="brand-inner">
-    <a href="./"><span class="logo-text">Rostiq</span></a>
+    <a href="./"><span class="logo-text rostiq"><img src="assets/mark.svg" alt="">RostiQ</span></a>
     <nav class="tabs"><a href="./" data-i18n="tab.availability">Availability</a><a href="carpool.html" data-i18n="tab.carpool">🚗 Carpool</a><a href="ploeg.html" data-i18n="tab.team">👥 Team</a><a href="admin.html" class="admin-tab" aria-current="page" hidden data-i18n="tab.admin">⚙️ Admin</a></nav>
   </div>
 </header>
@@ -169,6 +169,8 @@
             <label><input type="color" name="highlight"> <span data-i18n="brand.highlight">Highlight</span></label>
           </div>
         </div>
+        <label style="max-width:320px"><span data-i18n="brand.font">Headings</span>
+          <select name="font"><option value="" data-i18n="brand.fontModern">Modern</option><option value="serif" data-i18n="brand.fontClassic">Classic</option></select></label>
         <div class="brand-actions">
           <button class="primary" data-i18n="admin.save">Save</button>
           <button type="button" id="brand-cancel" data-i18n="brand.cancel">Cancel</button>
@@ -393,6 +395,7 @@ function renderBrand() {
     for (const k of BRAND_TEXT) if (document.activeElement !== bf[k]) bf[k].value = TEAM[k] || "";
     const c = savedColors();
     bf.main.value = c.main; bf.highlight.value = c.highlight;
+    bf.font.value = TEAM.font === "serif" ? "serif" : "";
   }
   const B = { ...TEAM, ...(brandPreview || {}) };
   document.getElementById("logo-preview").innerHTML = B.logo
@@ -411,7 +414,7 @@ function previewBrand(extra = {}) {
   const text = Object.fromEntries(BRAND_TEXT.map(k => [k, bf[k].value.trim()]));
   const main = bf.main.value.toLowerCase(), hi = bf.highlight.value.toLowerCase();
   const isDefault = main === BRAND_PRESETS[0][1] && hi === BRAND_PRESETS[0][2];
-  brandPreview = { ...(brandPreview || {}), ...text, brand: text.brand || TEAM.brand,
+  brandPreview = { ...(brandPreview || {}), ...text, brand: text.brand || TEAM.brand, font: bf.font.value,
     colors: isDefault ? null : makePalette(main, hi), ...extra };
   applyBranding();
   renderBrand();
@@ -471,6 +474,7 @@ bf.addEventListener("submit", async ev => {
   for (const k of BRAND_TEXT) changes[`info/${k}`] = k === "brand" ? p.brand.slice(0, 60) : (p[k] || null);
   changes["info/logo"] = p.logo === undefined ? (TEAM.logo || null) : (p.logo || null);
   changes["info/colors"] = p.colors || null;
+  changes["info/font"] = p.font === "serif" ? "serif" : null;
   const ok = await update(changes);
   if (ok) { brandPreview = null; mergeTeamInfo(root.info); applyBranding(); renderBrand(); }
   savedMsg(bf, ok, ok ? "" : t("status.saveFailed"));

@@ -3,19 +3,19 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title data-i18n-doc="page.title">Rostiq · Availability</title>
-<meta name="theme-color" content="#1f3a2e">
+<title data-i18n-doc="page.title">RostiQ · Availability</title>
+<meta name="theme-color" content="#1e1b4b">
 <!-- Link preview (WhatsApp, iMessage, Facebook, …) -->
-<meta name="description" content="Rostiq – teamplanner voor sportploegen: beschikbaarheid, kalender, carpool en WhatsApp.">
+<meta name="description" content="RostiQ – teamplanner voor sportploegen: beschikbaarheid, kalender, carpool en WhatsApp.">
 <meta property="og:type" content="website">
-<meta property="og:site_name" content="Rostiq">
-<meta property="og:title" content="Rostiq">
-<meta property="og:description" content="Rostiq – teamplanner voor sportploegen: beschikbaarheid, kalender, carpool en WhatsApp.">
+<meta property="og:site_name" content="RostiQ">
+<meta property="og:title" content="RostiQ">
+<meta property="og:description" content="RostiQ – teamplanner voor sportploegen: beschikbaarheid, kalender, carpool en WhatsApp.">
 <meta property="og:url" content="https://levicaers1-pixel.github.io/rostiq/">
 <meta property="og:image" content="https://levicaers1-pixel.github.io/rostiq/assets/og-image.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="Rostiq – teamplanner">
+<meta property="og:image:alt" content="RostiQ – teamplanner">
 <meta property="og:locale" content="nl_BE">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="icon" type="image/png" href="assets/favicon.png">
@@ -23,11 +23,11 @@
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Rostiq">
+<meta name="apple-mobile-web-app-title" content="RostiQ">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Cormorant+Garamond:wght@600&display=swap">
 <link rel="stylesheet" href="common.css">
 <script src="boot.js"></script>
 <style>
@@ -41,7 +41,7 @@
   .month li { display: grid; grid-template-columns: 44px 1fr auto; gap: 12px; padding: 12px 0; align-items: start; border-top: 1px solid var(--border); }
   .month li:first-child { border-top: none; }
   .month .d { display: flex; flex-direction: column; align-items: center; line-height: 1.1; padding-top: 2px; }
-  .month .d b { font-family: "Cormorant Garamond", Georgia, serif; font-size: 1.6rem; font-weight: 600; color: var(--accent); font-variant-numeric: lining-nums; }
+  .month .d b { font-family: var(--font-head); font-size: 1.6rem; font-weight: var(--head-weight); color: var(--accent); font-variant-numeric: lining-nums; }
   .month .d small { font-size: .7rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
   .month .opp-name { min-width: 0; overflow-wrap: anywhere; font-weight: 600; font-size: 1rem; }
   .month .opp-name .details { font-weight: 400; margin-top: 4px; display: grid; gap: 2px; }
@@ -188,13 +188,13 @@
 <body>
 <header class="brand">
   <div class="brand-inner">
-    <a href="./"><span class="logo-text">Rostiq</span></a>
+    <a href="./"><span class="logo-text rostiq"><img src="assets/mark.svg" alt="">RostiQ</span></a>
     <nav class="tabs"><a href="./" aria-current="page" data-i18n="tab.availability">Availability</a><a href="carpool.html" data-i18n="tab.carpool">🚗 Carpool</a><a href="ploeg.html" data-i18n="tab.team">👥 Team</a><a href="admin.html" class="admin-tab" hidden data-i18n="tab.admin">⚙️ Admin</a></nav>
   </div>
 </header>
 <script>rostiqBootHeader()</script>
 <main>
-  <h1 data-season>Rostiq</h1>
+  <h1 data-season>RostiQ</h1>
   <p class="sub"><span data-i18n="avail.sub">Tap a cell to set your availability</span> · <span class="status" id="status" data-i18n="status.connecting">Connecting…</span></p>
   <p class="banner" id="banner" hidden data-i18n-html="banner.noDb"></p>
 
@@ -681,7 +681,7 @@ const uidDomain = TEAM_ID === "pampas-wintermidam" ? "team-availability" : `${TE
 function buildIcs(events, statusOf = () => "", player = "") {
   const stamp = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d+/, "");
   const url = pageUrl("");
-  const lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Caersultancy//Rostiq//EN", "CALSCALE:GREGORIAN", "METHOD:PUBLISH", ...VTIMEZONE];
+  const lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Caersultancy//RostiQ//EN", "CALSCALE:GREGORIAN", "METHOD:PUBLISH", ...VTIMEZONE];
   for (const e of events) {
     const d = e.date.replace(/-/g, "");
     const m = matchInfo(e), v = m.venue;

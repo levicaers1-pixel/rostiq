@@ -3,19 +3,19 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title data-i18n-doc="carpool.pageTitle">Rostiq · Carpool</title>
-<meta name="theme-color" content="#1f3a2e">
+<title data-i18n-doc="carpool.pageTitle">RostiQ · Carpool</title>
+<meta name="theme-color" content="#1e1b4b">
 <!-- Link preview (WhatsApp, iMessage, Facebook, …) -->
-<meta name="description" content="Rostiq – teamplanner voor sportploegen: beschikbaarheid, kalender, carpool en WhatsApp.">
+<meta name="description" content="RostiQ – teamplanner voor sportploegen: beschikbaarheid, kalender, carpool en WhatsApp.">
 <meta property="og:type" content="website">
-<meta property="og:site_name" content="Rostiq">
-<meta property="og:title" content="Carpool · Rostiq">
-<meta property="og:description" content="Rostiq – teamplanner voor sportploegen: beschikbaarheid, kalender, carpool en WhatsApp.">
+<meta property="og:site_name" content="RostiQ">
+<meta property="og:title" content="Carpool · RostiQ">
+<meta property="og:description" content="RostiQ – teamplanner voor sportploegen: beschikbaarheid, kalender, carpool en WhatsApp.">
 <meta property="og:url" content="https://levicaers1-pixel.github.io/rostiq/carpool.html">
 <meta property="og:image" content="https://levicaers1-pixel.github.io/rostiq/assets/og-image.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="Rostiq – teamplanner">
+<meta property="og:image:alt" content="RostiQ – teamplanner">
 <meta property="og:locale" content="nl_BE">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="icon" type="image/png" href="assets/favicon.png">
@@ -23,11 +23,11 @@
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Rostiq">
+<meta name="apple-mobile-web-app-title" content="RostiQ">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Cormorant+Garamond:wght@600&display=swap">
 <link rel="stylesheet" href="common.css">
 <script src="boot.js"></script>
 <style>
@@ -54,8 +54,8 @@
   #map .leaflet-tile-pane { filter: grayscale(.75) sepia(.25) brightness(1.04) contrast(.92); }
   @media (max-width: 480px) { #map { height: 340px; } }
   .pin { display: flex; align-items: center; justify-content: center; border-radius: 50%; box-shadow: 0 1px 4px rgba(0, 0, 0, .35); }
-  .pin.venue { background: #fff; border: 2px solid #1f3a2e; font-size: 15px; }
-  .pin.home { background: #1f3a2e; color: #f4efe4; border: 2px solid #fff; font: 700 11px/1 system-ui, sans-serif; }
+  .pin.venue { background: #fff; border: 2px solid var(--brand); font-size: 15px; }
+  .pin.home { background: var(--brand); color: var(--brand-text); border: 2px solid #fff; font: 700 11px/1 system-ui, sans-serif; }
   .leaflet-popup-content { font: 13px/1.4 system-ui, sans-serif; color: #1c2a23; }
   .phone-field { margin-top: 12px; max-width: 360px; }
   .geo-row input { flex: 1; min-width: 0; }
@@ -117,7 +117,7 @@
 <body>
 <header class="brand">
   <div class="brand-inner">
-    <a href="./"><span class="logo-text">Rostiq</span></a>
+    <a href="./"><span class="logo-text rostiq"><img src="assets/mark.svg" alt="">RostiQ</span></a>
     <nav class="tabs"><a href="./" data-i18n="tab.availability">Availability</a><a href="carpool.html" aria-current="page" data-i18n="tab.carpool">🚗 Carpool</a><a href="ploeg.html" data-i18n="tab.team">👥 Team</a><a href="admin.html" class="admin-tab" hidden data-i18n="tab.admin">⚙️ Admin</a></nav>
   </div>
 </header>

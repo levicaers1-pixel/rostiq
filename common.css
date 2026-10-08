@@ -1,43 +1,55 @@
-/* Pampas palette: dark green + cream, with pampas-beige highlights */
+/* RostiQ palette: deep indigo + electric cyan, soft violet accents, off-white surfaces.
+   Teams override the colour variables with their own (Admin → Branding). */
 :root {
-  --bg: #f4efe4;
-  --surface: #fbf8f1;
-  --text: #1c2a23;
-  --muted: #6b7568;
-  --border: #e3d9c5;
-  --accent: #2c4a3a;
-  --on-accent: #f4efe4;
-  --brand: #1f3a2e;
-  --brand-text: #f4efe4;
-  --pampas: #cdb994;
+  --bg: #f6f7fa;
+  --surface: #ffffff;
+  --text: #14152b;
+  --muted: #5d6178;
+  --border: #e2e4ee;
+  --accent: #1e1b4b;
+  --on-accent: #ffffff;
+  --brand: #1e1b4b;
+  --brand-text: #f6f7fa;
+  --pampas: #00d4ff;
   --yes: #2f7a4a;
   --yes-bg: #e1ecdc;
   --maybe: #9c7424;
   --maybe-bg: #f5e8cb;
   --no: #ad4a31;
   --no-bg: #f5ddd4;
-  --final: #8a6d40;
+  --final: #6c5ce7;
+  /* Fonts: RostiQ's geometric sans; teams can pick the classic serif headings ("font-serif"). */
+  --font-body: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-head: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --head-weight: 700;
+  --head-spacing: -.01em;
 }
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #14231c;
-    --surface: #1b2e25;
-    --text: #f1ebdd;
-    --muted: #a7b1a2;
-    --border: #2d4438;
-    --accent: #d9c7a3;
-    --on-accent: #14231c;
-    --brand: #0f1c16;
-    --brand-text: #f1ebdd;
-    --pampas: #d9c7a3;
+    --bg: #0b0d14;
+    --surface: #141729;
+    --text: #eef0f7;
+    --muted: #9aa0b8;
+    --border: #262a40;
+    --accent: #00d4ff;
+    --on-accent: #0b0d14;
+    --brand: #12112e;
+    --brand-text: #f6f7fa;
+    --pampas: #00d4ff;
     --yes: #83c99c;
     --yes-bg: #20402f;
     --maybe: #e0b766;
     --maybe-bg: #3e3421;
     --no: #e58b72;
     --no-bg: #452821;
-    --final: #d9c7a3;
+    --final: #a99dff;
   }
+}
+html.font-serif {
+  --font-body: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-head: "Cormorant Garamond", Georgia, serif;
+  --head-weight: 600;
+  --head-spacing: .01em;
 }
 * { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
@@ -51,10 +63,10 @@ body {
   margin: 0;
   background: var(--bg);
   color: var(--text);
-  font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font: 15px/1.45 var(--font-body);
 }
 main { max-width: 1200px; margin: 0 auto; padding: 24px 16px 48px; }
-h1, h2 { font-family: "Cormorant Garamond", Georgia, serif; font-weight: 600; letter-spacing: .01em; }
+h1, h2 { font-family: var(--font-head); font-weight: var(--head-weight); letter-spacing: var(--head-spacing); }
 h1 { font-size: 2.1rem; line-height: 1.1; margin: 0 0 4px; }
 h2 { font-size: 1.5rem; margin: 32px 0 12px; }
 .sub { color: var(--muted); margin: 0; }
@@ -75,7 +87,7 @@ button:disabled { cursor: default; opacity: .5; }
 
 [hidden] { display: none !important; }
 
-/* Brand header: cream wordmark on dark green, page tabs underneath */
+/* Brand header: the team's logo or name (or RostiQ) on the brand colour, page tabs underneath */
 .brand { background: var(--brand); color: var(--brand-text); border-bottom: 3px solid var(--pampas); padding-top: env(safe-area-inset-top); }
 /* Keep content clear of the notch in landscape. */
 .brand-inner, main { padding-left: max(16px, env(safe-area-inset-left)); padding-right: max(16px, env(safe-area-inset-right)); }
@@ -91,7 +103,11 @@ button:disabled { cursor: default; opacity: .5; }
 .tabs a:hover { opacity: 1; }
 .tabs a[aria-current="page"] { opacity: 1; border-bottom-color: var(--brand-text); }
 .brand-inner > a { text-decoration: none; }
-.brand .logo-text { display: block; font-family: "Cormorant Garamond", Georgia, serif; font-weight: 600; font-size: 2.4rem; line-height: 1.2; color: var(--brand-text); letter-spacing: .04em; }
+.brand .logo-text { display: block; font-family: var(--font-head); font-weight: var(--head-weight); font-size: 2.2rem; line-height: 1.25; color: var(--brand-text); letter-spacing: var(--head-spacing); }
+html.font-serif .brand .logo-text { font-size: 2.4rem; line-height: 1.2; letter-spacing: .04em; }
+/* RostiQ itself: icon mark + wordmark */
+.brand .logo-text.rostiq { display: flex; align-items: center; gap: 12px; font-family: "Plus Jakarta Sans", system-ui, sans-serif; font-weight: 700; letter-spacing: -.02em; }
+.brand .logo-text.rostiq img { height: 1.15em; width: auto; }
 @media (max-width: 480px) {
   .brand .logo { height: 42px; }
   .brand .logo-text { font-size: 1.8rem; }
@@ -101,7 +117,7 @@ button:disabled { cursor: default; opacity: .5; }
 .brand-inner { position: relative; }
 .corner { position: absolute; top: 18px; right: max(16px, env(safe-area-inset-right)); display: flex; gap: 14px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
 .account { display: flex; gap: 10px; align-items: center; font-size: .85rem; color: var(--brand-text); }
-.lang { display: inline-flex; border: 1px solid rgba(244, 239, 228, .4); border-radius: 999px; overflow: hidden; }
+.lang { display: inline-flex; border: 1px solid color-mix(in srgb, var(--brand-text) 40%, transparent); border-radius: 999px; overflow: hidden; }
 .lang button { background: none; border: none; border-radius: 0; color: var(--brand-text); opacity: .7; font-size: .75rem; font-weight: 700; padding: 3px 9px; }
 .lang button[aria-pressed="true"] { background: var(--pampas); color: var(--brand); opacity: 1; }
 /* Dialogs (share window, match details) */

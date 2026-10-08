@@ -1,4 +1,4 @@
-"""Generate the Rostiq database rules.
+"""Generate the RostiQ database rules.
 
     python tools/build_rules.py
 
@@ -9,7 +9,7 @@ Writes
                                   while Pampas is migrated. Publish this first, the final one after.
 
 Roles
-  platform admin  the Rostiq owner(s) below: create teams, everything everywhere
+  platform admin  the RostiQ owner(s) below: create teams, everything everywhere
   team admin      teams/{t}/admins/{uid} = true: manages one team (players, matches, settings)
   member          teams/{t}/members/{uid} = playerId: reads the team, edits own row/carpool
 """
@@ -130,7 +130,7 @@ team = {
     ".write": PA,
     ".validate": "$tid.matches(/^[a-z0-9][a-z0-9-]{1,39}$/)",
     # Name, logo, colours…: readable by anyone signed in (shown on the 'waiting for approval' screen).
-    # The team admin may change the branding fields (Admin → Branding); the rest is the Rostiq admin's.
+    # The team admin may change the branding fields (Admin → Branding); the rest is the RostiQ admin's.
     "info": {
         ".read": "auth != null",
         ".validate": "newData.hasChild('brand')",
@@ -138,6 +138,7 @@ team = {
         "calendarLabel": {".write": TA, **s(60)}, "adminName": {".write": TA, **s(60)},
         "season": s(60),
         "logo": {".write": TA, ".validate": LOGO},
+        "font": {".write": TA, ".validate": "newData.val() === 'serif' || newData.val() === 'sans'"},
         "teamSize": num(0, 60), "minPlayers": num(1, 50),
         # Only "#rrggbb" colours under "--css-variable" names: nothing else can reach the page's style sheet.
         "colors": {".write": TA, "main": COLOR, "highlight": COLOR, "light": PALETTE, "dark": PALETTE, "$other": NO},

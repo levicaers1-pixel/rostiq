@@ -1,12 +1,12 @@
 {
-  "name": "Rostiq",
-  "short_name": "Rostiq",
+  "name": "RostiQ",
+  "short_name": "RostiQ",
   "description": "Teamplanner voor sportploegen",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#f4efe4",
-  "theme_color": "#1f3a2e",
+  "background_color": "#f6f7fa",
+  "theme_color": "#1e1b4b",
   "icons": [
     {
       "src": "assets/icon-192.png",

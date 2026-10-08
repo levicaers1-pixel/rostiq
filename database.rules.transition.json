@@ -238,6 +238,10 @@
             ".write": "((auth != null && auth.token.email_verified === true && (auth.token.email === 'levicaers1@gmail.com')) || (auth != null && root.child('teams').child($tid).child('admins').child(auth.uid).val() === true))",
             ".validate": "newData.isString() && newData.val().length <= 150000 && (newData.val().matches(/^data:image\\/(png|jpeg|webp);base64,[A-Za-z0-9+\\/]+=*$/) || newData.val().matches(/^assets\\/[a-z0-9-]+\\.(png|webp|svg)$/))"
           },
+          "font": {
+            ".write": "((auth != null && auth.token.email_verified === true && (auth.token.email === 'levicaers1@gmail.com')) || (auth != null && root.child('teams').child($tid).child('admins').child(auth.uid).val() === true))",
+            ".validate": "newData.val() === 'serif' || newData.val() === 'sans'"
+          },
           "teamSize": {
             ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 60"
           },

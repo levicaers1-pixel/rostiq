@@ -3,19 +3,19 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title data-i18n-doc="team.pageTitle">Rostiq · Team</title>
-<meta name="theme-color" content="#1f3a2e">
+<title data-i18n-doc="team.pageTitle">RostiQ · Team</title>
+<meta name="theme-color" content="#1e1b4b">
 <meta name="robots" content="noindex">
 <link rel="icon" type="image/png" href="assets/favicon.png">
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Rostiq">
+<meta name="apple-mobile-web-app-title" content="RostiQ">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Cormorant+Garamond:wght@600&display=swap">
 <link rel="stylesheet" href="common.css">
 <script src="boot.js"></script>
 <style>
@@ -26,7 +26,7 @@
   .card.me { border-color: var(--accent); box-shadow: inset 3px 0 0 var(--accent); }
   .head { display: flex; gap: 12px; align-items: center; }
   .avatar { width: 44px; height: 44px; border-radius: 50%; background: var(--brand); color: var(--brand-text); display: flex; align-items: center; justify-content: center;
-    font-family: "Cormorant Garamond", Georgia, serif; font-weight: 600; font-size: 1.2rem; flex-shrink: 0; font-variant-numeric: lining-nums; }
+    font-family: var(--font-head); font-weight: var(--head-weight); font-size: 1.2rem; flex-shrink: 0; font-variant-numeric: lining-nums; }
   .name { font-weight: 700; font-size: 1.02rem; overflow-wrap: anywhere; }
   .you { font-size: .7rem; font-weight: 700; background: var(--pampas); color: var(--brand); border-radius: 999px; padding: 1px 8px; margin-left: 6px; vertical-align: 2px; }
   .place { color: var(--muted); font-size: .85rem; }
@@ -54,7 +54,7 @@
 <body>
 <header class="brand">
   <div class="brand-inner">
-    <a href="./"><span class="logo-text">Rostiq</span></a>
+    <a href="./"><span class="logo-text rostiq"><img src="assets/mark.svg" alt="">RostiQ</span></a>
     <nav class="tabs"><a href="./" data-i18n="tab.availability">Availability</a><a href="carpool.html" data-i18n="tab.carpool">🚗 Carpool</a><a href="ploeg.html" aria-current="page" data-i18n="tab.team">👥 Team</a><a href="admin.html" class="admin-tab" hidden data-i18n="tab.admin">⚙️ Admin</a></nav>
   </div>
 </header>

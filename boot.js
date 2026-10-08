@@ -1,5 +1,5 @@
-// Rostiq – runs in <head>, before the page is drawn: shows the team's last-known branding (saved on
-// this device by common.js) straight away, so switching tabs doesn't flash the default Rostiq look.
+// RostiQ – runs in <head>, before the page is drawn: shows the team's last-known branding (saved on
+// this device by common.js) straight away, so switching tabs doesn't flash the default RostiQ look.
 // common.js takes over once the team's data arrives.
 (function () {
   try {
@@ -18,7 +18,8 @@
       style.textContent = `:root { ${vars(c.light)} } @media (prefers-color-scheme: dark) { :root { ${vars(c.dark)} } }`;
       document.head.append(style);
     }
-    if (info && info.brand) document.title = document.title.replace(/^Rostiq/, info.brand);
+    if (info && info.font === "serif") document.documentElement.classList.add("font-serif");
+    if (info && info.brand) document.title = document.title.replace(/^RostiQ/, info.brand);
   } catch (e) { /* no storage: the page simply starts with the default look */ }
 })();
 

@@ -1,4 +1,4 @@
-// Rostiq – shared by all pages: teams, database connection, login and helpers.
+// RostiQ – shared by all pages: teams, database connection, login and helpers.
 // Each page defines a global render() that is called whenever the data changes.
 // Everything of one team lives under teams/{TEAM_ID}/ in the database; `root` mirrors that subtree.
 
@@ -14,9 +14,9 @@ const pref = {
 const QUERY = new URLSearchParams(location.search);
 const WANT_PICKER = QUERY.has("pick");
 let TEAM_ID = WANT_PICKER ? "" : (QUERY.get("t") || pref.get("team", "") || "").toLowerCase();
-const NO_TEAM_PAGE = !!window.PLATFORM_PAGE; // the Rostiq admin page works across teams
+const NO_TEAM_PAGE = !!window.PLATFORM_PAGE; // the RostiQ admin page works across teams
 
-// True while the team's name/logo aren't known yet on this device: the header stays empty instead of showing "Rostiq".
+// True while the team's name/logo aren't known yet on this device: the header stays empty instead of showing "RostiQ".
 let brandUnknown = false;
 function mergeTeamInfo(info) {
   if (info) brandUnknown = false;
@@ -153,7 +153,7 @@ function apply(path, value, merge) {
 }
 
 // ---- Login (Firebase Authentication) and roles ----
-// platformAdmin: Rostiq owner (all teams). admin: manages this team (team admin or platform admin).
+// platformAdmin: RostiQ owner (all teams). admin: manages this team (team admin or platform admin).
 // pid: this account's player row in the team. pending: signed in, waiting for the team admin.
 const PLATFORM = (window.PLATFORM_ADMINS || []).map(e => e.toLowerCase());
 const AUTH_ON = !!window.FIREBASE_CONFIG;
@@ -504,8 +504,8 @@ const pageUrl = file => location.href.split(/[?#]/)[0].replace(/[^/]*$/, file) +
 
 // ---- Team colours: a full light + dark palette from two picks (header colour, highlight colour) ----
 const HEX = /^#[0-9a-fA-F]{6}$/;
-const BRAND_PRESETS = [ // [key, header, highlight]; the first is the Rostiq default (no overrides stored)
-  ["green", "#1f3a2e", "#cdb994"], ["navy", "#16324f", "#c9a227"], ["burgundy", "#5a1f2b", "#d8c3a5"],
+const BRAND_PRESETS = [ // [key, header, highlight]; the first is the RostiQ default (no overrides stored)
+  ["rostiq", "#1e1b4b", "#00d4ff"], ["green", "#1f3a2e", "#cdb994"], ["navy", "#16324f", "#c9a227"], ["burgundy", "#5a1f2b", "#d8c3a5"],
   ["black", "#161616", "#d4af37"], ["royal", "#1e3a8a", "#cbd5e1"], ["red", "#9f1d1d", "#e7d3b0"],
   ["orange", "#9a3412", "#fcd34d"], ["purple", "#3b1f6b", "#c4b5fd"], ["teal", "#0f4c4f", "#9fd3c7"],
 ];
@@ -545,6 +545,7 @@ function makePalette(main, highlight) {
 }
 
 // ---- Team branding: logo (or the team name as text), colours, page links carrying ?t= ----
+const ROSTIQ_LOGO = `<span class="logo-text rostiq"><img src="assets/mark.svg" alt="">RostiQ</span>`;
 // brandPreview: unsaved changes on the Admin page, shown live until saved or cancelled.
 let brandPreview = null;
 function applyBranding() {
@@ -552,10 +553,13 @@ function applyBranding() {
   const home = document.querySelector(".brand-inner > a");
   if (home) {
     home.href = pageUrl("");
-    home.innerHTML = brandUnknown && TEAM_ID ? `<span class="logo-text">&nbsp;</span>`
+    home.innerHTML = !TEAM_ID || NO_TEAM_PAGE ? ROSTIQ_LOGO // RostiQ itself: team picker, RostiQ admin page
+      : brandUnknown ? `<span class="logo-text">&nbsp;</span>`
       : B.logo ? `<img class="logo" src="${esc(B.logo)}" alt="${esc(B.brand)}">`
       : `<span class="logo-text">${esc(B.brand)}</span>`;
   }
+  // Classic serif headings (e.g. Pampas) or RostiQ's modern sans.
+  document.documentElement.classList.toggle("font-serif", !!TEAM_ID && !NO_TEAM_PAGE && B.font === "serif");
   const tabs = document.querySelector(".tabs");
   if (tabs) tabs.hidden = !TEAM_ID; // no team chosen yet: nothing to navigate to
   document.querySelectorAll(".tabs a").forEach(a => {
@@ -568,6 +572,9 @@ function applyBranding() {
   let style = document.getElementById("team-colors");
   if (!style) { style = document.createElement("style"); style.id = "team-colors"; document.head.append(style); }
   style.textContent = c ? `:root { ${vars(c.light)} } @media (prefers-color-scheme: dark) { :root { ${vars(c.dark)} } }` : "";
+  // Phone status bar / browser bar in the header colour.
+  const theme = document.querySelector('meta[name="theme-color"]');
+  if (theme) theme.content = (c && c.light && HEX.test(c.light["--brand"] || "") && c.light["--brand"]) || BRAND_PRESETS[0][1];
   const title = document.querySelector("title[data-i18n-doc]");
   if (title) document.title = t(title.dataset.i18nDoc); // e.g. "IC Heren 1 · Beschikbaarheid"
 }
@@ -654,7 +661,7 @@ async function showPicker(message) {
   session.picking = true;
   session.ready = true;
   brandUnknown = false;
-  applyBranding(); // no team (yet): the Rostiq header
+  applyBranding(); // no team (yet): the RostiQ header
   session.pickerTeams = await Promise.all((session.teams || []).map(async id => ({ id, info: (await getAbs(`teams/${id}/info`)) || {} })));
   session.pickerTeams.sort((a, b) => (a.info.brand || a.id).localeCompare(b.info.brand || b.id));
   if (message) gateMsg = { text: message, err: true };
@@ -753,9 +760,9 @@ function renderAuth() {
   if (u) {
     const who = session.pid && root.players && root.players[session.pid] ? esc(root.players[session.pid].name || "") : esc(u.email || "");
     const switchable = (session.teams || []).length > 1 || session.platformAdmin;
-    acct.innerHTML = `<span>${who}${session.platformAdmin ? ' <span class="admin-tag">Rostiq</span>' : session.admin ? ' <span class="admin-tag">admin</span>' : ""}</span>
+    acct.innerHTML = `<span>${who}${session.platformAdmin ? ' <span class="admin-tag">RostiQ</span>' : session.admin ? ' <span class="admin-tag">admin</span>' : ""}</span>
       ${switchable && TEAM_ID ? `<a class="link switch" href="${appUrl("index.html")}?pick">⇄ ${t("pick.switch")}</a>` : ""}
-      ${session.platformAdmin ? `<a class="link switch" href="${appUrl("rostiq.html")}">⚙️ Rostiq</a>` : ""}
+      ${session.platformAdmin ? `<a class="link switch" href="${appUrl("rostiq.html")}">⚙️ RostiQ</a>` : ""}
       <button data-signout class="link">${t("auth.signOut")}</button>`;
   }
 
