@@ -14,7 +14,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Cormorant+Garamond:wght@600&display=swap">
 <link rel="stylesheet" href="common.css">
 <style>
-  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; margin-top: 16px; }
+  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-sm); padding: 14px 16px; margin-top: 16px; }
   .panel h2 { margin: 0 0 8px; }
   .muted { color: var(--muted); font-size: .85rem; }
   .ok { color: var(--yes); } .err { color: var(--no); }
@@ -68,6 +68,7 @@
 </main>
 
 <script>window.PLATFORM_PAGE = true;</script>
+<script src="icons.js"></script>
 <script src="config.js"></script>
 <script src="team.js"></script>
 <script src="i18n.js"></script>

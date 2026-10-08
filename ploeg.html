@@ -22,10 +22,10 @@
   .toolbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 18px 0 12px; }
   .toolbar input { flex: 1 1 220px; min-width: 0; font: inherit; font-size: .9rem; padding: 7px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text); }
   .grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr)); }
-  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-sm); padding: 14px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
   .card.me { border-color: var(--accent); box-shadow: inset 3px 0 0 var(--accent); }
   .head { display: flex; gap: 12px; align-items: center; }
-  .avatar { width: 44px; height: 44px; border-radius: 50%; background: var(--brand); color: var(--brand-text); display: flex; align-items: center; justify-content: center;
+  .avatar { width: 44px; height: 44px; border-radius: 50%; background: var(--brand); color: #fff; display: flex; align-items: center; justify-content: center;
     font-family: var(--font-head); font-weight: var(--head-weight); font-size: 1.2rem; flex-shrink: 0; font-variant-numeric: lining-nums; }
   .name { font-weight: 700; font-size: 1.02rem; overflow-wrap: anywhere; }
   .you { font-size: .7rem; font-weight: 700; background: var(--pampas); color: var(--brand); border-radius: 999px; padding: 1px 8px; margin-left: 6px; vertical-align: 2px; }
@@ -87,6 +87,7 @@
   </form>
 </dialog>
 
+<script src="icons.js"></script>
 <script src="config.js"></script>
 <script src="team.js"></script>
 <script src="i18n.js"></script>
@@ -124,7 +125,7 @@ function render() {
     const place = (p.geo && p.geo.label) || p.gemeente;
     return `<article class="card ${mine ? "me" : ""}">
       <div class="head">
-        <div class="avatar">${esc(initials(p.name))}</div>
+        <div class="avatar" style="background:${avColor(p.name)}">${esc(initials(p.name))}</div>
         <div><div class="name">${esc(p.name)}${mine ? `<span class="you">${t("team.you")}</span>` : ""}</div>
           <div class="place">${place ? "📍 " + esc(place) : ""}</div></div>
       </div>

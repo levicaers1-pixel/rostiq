@@ -545,6 +545,9 @@ function makePalette(main, highlight) {
 }
 
 // ---- Team branding: logo (or the team name as text), colours, page links carrying ?t= ----
+// Avatar colour that stays the same for a name (match cards, team page).
+const AV_COLORS = ["#6c5ce7", "#0891b2", "#16a34a", "#d97706", "#db2777", "#2563eb", "#7c3aed", "#0d9488"];
+const avColor = n => AV_COLORS[[...(n || "")].reduce((h, c) => (h * 31 + c.codePointAt(0)) >>> 0, 7) % AV_COLORS.length];
 const ROSTIQ_LOGO = `<img class="logo rostiq-logo" src="assets/rostiq-logo-header.png" alt="RostiQ">`;
 // brandPreview: unsaved changes on the Admin page, shown live until saved or cancelled.
 let brandPreview = null;

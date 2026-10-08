@@ -32,31 +32,66 @@
 <script src="boot.js"></script>
 <style>
 
-  /* Schedule */
-  /* Agenda: months in (at most) two columns, one row per match */
-  .months { display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(min(440px, 100%), 1fr)); align-items: start; }
-  .month { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 4px 16px; }
-  .month h3 { margin: 10px 0 2px; font-size: .75rem; letter-spacing: .1em; color: var(--muted); }
-  .month ul { list-style: none; margin: 0; padding: 0; }
-  .month li { display: grid; grid-template-columns: 44px 1fr auto; gap: 12px; padding: 12px 0; align-items: start; border-top: 1px solid var(--border); }
-  .month li:first-child { border-top: none; }
-  .month .d { display: flex; flex-direction: column; align-items: center; line-height: 1.1; padding-top: 2px; }
-  .month .d b { font-family: var(--font-head); font-size: 1.6rem; font-weight: var(--head-weight); color: var(--accent); font-variant-numeric: lining-nums; }
-  .month .d small { font-size: .7rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
-  .month .opp-name { min-width: 0; overflow-wrap: anywhere; font-weight: 600; font-size: 1rem; }
-  .month .opp-name .details { font-weight: 400; margin-top: 4px; display: grid; gap: 2px; }
-  .month .actions { display: flex; gap: 4px; }
-  .month .actions .ics { padding: 4px 8px; }
-  @media (max-width: 420px) {
-    /* Phones: buttons under the details instead of beside them */
-    .month li { grid-template-columns: 44px 1fr; }
-    .month .actions { grid-column: 2; }
+  /* Match cards: date, details, progress towards the minimum, who's coming, my answer, the whole team */
+  .matches { display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(min(380px, 100%), 1fr)); align-items: start; }
+  .match { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-sm);
+    padding: 16px; display: grid; grid-template-columns: 58px 1fr auto; gap: 14px 14px; transition: box-shadow .2s var(--ease); }
+  .match:hover { box-shadow: var(--shadow); }
+  .match.final { border-color: color-mix(in srgb, var(--final) 45%, var(--border)); }
+  .match.past { opacity: .55; }
+  .m-date { height: 68px; border-radius: 12px; background: color-mix(in srgb, var(--accent) 8%, var(--surface));
+    display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1; }
+  .m-date b { font-family: var(--font-head); font-weight: var(--head-weight); font-size: 1.55rem; color: var(--accent); font-variant-numeric: lining-nums; }
+  .m-date span { font-size: .62rem; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); white-space: nowrap; }
+  .m-date b { margin: 3px 0 2px; }
+  .m-body { min-width: 0; }
+  .m-title { font-weight: 700; font-size: 1.08rem; line-height: 1.3; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; overflow-wrap: anywhere; }
+  .m-meta .details { display: grid; gap: 3px; margin-top: 6px; }
+  .m-actions { display: flex; gap: 2px; align-items: flex-start; }
+  .m-actions button { border-color: transparent; background: transparent; color: var(--muted); padding: 7px; position: relative; }
+  .m-actions button:hover:not(:disabled) { color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, var(--surface)); border-color: transparent; }
+  .m-actions .count { position: absolute; top: 1px; right: 0; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 999px;
+    background: var(--no); color: #fff; font-size: .62rem; font-weight: 700; line-height: 16px; }
+  .m-progress, .m-people, .m-mine, .m-team { grid-column: 1 / -1; }
+  .bar { position: relative; height: 8px; }
+  .bar .fill { display: flex; height: 100%; border-radius: 999px; overflow: hidden; background: color-mix(in srgb, var(--muted) 15%, var(--surface)); }
+  .bar .fill span { height: 100%; transition: width .45s var(--ease); }
+  .bar .yes { background: var(--yes); }
+  .bar .maybe { background: color-mix(in srgb, var(--maybe) 55%, var(--surface)); }
+  .bar .min { position: absolute; top: -4px; bottom: -4px; width: 2px; margin-left: -1px; border-radius: 2px; background: var(--text); opacity: .5; }
+  .m-count { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 10px; font-size: .85rem; color: var(--muted); }
+  .m-count b { color: var(--text); font-size: 1.05rem; }
+  .m-count .pill { margin-left: auto; }
+  .m-people { display: flex; align-items: center; gap: 10px; min-height: 30px; font-size: .82rem; color: var(--muted); }
+  .avatars { display: flex; }
+  .av { width: 30px; height: 30px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
+    font-size: .68rem; font-weight: 700; color: #fff; border: 2px solid var(--surface); margin-left: -8px; }
+  .av:first-child { margin-left: 0; }
+  .av.more { background: color-mix(in srgb, var(--muted) 18%, var(--surface)); color: var(--muted); }
+  .m-mine { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding-top: 14px; border-top: 1px solid var(--border); }
+  .m-mine > span { font-size: .8rem; font-weight: 600; color: var(--muted); margin-right: auto; }
+  .answer { display: inline-flex; gap: 3px; padding: 3px; border-radius: 12px; background: color-mix(in srgb, var(--muted) 11%, var(--surface)); }
+  .answer button { border: none; background: transparent; border-radius: 9px; padding: 7px 12px; font-weight: 600; color: var(--muted); }
+  .answer button:hover:not(:disabled) { background: var(--surface); border: none; }
+  .answer button[aria-pressed="true"] { color: #fff; box-shadow: var(--shadow-sm); }
+  .answer button[aria-pressed="true"][data-a="yes"] { background: var(--yes); }
+  .answer button[aria-pressed="true"][data-a="maybe"] { background: var(--maybe); }
+  .answer button[aria-pressed="true"][data-a="no"] { background: var(--no); }
+  .m-team { border-top: 1px solid var(--border); padding-top: 12px; }
+  .m-team summary { cursor: pointer; list-style: none; display: flex; align-items: center; gap: 7px; font-size: .82rem; font-weight: 600; color: var(--muted); }
+  .m-team summary::-webkit-details-marker { display: none; }
+  .m-team summary .i:last-child { margin-left: auto; transition: transform .2s var(--ease); }
+  .m-team[open] summary .i:last-child { transform: rotate(180deg); }
+  .m-team .chips { margin-top: 12px; }
+  @media (max-width: 440px) {
+    .match { grid-template-columns: 50px 1fr; }
+    .m-actions { grid-column: 2; margin-top: -6px; }
+    .m-mine > span { width: 100%; }
+    .answer { width: 100%; } .answer button { flex: 1; padding: 9px 6px; }
   }
-  .ics { font-size: .75rem; padding: 2px 8px; color: var(--accent); white-space: nowrap; }
-  .section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
-  .section-head h2 { margin-bottom: 12px; }
-  .section-head { flex-wrap: wrap; }
-  .head-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+  .section-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin: 44px 0 14px; }
+  .section-head h2 { margin: 0; }
+  .head-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
   .tag { font-size: .7rem; font-weight: 600; color: var(--final); border: 1px solid var(--final); border-radius: 999px; padding: 0 6px; margin-left: 6px; white-space: nowrap; vertical-align: 1px; }
 
   /* Toolbar */
@@ -65,7 +100,8 @@
   .legend span { display: inline-flex; align-items: center; gap: 6px; }
 
   /* Grid */
-  .grid-wrap { overflow-x: auto; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; }
+  .grid-wrap { overflow-x: auto; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-sm); }
+  tbody td:not(.name) { padding: 3px; }
   table { border-collapse: collapse; width: 100%; min-width: 900px; }
   th, td { border-bottom: 1px solid var(--border); text-align: center; padding: 0; }
   thead th { font-size: .75rem; font-weight: 600; color: var(--muted); padding: 8px 4px; vertical-align: bottom; line-height: 1.25; }
@@ -91,8 +127,8 @@
   td.name .del:hover { color: var(--no); }
 
   .cell {
-    width: 100%; min-width: 64px; height: 38px; border: none; border-radius: 0;
-    background: transparent; font-size: 1rem; font-weight: 700; color: var(--muted);
+    width: 100%; min-width: 60px; height: 34px; border: none; border-radius: 8px; padding: 0;
+    background: transparent; font-size: .95rem; font-weight: 700; color: var(--muted);
   }
   .cell:hover { background: var(--bg); }
   .cell[data-s="yes"]   { background: var(--yes-bg);   color: var(--yes); }
@@ -125,21 +161,13 @@
   tfoot td.short, .badge.short { background: var(--no-bg); }
   .remind { border: none; background: none; padding: 2px 4px; font-size: .9rem; }
 
-  /* Cards view */
-  .cards { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr)); }
-  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; }
-  .card.final { border-color: var(--final); }
-  .card header { display: flex; align-items: center; gap: 8px; }
-  .card .when { color: var(--muted); font-size: .8rem; }
-  .card .title { font-weight: 600; flex: 1; min-width: 0; overflow-wrap: anywhere; }
-  .badge { font-size: .8rem; font-weight: 700; border-radius: 999px; padding: 2px 10px; font-variant-numeric: tabular-nums; white-space: nowrap; }
-  .card .details { margin-top: 6px; }
-  .card .counts { color: var(--muted); font-size: .8rem; margin: 6px 0 10px; }
+  /* Answer chips (the whole team, in a match card) */
   .chips { display: flex; flex-wrap: wrap; gap: 6px; }
-  .chip { font-size: .85rem; padding: 6px 10px; border-radius: 999px; color: var(--muted); }
-  .chip[data-s="yes"]   { background: var(--yes-bg);   color: var(--yes);   border-color: var(--yes); }
-  .chip[data-s="maybe"] { background: var(--maybe-bg); color: var(--maybe); border-color: var(--maybe); }
-  .chip[data-s="no"]    { background: var(--no-bg);    color: var(--no);    border-color: var(--no); }
+  .chip { font-size: .82rem; padding: 5px 11px; border-radius: 999px; color: var(--muted); border-color: var(--border); }
+  .chip[data-s="yes"]   { background: var(--yes-bg);   color: var(--yes);   border-color: transparent; }
+  .chip[data-s="maybe"] { background: var(--maybe-bg); color: var(--maybe); border-color: transparent; }
+  .chip[data-s="no"]    { background: var(--no-bg);    color: var(--no);    border-color: transparent; }
+  .badge { font-size: .8rem; font-weight: 700; border-radius: 999px; padding: 2px 10px; font-variant-numeric: tabular-nums; white-space: nowrap; }
 
   /* Read-only (other players' answers when logged in) */
   .cell:disabled, .chip:disabled { opacity: 1; cursor: default; }
@@ -151,7 +179,7 @@
   .chip.me { font-weight: 700; outline: 2px solid var(--accent); outline-offset: 1px; }
 
   /* Admin: accounts */
-  .accounts { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; margin-top: 24px; }
+  .accounts { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-sm); padding: 12px 14px; margin-top: 24px; }
   .accounts h2 { margin-top: 0; }
   .accounts ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px 16px; grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr)); }
   .accounts li { display: flex; align-items: center; gap: 8px; font-size: .9rem; padding: 3px 0; }
@@ -199,28 +227,26 @@
   <p class="banner" id="banner" hidden data-i18n-html="banner.noDb"></p>
 
   <div class="section-head">
-    <h2 data-i18n="schedule">Schedule</h2>
+    <h2 data-i18n="matches">Matches</h2>
     <div class="head-actions">
-      <button class="ics" id="share-overview" data-i18n="share.overview">📲 Share overview</button>
-      <button class="ics" id="ics-all" data-i18n="ics.all" data-i18n-title="ics.allTitle">📅 Add all to calendar</button>
+      <button id="past" hidden></button>
+      <button id="share-overview" data-i18n="share.overview">📲 Share overview</button>
+      <button id="ics-all" class="primary" data-i18n="ics.all" data-i18n-title="ics.allTitle">📅 Add all to calendar</button>
     </div>
   </div>
-  <div class="months" id="months"></div>
+  <div class="matches" id="matches"></div>
 
-  <h2 data-i18n="availability">Availability</h2>
-  <div class="toolbar">
-    <div class="legend">
-      <span><i class="swatch" style="background:var(--yes-bg);border:1px solid var(--yes)"></i><span data-i18n="legend.yes">✓ Available</span></span>
-      <span><i class="swatch" style="background:var(--maybe-bg);border:1px solid var(--maybe)"></i><span data-i18n="legend.maybe">? Maybe</span></span>
-      <span><i class="swatch" style="background:var(--no-bg);border:1px solid var(--no)"></i><span data-i18n="legend.no">✗ Not available</span></span>
+  <div class="section-head">
+    <h2 data-i18n="overview">Overview</h2>
+    <div class="head-actions">
+      <div class="legend">
+        <span class="pill yes" data-i18n="legend.yes">✓ Available</span>
+        <span class="pill maybe" data-i18n="legend.maybe">? Maybe</span>
+        <span class="pill no" data-i18n="legend.no">✗ Not available</span>
+      </div>
+      <button id="export" data-i18n="export">Export CSV</button>
     </div>
-    <button id="past" hidden></button>
-    <div class="seg" role="group" aria-label="View">
-      <button data-view="table" data-i18n="view.table">Table</button><button data-view="cards" data-i18n="view.cards">Cards</button>
-    </div>
-    <button id="export" data-i18n="export">Export CSV</button>
   </div>
-  <div class="cards" id="cards" hidden></div>
   <div class="grid-wrap" id="table-view">
     <table>
       <thead><tr id="head"></tr></thead>
@@ -263,6 +289,7 @@
   </form>
 </dialog>
 
+<script src="icons.js"></script>
 <script src="config.js"></script>
 <script src="team.js"></script>
 <script src="i18n.js"></script>
@@ -272,39 +299,82 @@ const CYCLE = ["", "yes", "maybe", "no"];
 const SYMBOL = { "": "–", yes: "✓", maybe: "?", no: "✗" };
 const LABEL = { "": "", yes: t("label.yes"), maybe: t("label.maybe"), no: t("label.no") };
 
-let view = pref.get("view", matchMedia("(max-width: 700px)").matches ? "cards" : "table");
 let showPast = pref.get("showPast", "0") === "1";
 
-function renderSchedule() {
-  const byMonth = {};
-  for (const e of EVENTS) {
-    const m = fmt(e.date, { month: "long", year: "numeric" }).toUpperCase();
-    (byMonth[m] ||= []).push(e);
-  }
-  document.getElementById("months").innerHTML = Object.entries(byMonth).map(([m, evs]) => `
-    <div class="month"><h3>${m}</h3><ul>${evs.map(e => `
-      <li class="${isPast(e) ? "past" : ""}"><span class="d"><b>${parse(e.date).getDate()}</b><small>${fmt(e.date, { weekday: "short" }).replace(".", "")}</small></span>
-      <div class="opp-name">${esc(e.opp)}${e.final ? `<span class="tag">${t("final")}</span>` : ""}${detailsHtml(e, "", true)}</div>
-      <div class="actions">
-        <button class="ics" data-share="${e.date}" title="${t("share.match")}">📲</button>
-        <button class="ics" data-ics="${e.date}" title="${t("ics.oneTitle")}">${t("ics.one")}</button>
-        ${session.admin ? `<button class="ics" data-edit="${e.date}" title="${t("details.edit")}">✏️</button>` : ""}
-      </div></li>`).join("")}
-    </ul></div>`).join("");
+// Avatars: initials on a colour that stays the same for a name.
+const initials = n => (n || "?").trim().split(/\s+/).map(w => w[0]).slice(0, 2).join("").toUpperCase();
+const avatar = (p, i) => `<span class="av" style="background:${avColor(p.name || "")}" title="${esc(displayName(p, i))}">${esc(initials(displayName(p, i)))}</span>`;
+const LEVEL_PILL = { ok: "yes", low: "maybe", short: "no" };
+const openTeams = new Set(); // match cards whose team list is unfolded (kept across live updates)
+
+function renderMatches(players, events) {
+  const min = minPlayers(), named = players.filter(p => p.name), total = Math.max(named.length, min, 1);
+  const pct = n => Math.min(100, n / total * 100);
+  const me = AUTH_ON ? players.find(p => p.id === session.pid) : null;
+  const order = { yes: 0, maybe: 1, no: 2, "": 3 };
+  document.getElementById("matches").innerHTML = events.map(e => {
+    const c = tally(e, players);
+    const coming = players.filter(p => p.avail[e.date] === "yes");
+    const mine = me ? me.avail[e.date] || "" : null;
+    const team = players.map((p, i) => ({ p, i, s: p.avail[e.date] || "" })).filter(x => x.p.name)
+      .sort((a, b) => order[a.s] - order[b.s] || a.i - b.i);
+    return `<article class="match${e.final ? " final" : ""}${isPast(e) ? " past" : ""}">
+      <div class="m-date"><span>${fmt(e.date, { weekday: "short" }).replace(".", "")}</span><b>${parse(e.date).getDate()}</b><span>${fmt(e.date, { month: "short" }).replace(".", "")}</span></div>
+      <div class="m-body">
+        <div class="m-title">${esc(e.opp)}${e.final ? `<span class="pill violet">${ic("trophy")} ${t("final")}</span>` : ""}</div>
+        <div class="m-meta">${detailsHtml(e, "", true)}</div>
+      </div>
+      <div class="m-actions">
+        <button data-share="${e.date}" title="${t("share.match")}" aria-label="${t("share.match")}">${ic("share")}</button>
+        <button data-ics="${e.date}" title="${t("ics.oneTitle")}" aria-label="${t("ics.oneTitle")}">${ic("calendar-plus")}</button>
+        <button class="remind" data-date="${e.date}" title="${t("remind.title", { n: c.missing.length })}" aria-label="${t("remind.short")}"
+          ${c.missing.length ? "" : "disabled"}>${ic("bell")}${c.missing.length ? `<span class="count">${c.missing.length}</span>` : ""}</button>
+        ${session.admin ? `<button data-edit="${e.date}" title="${t("details.edit")}" aria-label="${t("details.edit")}">${ic("pencil")}</button>` : ""}
+      </div>
+      <div class="m-progress">
+        <div class="bar"><div class="fill"><span class="yes" style="width:${pct(c.yes)}%"></span><span class="maybe" style="width:${pct(c.maybe)}%"></span></div>
+          <i class="min" style="left:${pct(min)}%" title="min. ${min}"></i></div>
+        <div class="m-count"><span>${t("match.avail", { y: c.yes, min })}</span>${c.maybe ? `<span>· ${t("match.maybe", { n: c.maybe })}</span>` : ""}
+          <span class="pill ${LEVEL_PILL[c.level]}">${t("level." + c.level)}</span></div>
+      </div>
+      <div class="m-people">${coming.length
+        ? `<span class="avatars">${coming.slice(0, 8).map(p => avatar(p, players.indexOf(p))).join("")}${coming.length > 8 ? `<span class="av more">+${coming.length - 8}</span>` : ""}</span>`
+        : `<span>${t("match.nobody")}</span>`}</div>
+      ${mine !== null && !isPast(e) ? `<div class="m-mine"><span>${t("match.mine")}</span><div class="answer" role="group" aria-label="${t("match.mine")}">${
+        ["yes", "maybe", "no"].map(a => `<button data-answer="${a}" data-date="${e.date}" data-a="${a}" aria-pressed="${mine === a}">${ic({ yes: "check", maybe: "help", no: "x" }[a])} ${t("answer." + a)}</button>`).join("")
+      }</div></div>` : ""}
+      <details class="m-team" data-date="${e.date}"${openTeams.has(e.date) ? " open" : ""}>
+        <summary>${ic("users")} ${t("match.everyone", { n: named.length })}${c.missing.length ? ` · ${t("match.noAnswer", { n: c.missing.length })}` : ""}${ic("chevron-down")}</summary>
+        <div class="chips">${team.map(({ p, i, s }) => `<button class="chip${me && p.id === me.id ? " me" : ""}" data-s="${s}" data-pid="${p.id}" data-date="${e.date}"
+          ${canEdit(p.id) ? "" : "disabled"}>${SYMBOL[s]} ${esc(displayName(p, i))}</button>`).join("")}</div>
+      </details>
+    </article>`;
+  }).join("");
 }
-document.getElementById("months").addEventListener("click", ev => {
+const matchesEl = document.getElementById("matches");
+matchesEl.addEventListener("toggle", ev => {
+  const d = ev.target.closest && ev.target.closest(".m-team");
+  if (d) d.open ? openTeams.add(d.dataset.date) : openTeams.delete(d.dataset.date);
+}, true);
+matchesEl.addEventListener("click", ev => {
+  const find = el => EVENTS.find(x => x.date === el.dataset.ics || x.date === el.dataset.share || x.date === el.dataset.edit || x.date === el.dataset.date);
   const ics = ev.target.closest("[data-ics]");
-  if (ics) {
-    const e = EVENTS.find(x => x.date === ics.dataset.ics);
-    downloadIcs([e], `${e.date}-${slug(e.opp)}.ics`);
-  }
+  if (ics) { const e = find(ics); downloadIcs([e], `${e.date}-${slug(e.opp)}.ics`); }
   const share = ev.target.closest("[data-share]");
-  if (share) {
-    const e = EVENTS.find(x => x.date === share.dataset.share);
-    openShare(`${t("share.match")} – ${e.opp}`, matchMessage(e));
-  }
+  if (share) { const e = find(share); openShare(`${t("share.match")} – ${e.opp}`, matchMessage(e)); }
   const edit = ev.target.closest("[data-edit]");
-  if (edit) openDetails(EVENTS.find(x => x.date === edit.dataset.edit));
+  if (edit) openDetails(find(edit));
+  // My own answer: tap again to clear it.
+  const ans = ev.target.closest("[data-answer]");
+  if (ans && session.pid && root.players[session.pid]) {
+    const cur = (root.players[session.pid].avail || {})[ans.dataset.date] || "";
+    write(`players/${session.pid}/avail/${ans.dataset.date}`, cur === ans.dataset.answer ? null : ans.dataset.answer);
+  }
+  const chip = ev.target.closest(".chip[data-pid]");
+  if (chip && !chip.disabled) {
+    const p = sortedPlayers().find(x => x.id === chip.dataset.pid), e = find(chip);
+    if (p && e) cycle(p, e);
+  }
 });
 
 const minPlayers = () => (root.settings && root.settings.minPlayers) || TEAM.minPlayers || 3;
@@ -338,9 +408,8 @@ function render() {
 
   const players = sortedPlayers();
   const events = shownEvents();
-  renderSchedule();
+  renderMatches(players, events);
   renderControls();
-  renderCards(players, events);
 
   document.querySelector("#table-view table").style.minWidth = `${180 + events.length * 72}px`;
   document.getElementById("head").innerHTML =
@@ -413,39 +482,6 @@ function render() {
     }).join("");
 }
 
-function renderCards(players, events) {
-  const wrap = document.getElementById("cards");
-  wrap.innerHTML = "";
-  for (const e of events) {
-    const c = tally(e, players);
-    const card = document.createElement("section");
-    card.className = "card" + (e.final ? " final" : "");
-    card.innerHTML = `
-      <header>
-        <div class="title"><div class="when">${fmt(e.date, { weekday: "long", day: "numeric", month: "long" })}</div>
-          ${esc(e.opp)}${e.final ? ` <span class="tag">${t("final")}</span>` : ""}</div>
-        <span class="badge ${c.level}" title="${t("card.badgeTitle")}">${c.yes}/${minPlayers()}</span>
-        <button class="remind" data-date="${e.date}" title="${t("remind.short")}" ${c.missing.length ? "" : "disabled"}>📣</button>
-      </header>
-      ${detailsHtml(e)}
-      <div class="counts">${t("card.counts", { y: c.yes, m: c.maybe, n: c.no, none: c.missing.length,
-        who: t(session.admin ? "card.whoAdmin" : "card.whoOwn") })}</div>
-      <div class="chips"></div>`;
-    const chips = card.querySelector(".chips");
-    players.forEach((p, i) => {
-      const s = p.avail[e.date] || "";
-      const chip = document.createElement("button");
-      chip.className = "chip" + (AUTH_ON && p.id === session.pid ? " me" : "");
-      chip.dataset.s = s;
-      chip.disabled = !canEdit(p.id);
-      chip.textContent = `${SYMBOL[s]} ${displayName(p, i)}`;
-      chip.addEventListener("click", () => cycle(p, e));
-      chips.append(chip);
-    });
-    wrap.append(card);
-  }
-}
-
 // Coming from the Admin page: ./#edit=YYYY-MM-DD opens that match's details once the data is loaded.
 let pendingEdit = location.hash.startsWith("#edit=") ? location.hash.slice(6) : "";
 function openPendingEdit() {
@@ -462,18 +498,12 @@ function renderControls() {
   const pastBtn = document.getElementById("past");
   pastBtn.hidden = !pastCount;
   pastBtn.textContent = showPast ? t("past.hide") : t("past.show", { n: pastCount });
-  document.querySelectorAll(".seg button").forEach(b => b.setAttribute("aria-pressed", b.dataset.view === view));
-  document.getElementById("cards").hidden = view !== "cards";
-  document.getElementById("table-view").hidden = view !== "table";
 }
 
 
 document.getElementById("past").onclick = () => {
   showPast = !showPast; pref.set("showPast", showPast ? "1" : "0"); render();
 };
-document.querySelectorAll(".seg button").forEach(b => b.onclick = () => {
-  view = b.dataset.view; pref.set("view", view); render();
-});
 
 // ---- Ready-made WhatsApp messages ----
 const longDate = e => fmt(e.date, { weekday: "long", day: "numeric", month: "long" });

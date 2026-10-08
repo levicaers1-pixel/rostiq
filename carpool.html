@@ -31,7 +31,7 @@
 <link rel="stylesheet" href="common.css">
 <script src="boot.js"></script>
 <style>
-  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px; margin-top: 16px; }
+  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-sm); padding: 14px; margin-top: 16px; }
   .panel .row { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; }
   .field { display: flex; flex-direction: column; gap: 4px; font-size: .8rem; color: var(--muted); flex: 1 1 200px; min-width: 0; max-width: 360px; }
   .field select, .field input {
@@ -73,7 +73,7 @@
 
   .matches { display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(min(340px, 100%), 1fr)); }
   .match, .panel { min-width: 0; overflow-wrap: anywhere; }
-  .match { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; }
+  .match { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-sm); padding: 12px 14px; }
   .match.final { border-color: var(--final); }
   .match .when { color: var(--muted); font-size: .8rem; }
   .match .title { font-weight: 600; font-size: 1.05rem; }
@@ -171,6 +171,7 @@
   <div class="matches" id="matches"></div>
 </main>
 
+<script src="icons.js"></script>
 <script src="config.js"></script>
 <script src="team.js"></script>
 <script src="i18n.js"></script>
