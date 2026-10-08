@@ -302,6 +302,33 @@ function renderWaGroup() {
   if (!a.hidden) a.href = link;
 }
 
+// ---- Places (gemeente): OpenStreetMap Nominatim, confirmed from a list so everyone's distances are right ----
+const COUNTRY = LANG === "nl" ? { be: "", nl: "Nederland", fr: "Frankrijk", lu: "Luxemburg" } : { be: "", nl: "Netherlands", fr: "France", lu: "Luxembourg" };
+function describePlace(r) {
+  const a = r.address || {};
+  const name = r.name || (r.display_name || "").split(",")[0];
+  const town = a.city || a.town || a.village || a.municipality;
+  const region = a.county || a.state;
+  const extra = [...new Set([town, region].filter(x => x && x !== name))];
+  return { name, label: extra.length ? `${name} (${extra.join(", ")})` : name, country: COUNTRY[a.country_code] || "" };
+}
+async function searchPlaces(q) {
+  const url = "https://nominatim.openstreetmap.org/search?format=jsonv2&limit=10&addressdetails=1" +
+    "&countrycodes=be,nl,fr,lu&q=" + encodeURIComponent(q.trim());
+  const hits = await fetch(url, { headers: { "Accept-Language": "nl,en" } }).then(r => r.json());
+  const seen = new Set();
+  return hits
+    .filter(r => ["boundary", "place"].includes(r.category))
+    .map(r => ({ ...describePlace(r), lat: Number(r.lat), lon: Number(r.lon), be: (r.address || {}).country_code === "be" }))
+    .filter(r => !seen.has(r.label) && seen.add(r.label))
+    .sort((a, b) => b.be - a.be)
+    .slice(0, 6);
+}
+const setPlace = (pid, r) => update({
+  [`players/${pid}/gemeente`]: r.name.slice(0, 60),
+  [`players/${pid}/geo`]: { lat: r.lat, lon: r.lon, label: r.label.slice(0, 120) },
+});
+
 // ---- Phone numbers: stored as digits with country code (e.g. 32470123456), used for wa.me chats ----
 function normPhone(raw) {
   let s = String(raw || "").trim();
@@ -320,6 +347,7 @@ const shortDate = d => fmt(d, { weekday: "short", day: "numeric", month: "numeri
 
 // Ask the signed-in player for their number once (until they fill it in or tap "Later").
 function renderPhonePrompt() {
+  if (window.WELCOME_HANDLES_PHONE && !pref.get(`welcomeHidden:${TEAM_ID}`, "")) { const f = document.getElementById("phone-prompt"); if (f) f.hidden = true; return; }
   const box = document.getElementById("phone-prompt");
   if (!box) return;
   const pid = session.pid;

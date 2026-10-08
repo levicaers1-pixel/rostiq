@@ -258,17 +258,7 @@ function leaveBy(start, min) {
   return t0 > 0 ? `${String(Math.floor(t0 / 60)).padStart(2, "0")}:${String(t0 % 60).padStart(2, "0")}` : "";
 }
 
-const COUNTRY = LANG === "nl" ? { be: "", nl: "Nederland", fr: "Frankrijk", lu: "Luxemburg" } : { be: "", nl: "Netherlands", fr: "France", lu: "Luxembourg" };
 let search = { status: "idle", results: [] }; // idle | loading | results | none | error
-
-function describe(r) {
-  const a = r.address || {};
-  const name = r.name || (r.display_name || "").split(",")[0];
-  const town = a.city || a.town || a.village || a.municipality;
-  const region = a.county || a.state;
-  const extra = [...new Set([town, region].filter(x => x && x !== name))];
-  return { name, label: extra.length ? `${name} (${extra.join(", ")})` : name, country: COUNTRY[a.country_code] || "" };
-}
 
 async function findPlace(q) {
   q = q.trim();
@@ -276,16 +266,7 @@ async function findPlace(q) {
   search = { status: "loading", results: [] };
   render();
   try {
-    const url = "https://nominatim.openstreetmap.org/search?format=jsonv2&limit=10&addressdetails=1" +
-      "&countrycodes=be,nl,fr,lu&q=" + encodeURIComponent(q);
-    const hits = await fetch(url, { headers: { "Accept-Language": "nl,en" } }).then(r => r.json());
-    const seen = new Set();
-    const results = hits
-      .filter(r => ["boundary", "place"].includes(r.category))
-      .map(r => ({ ...describe(r), lat: Number(r.lat), lon: Number(r.lon), be: (r.address || {}).country_code === "be" }))
-      .filter(r => !seen.has(r.label) && seen.add(r.label))
-      .sort((a, b) => b.be - a.be)
-      .slice(0, 6);
+    const results = await searchPlaces(q);
     search = { status: results.length ? "results" : "none", results };
   } catch {
     search = { status: "error", results: [] };
@@ -296,8 +277,7 @@ async function findPlace(q) {
 function pickPlace(i) {
   const r = search.results[i];
   search = { status: "idle", results: [] };
-  write(`players/${me}/gemeente`, r.name.slice(0, 60));
-  write(`players/${me}/geo`, { lat: r.lat, lon: r.lon, label: r.label.slice(0, 120) });
+  setPlace(me, r);
 }
 
 // ---- Data helpers ----

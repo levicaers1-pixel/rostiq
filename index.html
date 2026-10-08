@@ -32,6 +32,35 @@
 <script src="boot.js"></script>
 <style>
 
+  /* Getting started: welcome card for new players, setup checklist for team admins */
+  .onboard { margin-top: 24px; padding: 18px; border-radius: var(--radius); background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow-sm); }
+  .onboard-head { display: flex; align-items: flex-start; gap: 12px; }
+  .onboard-head h3 { margin: 0; font-size: 1.05rem; }
+  .onboard-head p { margin: 2px 0 0; font-size: .85rem; color: var(--muted); }
+  .onboard-head .count { margin-left: auto; white-space: nowrap; }
+  .onboard-bar { height: 6px; border-radius: 999px; margin: 14px 0 6px; background: color-mix(in srgb, var(--muted) 15%, var(--surface)); overflow: hidden; }
+  .onboard-bar span { display: block; height: 100%; border-radius: 999px; background: var(--pampas); transition: width .4s var(--ease); }
+  .steps { list-style: none; margin: 0; padding: 0; }
+  .steps li { display: grid; grid-template-columns: 28px 1fr auto; gap: 4px 12px; align-items: center; padding: 10px 0; border-top: 1px solid var(--border); }
+  .steps li:first-child { border-top: none; }
+  .step-dot { width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    border: 2px solid color-mix(in srgb, var(--muted) 40%, transparent); color: var(--muted); }
+  .steps li.done .step-dot { background: var(--yes); border-color: var(--yes); color: #fff; }
+  .steps li.done .step-text b { color: var(--muted); font-weight: 500; text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--muted) 50%, transparent); }
+  .step-text b { font-weight: 600; font-size: .92rem; }
+  .step-text small { display: block; color: var(--muted); font-size: .78rem; }
+  .step-extra { grid-column: 2 / -1; display: flex; gap: 6px; flex-wrap: wrap; }
+  .step-extra input { flex: 1 1 180px; min-width: 0; font: inherit; font-size: .9rem; padding: 7px 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg); color: var(--text); }
+  .step-extra .results { width: 100%; display: grid; gap: 6px; }
+  .step-extra .results button { justify-content: flex-start; text-align: left; }
+  .onboard-foot { display: flex; justify-content: flex-end; margin-top: 6px; }
+  .onboard-foot button { color: var(--muted); }
+  .onboard.setup { border-color: color-mix(in srgb, var(--accent) 30%, var(--border)); }
+  @media (max-width: 520px) { .steps li { grid-template-columns: 28px 1fr; } .steps li > button, .steps li > a.btn-like { grid-column: 2; justify-self: start; } }
+  a.btn-like { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: var(--radius-sm); font-size: .85rem; font-weight: 600; text-decoration: none; }
+  a.btn-like.action { background: var(--pampas); color: var(--brand); box-shadow: var(--shadow-sm); }
+  a.btn-like.action:hover { background: color-mix(in srgb, var(--pampas) 85%, #fff); }
+
   /* "Next match" hero (replaces the small countdown on this page) */
   #countdown { display: none !important; }
   .hero { position: relative; overflow: hidden; margin-top: 28px; padding: 22px; border-radius: 20px; display: grid; gap: 16px;
@@ -269,6 +298,8 @@
   <p class="sub"><span data-i18n="avail.sub">Tap a cell to set your availability</span> · <span class="status" id="status" data-i18n="status.connecting">Connecting…</span></p>
   <p class="banner" id="banner" hidden data-i18n-html="banner.noDb"></p>
 
+  <section class="onboard setup" id="setup" hidden></section>
+  <section class="onboard" id="welcome" hidden></section>
   <section class="hero" id="hero" hidden aria-live="polite"></section>
 
   <div class="section-head">
@@ -334,7 +365,7 @@
   </form>
 </dialog>
 
-<script>window.SKELETON_PAGE = true;</script>
+<script>window.SKELETON_PAGE = true; window.WELCOME_HANDLES_PHONE = true;</script>
 <script src="icons.js"></script>
 <script src="config.js"></script>
 <script src="team.js"></script>
@@ -419,6 +450,109 @@ function renderMatches(players, events) {
     </article>`;
   }).join("");
 }
+// ---- Getting started ----
+// Steps are read from the team's data where possible (so they're right on every device); the WhatsApp group
+// and the calendar download can't be checked, so they count as done once tapped (remembered on this device).
+const onb = { place: { status: "idle", results: [] }, phoneErr: false };
+const flagKey = k => `${k}:${TEAM_ID}`;
+const stepsHtml = steps => steps.map(s => `<li class="${s.done ? "done" : ""}">
+    <span class="step-dot">${s.done ? ic("check") : ic(s.icon)}</span>
+    <span class="step-text"><b>${s.title}</b>${s.sub ? `<small>${s.sub}</small>` : ""}</span>
+    ${s.done ? "" : s.action || ""}${s.extra && !s.done ? `<div class="step-extra">${s.extra}</div>` : ""}</li>`).join("");
+const cardHtml = (title, sub, steps, hideKey) => {
+  const done = steps.filter(s => s.done).length;
+  return `<div class="onboard-head"><div><h3>${title}</h3><p>${sub}</p></div>
+      <span class="pill ${done === steps.length ? "yes" : "cyan"} count">${t("onb.progress", { done, total: steps.length })}</span></div>
+    <div class="onboard-bar"><span style="width:${done / steps.length * 100}%"></span></div>
+    <ul class="steps">${stepsHtml(steps)}</ul>
+    <div class="onboard-foot"><button class="link" data-onb-hide="${hideKey}">${t("onb.hide")}</button></div>`;
+};
+
+function renderWelcome(players) {
+  const el = document.getElementById("welcome");
+  const me = AUTH_ON && dataLoaded ? players.find(p => p.id === session.pid) : null;
+  if (!me || pref.get(flagKey("welcomeHidden"), "")) { el.hidden = true; return; }
+  const upcoming = EVENTS.filter(e => !isPast(e));
+  const answered = upcoming.filter(e => me.avail[e.date]).length;
+  const wa = root.settings && root.settings.waGroup;
+  const pl = onb.place;
+  const steps = [
+    ...(upcoming.length ? [{ icon: "help", done: answered === upcoming.length, title: t("onb.answer"), sub: t("onb.answerSub", { n: answered, total: upcoming.length }),
+      action: `<button class="primary" data-onb="answer">${t("onb.do")}</button>` }] : []),
+    { icon: "pin", done: !!me.geo, title: t("onb.place"), sub: me.geo ? esc(me.geo.label) : t("onb.placeSub"),
+      extra: `<input id="onb-place" placeholder="${t("carpool.gemeentePh")}" autocomplete="address-level2" enterkeyhint="search"><button data-onb="find">${t("carpool.find")}</button>
+        ${pl.status === "loading" ? `<div class="results"><small class="muted">${t("carpool.searching")}</small></div>` : ""}
+        ${pl.status === "none" ? `<div class="results"><small class="warn">${t("carpool.noPlace")}</small></div>` : ""}
+        ${pl.status === "error" ? `<div class="results"><small class="warn">${t("carpool.searchFailed")}</small></div>` : ""}
+        ${pl.status === "results" ? `<div class="results">${pl.results.map((r, i) => `<button data-onb-pick="${i}">${ic("pin")} ${esc(r.label)}${r.country ? ` · ${esc(r.country)}` : ""}</button>`).join("")}</div>` : ""}` },
+    { icon: "phone", done: !!me.phone, title: t("onb.phone"), sub: me.phone ? "+" + esc(me.phone) : t("onb.phoneSub"),
+      extra: `<input id="onb-phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="${t("phone.ph")}"><button data-onb="phone">${t("phone.save")}</button>
+        ${onb.phoneErr ? `<div class="results"><small class="err">${t("phone.invalid")}</small></div>` : ""}` },
+    ...(wa && WA_LINK.test(wa) ? [{ icon: "message", done: !!pref.get(flagKey("onbWa"), ""), title: t("onb.wa"), sub: t("onb.waSub"),
+      action: `<a class="btn-like action" data-onb="wa" href="${esc(wa)}" target="_blank" rel="noopener">${t("onb.open")}</a>` }] : []),
+    { icon: "calendar-plus", done: !!pref.get(flagKey("onbCal"), ""), title: t("onb.calendar"), sub: t("onb.calendarSub"),
+      action: `<button data-onb="cal">${t("onb.download")}</button>` },
+  ];
+  if (steps.every(s => s.done)) { el.hidden = true; return; }
+  // Keep what someone is typing in the card across live updates.
+  const keep = ["onb-place", "onb-phone"].map(id => document.getElementById(id)).filter(x => x && x.value).map(x => [x.id, x.value, document.activeElement === x]);
+  el.hidden = false;
+  el.innerHTML = cardHtml(t("onb.title", { team: esc(TEAM.shortName || TEAM.brand), name: esc(firstName(me.name || "")) }), t("onb.sub"), steps, "welcomeHidden");
+  for (const [id, v, focus] of keep) { const x = document.getElementById(id); if (x) { x.value = v; if (focus) x.focus(); } }
+}
+
+function renderSetup(players) {
+  const el = document.getElementById("setup");
+  if (!AUTH_ON || !dataLoaded || !session.admin || pref.get(flagKey("setupHidden"), "")) { el.hidden = true; return; }
+  const s = root.settings || {};
+  const link = (h, label) => `<a class="btn-like action" href="${pageUrl("admin.html")}${h}">${label}</a>`;
+  const steps = [
+    { icon: "calendar", done: EVENTS.length > 0, title: t("setup.matches"), sub: t("setup.matchesSub", { n: EVENTS.length }), action: link("#sec-matches", t("setup.go")) },
+    { icon: "users", done: players.filter(p => p.uid).length > 1, title: t("setup.players"), sub: t("setup.playersSub", { n: players.filter(p => p.uid).length }), action: link("#requests-panel", t("setup.invite")) },
+    { icon: "settings", done: !!s.minPlayers, title: t("setup.min"), sub: s.minPlayers ? t("setup.minSet", { n: s.minPlayers }) : t("setup.minSub"), action: link("#sec-settings", t("setup.go")) },
+    { icon: "image", done: !!(TEAM.logo || TEAM.colors), title: t("setup.brand"), sub: t("setup.brandSub"), action: link("#sec-brand", t("setup.go")) },
+    { icon: "message", done: !!s.waGroup, title: t("setup.wa"), sub: t("setup.waSub"), action: link("#sec-settings", t("setup.go")) },
+  ];
+  if (steps.every(x => x.done)) { el.hidden = true; return; }
+  el.hidden = false;
+  el.innerHTML = cardHtml(t("setup.title", { team: esc(TEAM.brand) }), t("setup.sub"), steps, "setupHidden");
+}
+
+async function findOnbPlace() {
+  const q = (document.getElementById("onb-place") || {}).value || "";
+  if (q.trim().length < 2) return;
+  onb.place = { status: "loading", results: [] }; render();
+  try { const results = await searchPlaces(q); onb.place = { status: results.length ? "results" : "none", results }; }
+  catch { onb.place = { status: "error", results: [] }; }
+  render();
+}
+for (const id of ["welcome", "setup"]) document.getElementById(id).addEventListener("click", ev => {
+  const hide = ev.target.closest("[data-onb-hide]");
+  if (hide) { pref.set(flagKey(hide.dataset.onbHide), "1"); render(); return; }
+  const pick = ev.target.closest("[data-onb-pick]");
+  if (pick) { const r = onb.place.results[Number(pick.dataset.onbPick)]; onb.place = { status: "idle", results: [] }; if (r && session.pid) setPlace(session.pid, r); return; }
+  const b = ev.target.closest("[data-onb]");
+  if (!b) return;
+  const act = b.dataset.onb;
+  if (act === "answer") {
+    const me = root.players[session.pid] || {}, e = EVENTS.find(x => !isPast(x) && !(me.avail || {})[x.date]);
+    const target = e && document.querySelector(`.m-mine [data-date="${e.date}"]`) || document.getElementById("hero");
+    target.scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+  if (act === "find") findOnbPlace();
+  if (act === "phone") {
+    const raw = document.getElementById("onb-phone").value, n = normPhone(raw);
+    onb.phoneErr = !n;
+    if (n && session.pid) { document.getElementById("onb-phone").value = ""; write(`players/${session.pid}/phone`, n); } else render();
+  }
+  if (act === "wa") { pref.set(flagKey("onbWa"), "1"); setTimeout(render, 300); }
+  if (act === "cal") { document.getElementById("ics-all").click(); pref.set(flagKey("onbCal"), "1"); render(); }
+});
+document.getElementById("welcome").addEventListener("keydown", ev => {
+  if (ev.key === "Enter" && ev.target.id === "onb-place") { ev.preventDefault(); findOnbPlace(); }
+  if (ev.key === "Enter" && ev.target.id === "onb-phone") { ev.preventDefault(); document.querySelector('[data-onb="phone"]').click(); }
+});
+
 // The next match, big, at the top: countdown, details, progress, who's coming, my answer, quick actions.
 function renderHero(players) {
   const el = document.getElementById("hero");
@@ -515,6 +649,8 @@ function render() {
 
   const players = sortedPlayers();
   const events = shownEvents();
+  renderSetup(players);
+  renderWelcome(players);
   renderHero(players);
   renderMatches(players, events);
   renderControls();
