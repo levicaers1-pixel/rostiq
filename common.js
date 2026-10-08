@@ -339,11 +339,13 @@ async function loadProfile(myTeams) {
   const [stored, ...rows] = await Promise.all([getAbs(`users/${uid}/profile`),
     ...teams.map(([tid, pid]) => getAbs(`teams/${tid}/players/${pid}`))]);
   const data = stored || {};
-  // Fields the profile doesn't have yet come from my teams (the first team with a value wins).
+  // My own edits always update the profile and all my teams together. So a team row that differs from the
+  // profile was changed by a team admin since then: that's the newer value. Fields the profile doesn't
+  // have yet also come from my teams (the first team with a value wins).
   const add = {};
+  const linked = rows.filter(r => r && r.uid === uid);
   for (const f of PROFILE_FIELDS) {
-    if (data[f] != null) continue;
-    const row = rows.find(r => r && r[f] != null && r[f] !== "");
+    const row = linked.find(r => r[f] != null && r[f] !== "" && !sameValue(r[f], data[f]));
     if (row) add[f] = row[f];
   }
   // Use them right away, also if saving the profile fails (it's retried on the next sign-in).
@@ -385,7 +387,7 @@ function shareProfile(changes) {
   }
 }
 
-// Opening a team: bring my row up to date with my profile (once per page).
+// Opening a team: bring my row up to date with my (just reconciled) profile, once per page.
 function applyProfile() {
   if (!AUTH_ON || profile.applied || !profile.data || !session.pid || !root.players || !root.players[session.pid]) return;
   profile.applied = true;

@@ -36,6 +36,7 @@ All texts are in `i18n.js` (NL/EN).
 Phone, email, federation number and home town belong to the person, not the team. They are kept once
 per account in `users/<uid>/profile` (only readable by that person) and copied into the player row of
 each team, where teammates see them. Changing them in one team updates the profile and the other teams;
+an admin's correction in one team wins and spreads to the other teams at the player's next visit;
 opening a team copies the profile into that team's row; an access request carries the profile, so
 the admin's approval fills it in at once. The name stays per team.
 
