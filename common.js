@@ -1,21 +1,9 @@
 // Shared by all pages: schedule, database connection and helpers.
 // Each page defines a global render() that is called whenever the data changes.
 
-// Built-in schedule. Once the admin edits matches on the Admin page, the list in the
-// database (schedule/{date}: { opp, final }) is used instead.
-const DEFAULT_EVENTS = [
-  { date: "2026-11-14", opp: "Mormal" },
-  { date: "2026-11-21", opp: "Hainaut" },
-  { date: "2026-12-13", opp: "Lille Métropole" },
-  { date: "2026-12-19", opp: "Hainaut" },
-  { date: "2027-01-17", opp: "Kapellen" },
-  { date: "2027-01-23", opp: "Hainaut" },
-  { date: "2027-02-13", opp: "Lille Métropole" },
-  { date: "2027-02-21", opp: "Mormal" },
-  { date: "2027-02-27", opp: "Hainaut" },
-  { date: "2027-03-06", opp: "Keerbergen" },
-  { date: "2027-03-13", opp: "Rigenée", final: true },
-];
+// Team settings come from team.js (window.TEAM). The built-in schedule is used until the admin
+// edits matches on the Admin page; then the list in the database (schedule/{date}) takes over.
+const DEFAULT_EVENTS = TEAM.events || [];
 let EVENTS = DEFAULT_EVENTS.slice();
 function refreshEvents() {
   const s = root.schedule || {};
@@ -24,9 +12,9 @@ function refreshEvents() {
     ? Object.keys(s).sort().map(date => ({ date, opp: s[date].opp || "?", ...(s[date].final ? { final: true } : {}) }))
     : DEFAULT_EVENTS.slice();
 }
-const DEFAULT_SEASON = "Winter Midam 26-27";
+const DEFAULT_SEASON = TEAM.season || "";
 const seasonName = () => (root.settings && root.settings.seasonName) || DEFAULT_SEASON;
-const TEAM_SIZE = 15;
+const TEAM_SIZE = TEAM.teamSize || 15;
 
 const DB = (window.FIREBASE_DB_URL || "").trim().replace(/\/+$/, "");
 
@@ -145,7 +133,7 @@ function apply(path, value, merge) {
 // ---- Login (Firebase Authentication) ----
 // Login is switched on by putting FIREBASE_CONFIG in config.js. Without it the
 // page works as before: no accounts, everyone can edit everything.
-const ADMIN_EMAIL = "levicaers1@gmail.com";
+const ADMIN_EMAILS = (TEAM.admins || []).map(e => e.toLowerCase());
 const AUTH_ON = !!window.FIREBASE_CONFIG;
 const SDK = "https://www.gstatic.com/firebasejs/12.12.0/";
 // user: Firebase user; pid: the player row this account has claimed.
@@ -396,7 +384,22 @@ const lines = arr => arr.filter(l => l === BLANK || (typeof l === "string" && l)
 const pageUrl = file => location.href.split(/[?#]/)[0].replace(/[^/]*$/, file);
 
 // Kick off: with login, wait for the user; otherwise connect straight away.
+// Team branding: logo (or the team name as text) and optional colour overrides.
+function applyBranding() {
+  document.querySelectorAll(".brand .logo").forEach(img => {
+    if (TEAM.logo) { img.src = TEAM.logo; img.alt = TEAM.brand; }
+    else img.outerHTML = `<span class="logo-text">${esc(TEAM.brand)}</span>`;
+  });
+  const c = TEAM.colors;
+  if (c) {
+    const vars = o => Object.entries(o || {}).map(([k, v]) => `${k}: ${v};`).join(" ");
+    document.head.insertAdjacentHTML("beforeend", `<style>:root { ${vars(c.light)} }
+      @media (prefers-color-scheme: dark) { :root { ${vars(c.dark)} } }</style>`);
+  }
+}
+
 function start() {
+  applyBranding();
   applyStaticTexts();
   injectAuthUI();
   injectCountdown();
@@ -431,7 +434,7 @@ async function initAuth() {
     gateMessage(t("auth.redirectFailed"), true));
   A.onAuthStateChanged(fbAuth, user => {
     session.user = user;
-    session.admin = !!user && user.emailVerified && (user.email || "").toLowerCase() === ADMIN_EMAIL;
+    session.admin = !!user && user.emailVerified && ADMIN_EMAILS.includes((user.email || "").toLowerCase());
     session.pid = null;
     session.pending = false;
     session.ready = !user; // with a user, wait until we know whether the account is linked

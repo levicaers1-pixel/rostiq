@@ -141,6 +141,7 @@
 </main>
 
 <script src="config.js"></script>
+<script src="team.js"></script>
 <script src="i18n.js"></script>
 <script src="common.js"></script>
 <script>
@@ -227,7 +228,7 @@ function renderSettings() {
   const s = root.settings || {};
   const set = (id, v) => { const inp = document.querySelector(`#${id} [name=v]`); if (document.activeElement !== inp) inp.value = v; };
   set("f-season", seasonName());
-  set("f-min", s.minPlayers || 3);
+  set("f-min", s.minPlayers || TEAM.minPlayers || 3);
   set("f-wa", s.waGroup || "");
   document.getElementById("wa-remove").hidden = !s.waGroup;
 }

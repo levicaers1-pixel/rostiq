@@ -1,0 +1,4 @@
+dist/
+# Real team configs contain admin emails: keep them out of this public repo.
+teams/*
+!teams/demo/

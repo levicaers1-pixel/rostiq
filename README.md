@@ -56,3 +56,30 @@ matches on the Admin page; from then on the schedule lives in the database.
 Until `config.js` is filled in, the page shows a "Not connected" banner and nothing is saved.
 
 **Note:** there is no login. Anyone with the page link can view and edit the grid, so share the link with the team only.
+
+## Other teams (multi-team light)
+
+The code is shared; everything team-specific lives in `team.js` (Pampas: in this repo root).
+Each other team gets its **own Firebase project** and is hosted on Firebase Hosting
+(`https://<project>.web.app`), so data, admins and limits are fully separate and the Pampas
+site is never touched.
+
+1. **Firebase project** (console.firebase.google.com): create a project; *Build → Realtime
+   Database* (e.g. europe-west1, locked mode); *Authentication* → enable **Google** and
+   **Email/Password + Email link**; *Project settings → Your apps → Web* → copy the config.
+2. **Team file**: copy `teams/demo/team.json` to `teams/<id>/team.json` and fill in brand,
+   season, admin email(s), admin name, colours, matches and the `firebase` config
+   (`apiKey`, `projectId`, `appId`, `databaseURL`). Optional: a light wordmark (`logo`) and
+   your own icons / `og-image.png` in the same folder; otherwise they are generated.
+   `teams/*` is git-ignored (admin emails) except the demo.
+3. **Build**: `python tools/build_team.py <id>` → `dist/<id>/` (pages, config, rules with the
+   team's admins, icons, link preview, `firebase.json`).
+4. **Deploy** (once `npx firebase-tools login`):
+   `cd dist/<id> && npx firebase-tools deploy --project <projectId> --only hosting,database`
+5. The admin opens `https://<projectId>.web.app`, signs in and approves players on the Admin tab.
+   If Google sign-in reports `redirect_uri_mismatch`, add
+   `https://<projectId>.web.app/__/auth/handler` to the OAuth client's redirect URIs
+   (Google Cloud → APIs & Services → Credentials).
+
+`database.rules.template.json` is the shared rule set (`__ADMIN__` = the admin check);
+`database.rules.json` is the Pampas version of it.

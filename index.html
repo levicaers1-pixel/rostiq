@@ -262,6 +262,7 @@
 </dialog>
 
 <script src="config.js"></script>
+<script src="team.js"></script>
 <script src="i18n.js"></script>
 <script src="common.js"></script>
 <script>
@@ -269,7 +270,7 @@ const CYCLE = ["", "yes", "maybe", "no"];
 const SYMBOL = { "": "–", yes: "✓", maybe: "?", no: "✗" };
 const LABEL = { "": "", yes: t("label.yes"), maybe: t("label.maybe"), no: t("label.no") };
 
-const DEFAULT_MIN = 3;
+const DEFAULT_MIN = TEAM.minPlayers || 3;
 let view = pref.get("view", matchMedia("(max-width: 700px)").matches ? "cards" : "table");
 let showPast = pref.get("showPast", "0") === "1";
 
@@ -482,7 +483,7 @@ function matchMessage(e) {
   const m = matchInfo(e), v = m.venue;
   const yes = namesWith(e, "yes"), maybe = namesWith(e, "maybe"), no = namesWith(e, "no"), none = namesWith(e, "");
   return lines([
-    `*🏌️ Winter Midam – ${e.opp}${e.final ? " " + t("ics.final") : ""}*`,
+    `*🏌️ ${TEAM.shortName} – ${e.opp}${e.final ? " " + t("ics.final") : ""}*`,
     `📅 ${longDate(e)}`,
     timeText(e) && `🕘 ${timeText(e)}`,
     v && `📍 ${venueText(v)}`,
@@ -672,7 +673,7 @@ const hhmmss = hm => hm.replace(":", "") + "00";
 // Long lines are folded (RFC 5545) so strict calendar apps accept them.
 const fold = line => line.length <= 70 ? line : line.match(/.{1,70}/gu).join("\r\n ");
 
-// Titles read "{player} Wintermidam {location}"; the player is left out for team-wide exports.
+// Titles read "{player} {TEAM.calendarLabel} {location}"; the player is left out for team-wide exports.
 // statusOf(e) may return "maybe" to mark an event as tentative.
 function buildIcs(events, statusOf = () => "", player = "") {
   const stamp = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d+/, "");
@@ -692,7 +693,7 @@ function buildIcs(events, statusOf = () => "", player = "") {
       `DTSTART;TZID=Europe/Brussels:${d}T${hhmmss(start)}`,
       `DTEND;TZID=Europe/Brussels:${d}T${hhmmss(end)}`,
       `STATUS:${maybe ? "TENTATIVE" : "CONFIRMED"}`,
-      `SUMMARY:${icsText([player, "Wintermidam", e.opp].filter(Boolean).join(" ") + (e.final ? " " + t("ics.final") : "") + (maybe ? " " + t("ics.maybe") : ""))}`,
+      `SUMMARY:${icsText([player, TEAM.calendarLabel, e.opp].filter(Boolean).join(" ") + (e.final ? " " + t("ics.final") : "") + (maybe ? " " + t("ics.maybe") : ""))}`,
       `LOCATION:${icsText(v ? venueText(v) : e.opp)}`,
       ...(v && v.lat != null ? [`GEO:${v.lat};${v.lon}`] : []),
       `DESCRIPTION:${icsText(desc)}`,
