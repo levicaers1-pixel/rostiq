@@ -1,48 +1,50 @@
-/* RostiQ palette: deep indigo + electric cyan, soft violet accents, off-white surfaces.
+/* RostiQ palette (brand package): deep indigo #1E1B4B, electric cyan #22D3EE, soft violet #A78BFA,
+   near black #0F172A, off white #F8FAFC. Indigo stays the text/button accent in light mode (cyan text on
+   white fails WCAG AA); cyan is the highlight, and the accent in dark mode.
    Teams override the colour variables with their own (Admin → Branding). */
 :root {
-  --bg: #f6f7fa;
+  --bg: #f8fafc;
   --surface: #ffffff;
-  --text: #14152b;
-  --muted: #5d6178;
-  --border: #e2e4ee;
+  --text: #0f172a;
+  --muted: #64748b;
+  --border: #e2e8f0;
   --accent: #1e1b4b;
   --on-accent: #ffffff;
   --brand: #1e1b4b;
-  --brand-text: #f6f7fa;
-  --pampas: #00d4ff;
+  --brand-text: #f8fafc;
+  --pampas: #22d3ee;
   --yes: #2f7a4a;
   --yes-bg: #e1ecdc;
   --maybe: #9c7424;
   --maybe-bg: #f5e8cb;
   --no: #ad4a31;
   --no-bg: #f5ddd4;
-  --final: #6c5ce7;
+  --final: #7c5cf0;
   /* Fonts: RostiQ's geometric sans; teams can pick the classic serif headings ("font-serif"). */
-  --font-body: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  --font-head: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-body: Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-head: Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --head-weight: 700;
   --head-spacing: -.01em;
 }
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #0b0d14;
-    --surface: #141729;
-    --text: #eef0f7;
-    --muted: #9aa0b8;
-    --border: #262a40;
-    --accent: #00d4ff;
-    --on-accent: #0b0d14;
-    --brand: #12112e;
-    --brand-text: #f6f7fa;
-    --pampas: #00d4ff;
+    --bg: #0f172a;
+    --surface: #172036;
+    --text: #f1f5f9;
+    --muted: #94a3b8;
+    --border: #283449;
+    --accent: #22d3ee;
+    --on-accent: #0f172a;
+    --brand: #1e1b4b;
+    --brand-text: #f8fafc;
+    --pampas: #22d3ee;
     --yes: #83c99c;
     --yes-bg: #20402f;
     --maybe: #e0b766;
     --maybe-bg: #3e3421;
     --no: #e58b72;
     --no-bg: #452821;
-    --final: #a99dff;
+    --final: #a78bfa;
   }
 }
 html.font-serif {
@@ -105,9 +107,9 @@ button:disabled { cursor: default; opacity: .5; }
 .brand-inner > a { text-decoration: none; }
 .brand .logo-text { display: block; font-family: var(--font-head); font-weight: var(--head-weight); font-size: 2.2rem; line-height: 1.25; color: var(--brand-text); letter-spacing: var(--head-spacing); }
 html.font-serif .brand .logo-text { font-size: 2.4rem; line-height: 1.2; letter-spacing: .04em; }
-/* RostiQ itself: icon mark + wordmark */
-.brand .logo-text.rostiq { display: flex; align-items: center; gap: 12px; font-family: "Plus Jakarta Sans", system-ui, sans-serif; font-weight: 700; letter-spacing: -.02em; }
-.brand .logo-text.rostiq img { height: 1.15em; width: auto; }
+/* RostiQ itself: "Rosti" in Inter ExtraBold + the cyan Q mark, its ring resting on the baseline */
+.brand .logo-text.rostiq { font-family: Inter, system-ui, sans-serif; font-weight: 800; letter-spacing: -.02em; white-space: nowrap; }
+.brand .logo-text.rostiq .q { height: 1.11em; width: auto; margin-left: .17em; vertical-align: -.09em; }
 @media (max-width: 480px) {
   .brand .logo { height: 42px; }
   .brand .logo-text { font-size: 1.8rem; }
