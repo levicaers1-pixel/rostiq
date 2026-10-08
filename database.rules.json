@@ -1,10 +1,22 @@
 {
   "rules": {
-    ".read": "auth != null",
+    ".read": "auth != null && (root.child('users').child(auth.uid).exists() || (auth.token.email === 'levicaers1@gmail.com' && auth.token.email_verified === true))",
     "initialized": { ".write": "auth.token.email === 'levicaers1@gmail.com' && auth.token.email_verified === true" },
+    "requests": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && (auth.uid === $uid || (auth.token.email === 'levicaers1@gmail.com' && auth.token.email_verified === true))",
+        ".validate": "newData.hasChildren(['email', 'name', 'at'])",
+        "email": { ".validate": "newData.isString() && newData.val() === auth.token.email" },
+        "name": { ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 60" },
+        "at": { ".validate": "newData.isNumber()" },
+        "$other": { ".validate": false }
+      }
+    },
     "users": {
       "$uid": {
-        ".write": "(auth.token.email === 'levicaers1@gmail.com' && auth.token.email_verified === true) || (auth.uid === $uid && !data.exists())",
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth.token.email === 'levicaers1@gmail.com' && auth.token.email_verified === true",
         ".validate": "newData.hasChild('pid') && newData.parent().parent().child('players').child(newData.child('pid').val()).child('uid').val() === $uid",
         "pid": { ".validate": "newData.isString()" },
         "$other": { ".validate": false }
@@ -13,10 +25,7 @@
     "players": {
       "$pid": {
         ".write": "auth.token.email === 'levicaers1@gmail.com' && auth.token.email_verified === true",
-        "uid": {
-          ".write": "auth != null && !data.exists() && newData.val() === auth.uid && !root.child('users').child(auth.uid).exists()",
-          ".validate": "newData.isString()"
-        },
+        "uid": { ".validate": "newData.isString()" },
         "order": { ".validate": "newData.isNumber()" },
         "name": {
           ".write": "auth != null && root.child('players').child($pid).child('uid').val() === auth.uid",

@@ -37,7 +37,8 @@
   .plist .name { font-weight: 600; }
   .plist .flags { display: flex; gap: 10px; flex-wrap: wrap; font-size: .8rem; color: var(--muted); }
   .plist .flags .off { opacity: .45; text-decoration: line-through; }
-  .plist .acts { display: flex; gap: 12px; align-items: center; grid-row: span 2; }
+  .plist .acts { display: flex; gap: 12px; align-items: center; grid-row: span 2; flex-wrap: wrap; justify-content: flex-end; }
+  #requests-panel { border-color: var(--maybe); }
 
   /* Settings */
   .settings { display: grid; gap: 14px; max-width: 640px; }
@@ -76,6 +77,13 @@
   <p class="banner" id="no-access" hidden data-i18n="admin.noAccess"></p>
 
   <div id="admin" hidden>
+    <!-- Access requests (new sign-ins waiting to be linked) -->
+    <section class="panel" id="requests-panel">
+      <h2 data-i18n="admin.requests">Access requests</h2>
+      <p class="help" data-i18n="admin.requestsHelp"></p>
+      <ul class="plist" id="requests"></ul>
+    </section>
+
     <!-- Players & accounts -->
     <section class="panel">
       <h2 data-i18n="admin.players">Players & accounts</h2>
@@ -148,10 +156,51 @@ function render() {
   document.getElementById("no-access").hidden = session.admin || !session.ready;
   document.getElementById("admin").hidden = !session.admin;
   if (!session.admin) return;
+  renderRequests();
   renderPlayers();
   renderSettings();
   renderMatches();
 }
+
+function renderRequests() {
+  const reqs = Object.entries(root.requests || {}).sort((a, b) => (a[1].at || 0) - (b[1].at || 0));
+  const free = sortedPlayers().filter(p => p.name && !p.uid);
+  document.getElementById("requests").innerHTML = reqs.length ? reqs.map(([uid, r]) => `
+    <li>
+      <div><span class="name">${esc(r.name || "?")}</span>
+        <div class="flags"><span>✉️ ${esc(r.email || "")}</span>${r.at ? `<span>${esc(new Date(r.at).toLocaleString(LOCALE, { dateStyle: "short", timeStyle: "short" }))}</span>` : ""}</div></div>
+      <div class="acts">
+        <select data-req-select="${uid}">
+          <option value="">${t("admin.choose")}</option>
+          ${free.map(p => `<option value="${p.id}" ${p.name.toLowerCase() === (r.name || "").toLowerCase() ? "selected" : ""}>${esc(p.name)}</option>`).join("")}
+          <option value="__new">${esc(t("admin.newFromRequest", { name: r.name || "?" }))}</option>
+        </select>
+        <button class="primary" data-req-link="${uid}">${t("admin.link")}</button>
+        <button class="link err" data-req-reject="${uid}">${t("admin.reject")}</button>
+      </div>
+    </li>`).join("") : `<li class="muted">${t("admin.noRequests")}</li>`;
+}
+document.getElementById("requests").addEventListener("click", ev => {
+  const link = ev.target.closest("[data-req-link]");
+  if (link) {
+    const uid = link.dataset.reqLink, r = root.requests[uid];
+    let pid = document.querySelector(`[data-req-select="${uid}"]`).value;
+    if (!pid) return;
+    const changes = { [`requests/${uid}`]: null };
+    if (pid === "__new") {
+      pid = "p" + Date.now().toString(36);
+      const order = sortedPlayers().reduce((m, p) => Math.max(m, p.order || 0), 0) + 1;
+      changes[`players/${pid}`] = { order, name: (r.name || "?").slice(0, 60), uid };
+    } else {
+      changes[`players/${pid}/uid`] = uid;
+    }
+    changes[`users/${uid}/pid`] = pid;
+    update(changes);
+  }
+  const rej = ev.target.closest("[data-req-reject]");
+  if (rej && confirm(t("admin.rejectConfirm", { name: (root.requests[rej.dataset.reqReject] || {}).name || "?" })))
+    write(`requests/${rej.dataset.reqReject}`, null);
+});
 
 function renderPlayers() {
   const me = session.user && session.user.uid;

@@ -149,7 +149,8 @@ const ADMIN_EMAIL = "levicaers1@gmail.com";
 const AUTH_ON = !!window.FIREBASE_CONFIG;
 const SDK = "https://www.gstatic.com/firebasejs/12.12.0/";
 // user: Firebase user; pid: the player row this account has claimed.
-const session = { user: null, admin: !AUTH_ON, pid: null, ready: !AUTH_ON };
+// pending: signed in but not yet linked to a player by the admin (sees nothing until approved).
+const session = { user: null, admin: !AUTH_ON, pid: null, ready: !AUTH_ON, pending: false, request: null };
 let fbAuth = null, A = null;
 
 // Only the admin and a row's own player may change it (the database rules enforce the same).
@@ -422,11 +423,52 @@ async function initAuth() {
     session.user = user;
     session.admin = !!user && user.emailVerified && (user.email || "").toLowerCase() === ADMIN_EMAIL;
     session.pid = null;
-    session.ready = !user; // with a user, wait for the data before deciding on the claim screen
-    if (user) connect(); else disconnect();
+    session.pending = false;
+    session.ready = !user; // with a user, wait until we know whether the account is linked
+    if (user) checkMembership(); else { stopApprovalWatch(); disconnect(); }
     renderAuth();
     render();
   });
+}
+
+// Only accounts the admin linked to a player (users/{uid}) may read the team's data.
+// Others get the "waiting for approval" screen and can send a request with their name.
+let approvalEs = null;
+function stopApprovalWatch() { if (approvalEs) approvalEs.close(); approvalEs = null; }
+
+async function checkMembership() {
+  const uid = session.user.uid;
+  if (!session.admin) {
+    let linked = null;
+    try { linked = await fetch(await dbUrl(`users/${uid}`)).then(r => r.json()); } catch {}
+    if (!(linked && linked.pid)) {
+      try { session.request = await fetch(await dbUrl(`requests/${uid}`)).then(r => r.json()); } catch { session.request = null; }
+      session.pending = true;
+      session.ready = true;
+      renderAuth();
+      watchApproval(uid);
+      return;
+    }
+  }
+  session.pending = false;
+  connect();
+}
+
+// Open the site by itself as soon as the admin links this account.
+async function watchApproval(uid) {
+  stopApprovalWatch();
+  const stream = approvalEs = new EventSource(await dbUrl(`users/${uid}`));
+  stream.addEventListener("put", e => {
+    const { path, data } = JSON.parse(e.data);
+    const approved = (path === "/" && data && data.pid) || (path === "/pid" && data);
+    if (!approved || stream !== approvalEs) return;
+    stopApprovalWatch();
+    session.pending = false;
+    session.ready = false;
+    renderAuth();
+    connect();
+  });
+  stream.addEventListener("auth_revoked", () => watchApproval(uid));
 }
 
 // ---- Login UI (shared by both pages) ----
@@ -463,7 +505,7 @@ function renderAuth() {
   if (!AUTH_ON) return;
   const gate = document.getElementById("gate"), main = document.querySelector("main"), acct = document.getElementById("account");
   const u = session.user;
-  const needClaim = u && session.ready && !session.pid && !session.admin;
+  const needClaim = u && (session.pending || (session.ready && !session.pid && !session.admin));
   const showGate = !u || needClaim;
   gate.hidden = !showGate;
   main.hidden = showGate || (u && !session.ready);
@@ -493,15 +535,18 @@ function renderAuth() {
       <p class="hint">${t(standalone() ? "auth.hintApp" : "auth.hintBrowser")}</p>
     </div>`;
   } else if (needClaim) {
-    const free = sortedPlayers().filter(p => p.name && !p.uid);
+    const r = session.request;
     gate.innerHTML = `<div class="gate-card">
-      <h1>${t("auth.whichPlayer")}</h1>
-      <p class="sub">${t("auth.claimSub", { email: esc(u.email || "") })}</p>
-      <div class="claim-list">${free.length
-        ? free.map(p => `<button data-claim="${p.id}">${esc(p.name)}</button>`).join("")
-        : `<p class="hint">${t("auth.noFree")}</p>`}</div>
+      <h1>${t("pending.title")}</h1>
+      <p class="sub">${t("pending.text", { email: esc(u.email || "") })}</p>
+      ${r && r.name ? `<p class="gate-msg">${t("pending.sent", { name: esc(r.name) })}</p>` : ""}
+      <form class="email-form request-form">
+        <input name="name" required maxlength="60" autocomplete="name" placeholder="${t("pending.name")}"
+          value="${esc((r && r.name) || u.displayName || "")}">
+        <button type="submit">${t(r ? "pending.update" : "pending.send")}</button>
+      </form>
       ${msg}
-      <p class="hint">${t("auth.claimHelp")} <button class="link" data-signout-gate>${t("auth.signOut")}</button></p>
+      <p class="hint"><button class="link" data-signout-gate>${t("auth.signOut")}</button></p>
     </div>`;
   }
 }
@@ -520,18 +565,25 @@ async function onGateClick(ev) {
         gateMessage(t("auth.googleFailed"), true);
     }
   }
-  const c = ev.target.closest("[data-claim]");
-  if (c) {
-    const pid = c.dataset.claim, uid = session.user.uid;
-    gateMsg = { text: "", err: false };
-    await update({ [`players/${pid}/uid`]: uid, [`users/${uid}/pid`]: pid });
-    syncSession();
-  }
   if (ev.target.closest("[data-signout-gate]")) A.signOut(fbAuth);
 }
 
 async function onGateSubmit(ev) {
   ev.preventDefault();
+  if (ev.target.classList.contains("request-form")) {
+    // Ask the admin for access, with the name the player goes by in the team.
+    const u = session.user;
+    const req = { email: u.email || "", name: ev.target.name.value.trim().slice(0, 60), at: Date.now() };
+    try {
+      const res = await fetch(await dbUrl(`requests/${u.uid}`), { method: "PUT", body: JSON.stringify(req) });
+      if (!res.ok) throw new Error(res.status);
+      session.request = req;
+      gateMessage("", false);
+    } catch {
+      gateMessage(t("pending.failed"), true);
+    }
+    return;
+  }
   const email = ev.target.email.value.trim();
   try {
     await A.sendSignInLinkToEmail(fbAuth, email, { url: location.origin + location.pathname, handleCodeInApp: true });
