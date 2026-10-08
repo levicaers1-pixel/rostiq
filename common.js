@@ -335,17 +335,27 @@ const sameValue = (a, b) => JSON.stringify(a ?? null) === JSON.stringify(b ?? nu
 async function loadProfile(myTeams) {
   const uid = session.user.uid;
   profile.teams = myTeams || {};
-  const data = (await getAbs(`users/${uid}/profile`)) || {};
-  // First time: start from what my teams already know (the first team with a value wins).
-  const missing = PROFILE_FIELDS.filter(f => data[f] == null);
-  if (missing.length && Object.keys(profile.teams).length) {
-    const rows = await Promise.all(Object.entries(profile.teams).map(([tid, pid]) => getAbs(`teams/${tid}/players/${pid}`)));
-    const add = {};
-    for (const f of missing) { const row = rows.find(r => r && r[f] != null && r[f] !== ""); if (row) add[f] = row[f]; }
-    // Use them right away, also if saving the profile fails (it's retried on the next sign-in).
-    if (Object.keys(add).length) { Object.assign(data, add); send("PATCH", `users/${uid}/profile`, add, true); }
+  const teams = Object.entries(profile.teams);
+  const [stored, ...rows] = await Promise.all([getAbs(`users/${uid}/profile`),
+    ...teams.map(([tid, pid]) => getAbs(`teams/${tid}/players/${pid}`))]);
+  const data = stored || {};
+  // Fields the profile doesn't have yet come from my teams (the first team with a value wins).
+  const add = {};
+  for (const f of PROFILE_FIELDS) {
+    if (data[f] != null) continue;
+    const row = rows.find(r => r && r[f] != null && r[f] !== "");
+    if (row) add[f] = row[f];
   }
+  // Use them right away, also if saving the profile fails (it's retried on the next sign-in).
+  if (Object.keys(add).length) { Object.assign(data, add); send("PATCH", `users/${uid}/profile`, add, true); }
   if (session.user && session.user.uid !== uid) return; // signed out meanwhile
+  // Bring all my other teams in line now (this team is done by applyProfile, which also updates the page).
+  teams.forEach(([tid, pid], i) => {
+    const row = rows[i];
+    if (tid === TEAM_ID || !row || row.uid !== uid) return;
+    const fix = Object.fromEntries(PROFILE_FIELDS.filter(f => data[f] != null && !sameValue(row[f], data[f])).map(f => [f, data[f]]));
+    if (Object.keys(fix).length) send("PATCH", `teams/${tid}/players/${pid}`, fix, true);
+  });
   profile.data = data;
   if (profile.pending) { const p = profile.pending; profile.pending = null; shareProfile(p); } // edits made while loading
   applyProfile();
@@ -380,10 +390,14 @@ function applyProfile() {
   if (!AUTH_ON || profile.applied || !profile.data || !session.pid || !root.players || !root.players[session.pid]) return;
   profile.applied = true;
   profile.teams[TEAM_ID] = session.pid; // e.g. just approved in this team
-  const row = root.players[session.pid], changes = {};
-  for (const f of PROFILE_FIELDS)
-    if (profile.data[f] != null && !sameValue(row[f], profile.data[f])) changes[`players/${session.pid}/${f}`] = profile.data[f];
+  const row = root.players[session.pid], changes = {}, extra = {};
+  for (const f of PROFILE_FIELDS) {
+    const path = `players/${session.pid}/${f}`;
+    if (profile.data[f] != null) { if (!sameValue(row[f], profile.data[f])) changes[path] = profile.data[f]; }
+    else if (row[f] != null && row[f] !== "") extra[path] = row[f]; // only known in this team: share it the other way
+  }
   if (Object.keys(changes).length) update(changes);
+  if (Object.keys(extra).length) shareProfile(extra);
 }
 
 function syncSession() {
