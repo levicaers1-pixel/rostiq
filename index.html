@@ -345,7 +345,7 @@ let showPast = pref.get("showPast", "0") === "1";
 
 // Avatars: initials on a colour that stays the same for a name.
 const initials = n => (n || "?").trim().split(/\s+/).map(w => w[0]).slice(0, 2).join("").toUpperCase();
-const avatar = (p, i, popStyle) => `<span class="av${popStyle ? " pop" : ""}" style="background:${avColor(p.name || "")};${popStyle || ""}" title="${esc(displayName(p, i))}">${esc(initials(displayName(p, i)))}</span>`;
+const avatar = (p, i, popStyle) => `<span class="av${popStyle ? " pop" : ""}" style="${avatarBg(p)}${popStyle || ""}" title="${esc(displayName(p, i))}">${photoOf(p) ? "" : esc(initials(displayName(p, i)))}</span>`;
 const LEVEL_PILL = { ok: "yes", low: "maybe", short: "no" };
 const openTeams = new Set(); // match cards whose team list is unfolded (kept across live updates)
 
@@ -457,6 +457,8 @@ function renderWelcome(players) {
       action: `<a class="btn-like action" data-onb="wa" href="${esc(wa)}" target="_blank" rel="noopener">${t("onb.open")}</a>` }] : []),
     { icon: "calendar-plus", done: !!pref.get(flagKey("onbCal"), ""), title: t("onb.calendar"), sub: t("onb.calendarSub"),
       action: `<button data-onb="cal">${t("onb.download")}</button>` },
+    { icon: "user", done: !!photoOf(me), title: t("onb.photo"), sub: t("onb.photoSub"),
+      action: `<a class="btn-like action" href="${pageUrl("ploeg.html")}#me">${t("onb.add")}</a>` },
   ];
   // Only when something checkable is still missing (answers, location, phone): players who are complete
   // don't get a "welcome" just because the group / calendar steps can't be verified.
@@ -731,7 +733,7 @@ function matchMessage(e) {
   const m = matchInfo(e), v = m.venue;
   const yes = namesWith(e, "yes"), maybe = namesWith(e, "maybe"), no = namesWith(e, "no"), none = namesWith(e, "");
   return lines([
-    `*🏌️ ${TEAM.shortName || TEAM.brand} – ${e.opp}${e.final ? " " + t("ics.final") : ""}*`,
+    `*${sportInfo().icon} ${TEAM.shortName || TEAM.brand} – ${e.opp}${e.final ? " " + t("ics.final") : ""}*`,
     `📅 ${longDate(e)}`,
     timeText(e) && `🕘 ${timeText(e)}`,
     v && `📍 ${venueText(v)}`,

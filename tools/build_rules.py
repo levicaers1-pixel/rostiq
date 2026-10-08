@@ -48,6 +48,9 @@ PALETTE = {"$var": {".validate": "$var.matches(/^--[a-z-]{2,20}$/) && newData.is
 LOGO = (r"newData.isString() && newData.val().length <= 150000 && ("
         r"newData.val().matches(/^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+\/]+=*$/) || "
         r"newData.val().matches(/^assets\/[a-z0-9-]+\.(png|webp|svg)$/))")
+# Profile photo: a small square image made in the browser (about 10 kB, at most 60 000 characters).
+PHOTO = {".validate": r"newData.isString() && newData.val().length <= 60000 && "
+                      r"newData.val().matches(/^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+\/]+=*$/)"}
 
 
 def personal():
@@ -58,6 +61,7 @@ def personal():
         "fed": {".validate": "newData.isString() && newData.val().matches(/^[A-Za-z0-9 .\\/-]{1,20}$/)"},
         "gemeente": s(60),
         "geo": {".validate": "newData.hasChildren(['lat', 'lon', 'label'])", **LATLON, "label": s(120), "$other": NO},
+        "photo": PHOTO,
     }
 
 
@@ -69,6 +73,8 @@ def player_rules(owner):
         "order": {".validate": "newData.isNumber()"},
         "name": own(s(60)),
         **{k: own(v) for k, v in personal().items()},
+        # The team's own extra fields (Admin → Player fields): c1…c4.
+        "extra": own({"$c": {".validate": "$c.matches(/^c[1-4]$/) && newData.isString() && newData.val().length <= 60"}}),
         "avail": own({"$date": {".validate": "newData.val() === 'yes' || newData.val() === 'maybe' || newData.val() === 'no'"}}),
         "$other": NO,
     }
@@ -80,6 +86,11 @@ def settings_rules():
         "seasonName": s(60, 1),
         "scheduleInDb": {".validate": "newData.isBoolean()"},
         "waGroup": {".validate": "newData.isString() && newData.val().matches(/^https:\\/\\/chat\\.whatsapp\\.com\\/[A-Za-z0-9]{10,40}$/)"},
+        # Sport and player fields (Admin → Player fields).
+        "sport": {".validate": "newData.isString() && newData.val().matches(/^(golf|tennis|padel|hockey|football|basketball|volleyball|other)$/)"},
+        "fedOff": {".validate": "newData.isBoolean()"},
+        "fedLabel": s(40, 1),
+        "fields": {"$c": {".validate": "$c.matches(/^c[1-4]$/) && newData.isString() && newData.val().length >= 1 && newData.val().length <= 30"}},
         "$other": NO,
     }
 

@@ -43,6 +43,15 @@
   .wa { background: #25d366; color: #fff; border: 1px solid #25d366; }
   .empty { color: var(--muted); }
 
+  /* Edit dialog: photo */
+  .photo-row { display: flex; align-items: center; gap: 16px; margin: 4px 0 6px; }
+  .avatar.big { width: 72px; height: 72px; font-size: 1.6rem; }
+  .photo-btns { display: grid; gap: 6px; justify-items: start; }
+  .file-btn { position: relative; overflow: hidden; display: inline-flex; align-items: center; cursor: pointer; font-size: .85rem; font-weight: 500;
+    padding: 7px 14px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); color: var(--text); }
+  .file-btn input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+  .edit-dlg label.file-btn { display: inline-flex; margin: 0; color: var(--text); font-size: .85rem; }
+
   /* Edit dialog */
   .edit-dlg label { display: grid; gap: 4px; font-size: .8rem; color: var(--muted); margin-top: 10px; }
   .edit-dlg input { font: inherit; font-size: .95rem; color: var(--text); background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 8px; }
@@ -73,9 +82,18 @@
 <dialog id="edit" class="edit-dlg">
   <form method="dialog" id="edit-form">
     <h3 id="edit-title"></h3>
+    <div class="photo-row">
+      <div class="avatar big" id="edit-photo"></div>
+      <div class="photo-btns">
+        <label class="file-btn"><span data-i18n="photo.choose">Choose photo…</span><input type="file" id="photo-file" accept="image/*"></label>
+        <button type="button" class="link err" id="photo-remove" data-i18n="photo.remove">Remove photo</button>
+        <small class="err" id="photo-err" hidden></small>
+      </div>
+    </div>
     <label><span data-i18n="team.fName">Name</span><input name="name" maxlength="60" autocomplete="name"></label>
     <label><span data-i18n="team.fEmail">Email</span><input name="email" type="email" maxlength="100" autocomplete="email"></label>
-    <label><span data-i18n="team.fFed">Federation number</span><input name="fed" maxlength="20" autocomplete="off" inputmode="text"></label>
+    <label id="fed-field"><span id="fed-label">Federation number</span><input name="fed" maxlength="20" autocomplete="off" inputmode="text"></label>
+    <div id="custom-fields"></div>
     <label><span data-i18n="phone.label">📱 Mobile</span><input name="phone" type="tel" maxlength="25" autocomplete="tel" data-i18n-placeholder="phone.ph"></label>
     <p class="hint" data-i18n="team.editHint"></p>
     <p class="err" id="edit-err" hidden></p>
@@ -113,11 +131,11 @@ function statsFor(p) {
   return s;
 }
 
-function render() {
+let render = function () {
   document.getElementById("export").hidden = !session.admin;
   const q = filterText.toLowerCase();
   const players = sortedPlayers().filter(p => p.name)
-    .filter(p => !q || [p.name, p.gemeente, p.email, p.fed].some(x => (x || "").toLowerCase().includes(q)));
+    .filter(p => !q || [p.name, p.gemeente, p.email, p.fed, ...Object.values(p.extra || {})].some(x => String(x || "").toLowerCase().includes(q)));
   const grid = document.getElementById("grid");
   if (!dataLoaded) { grid.innerHTML = skeletonCards(6); return; }
   if (!players.length) { grid.innerHTML = `<p class="empty">${t("team.none")}</p>`; return; }
@@ -126,15 +144,17 @@ function render() {
     const place = (p.geo && p.geo.label) || p.gemeente;
     return `<article class="card ${mine ? "me" : ""}">
       <div class="head">
-        <div class="avatar" style="background:${avColor(p.name)}">${esc(initials(p.name))}</div>
+        <div class="avatar" style="${avatarBg(p)}">${photoOf(p) ? "" : esc(initials(p.name))}</div>
         <div><div class="name">${esc(p.name)}${mine ? `<span class="you">${t("team.you")}</span>` : ""}</div>
           <div class="place">${place ? "📍 " + esc(place) : ""}</div></div>
       </div>
       <div class="info">
         <div>✉️ ${p.email ? `<a href="mailto:${esc(p.email)}">${esc(p.email)}</a>` : `<span class="missing">${t("team.noEmail")}</span>`}</div>
-        <div>🏌️ ${t("team.fed")}: ${p.fed
+        ${fedOn() ? `<div>🏌️ ${esc(fedLabel())}: ${p.fed
           ? `<span class="fed">${esc(p.fed)}</span><button class="copy" data-copy="${esc(p.fed)}" title="${t("copy")}">📋</button>`
-          : `<span class="missing">${t("team.noFed")}</span>`}</div>
+          : `<span class="missing">${t("team.notFilled")}</span>`}</div>` : ""}
+        ${customFields().map(([k, label]) => `<div>${ic("hash")} ${esc(label)}: ${(p.extra || {})[k]
+          ? `<b>${esc(p.extra[k])}</b>` : `<span class="missing">${t("team.notFilled")}</span>`}</div>`).join("")}
       </div>
       <div class="stats">
         <span class="stat">✓ <b>${st.yes}</b>/${EVENTS.length} ${t("team.statYes")}</span>
@@ -148,7 +168,7 @@ function render() {
       </div>
     </article>`;
   }).join("");
-}
+};
 
 document.getElementById("filter").addEventListener("input", ev => { filterText = ev.target.value.trim(); render(); });
 document.getElementById("grid").addEventListener("click", async ev => {
@@ -170,11 +190,36 @@ function openEdit(pid) {
   form.name.value = p.name || "";
   form.email.value = p.email || "";
   form.fed.value = p.fed || "";
+  document.getElementById("fed-field").hidden = !fedOn();
+  document.getElementById("fed-label").textContent = fedLabel();
+  document.getElementById("custom-fields").innerHTML = customFields().map(([k, label]) =>
+    `<label><span>${esc(label)}</span><input name="x_${k}" maxlength="60" value="${esc((p.extra || {})[k] || "")}" autocomplete="off"></label>`).join("");
+  editPhoto = undefined; // unchanged
+  renderEditPhoto();
   form.phone.value = p.phone ? "+" + p.phone : "";
   document.getElementById("edit-err").hidden = true;
   dlg.showModal();
 }
 document.getElementById("edit-cancel").onclick = () => dlg.close();
+
+// Photo in the edit dialog: picked, shrunk in the browser, saved with the other details.
+let editPhoto; // undefined: unchanged · "": removed · data URL: new photo
+function renderEditPhoto() {
+  const p = root.players[editing] || {}, shown = editPhoto === undefined ? photoOf(p) : editPhoto;
+  const box = document.getElementById("edit-photo");
+  box.style.cssText = shown ? `background:center/cover no-repeat url(${shown})` : `background:${avColor(p.name)}`;
+  box.textContent = shown ? "" : initials(p.name || "?");
+  document.getElementById("photo-remove").hidden = !shown;
+}
+document.getElementById("photo-file").addEventListener("change", async ev => {
+  const file = ev.target.files[0], err = document.getElementById("photo-err");
+  ev.target.value = "";
+  if (!file) return;
+  err.hidden = true;
+  try { editPhoto = await photoFromFile(file); renderEditPhoto(); }
+  catch (e) { err.textContent = t(e && e.message === "big" ? "photo.big" : "photo.bad"); err.hidden = false; }
+});
+document.getElementById("photo-remove").onclick = () => { editPhoto = ""; renderEditPhoto(); };
 form.addEventListener("submit", ev => {
   const err = msg => { ev.preventDefault(); const el = document.getElementById("edit-err"); el.textContent = msg; el.hidden = false; };
   const name = form.name.value.trim(), email = form.email.value.trim(), fed = form.fed.value.trim().toUpperCase(), rawPhone = form.phone.value.trim();
@@ -184,20 +229,38 @@ form.addEventListener("submit", ev => {
   const phone = rawPhone ? normPhone(rawPhone) : null;
   if (rawPhone && !phone) return err(t("phone.invalid"));
   const base = `players/${editing}/`;
-  update({ [base + "name"]: name.slice(0, 60), [base + "email"]: email || null, [base + "fed"]: fed || null, [base + "phone"]: phone });
+  const changes = { [base + "name"]: name.slice(0, 60), [base + "email"]: email || null, [base + "phone"]: phone };
+  if (fedOn()) changes[base + "fed"] = fed || null;
+  for (const [k] of customFields()) changes[`${base}extra/${k}`] = (form[`x_${k}`].value.trim().slice(0, 60)) || null;
+  if (editPhoto !== undefined) changes[base + "photo"] = editPhoto || null;
+  update(changes);
 });
 
 // ---- Admin: member list as CSV (e.g. for registrations) ----
 document.getElementById("export").onclick = () => {
-  const rows = [[t("team.fName"), t("team.fEmail"), t("team.fFed"), "Gemeente", t("team.fPhone")]];
+  const extra = customFields();
+  const rows = [[t("team.fName"), t("team.fEmail"), ...(fedOn() ? [fedLabel()] : []), ...extra.map(([, l]) => l), "Gemeente", t("team.fPhone")]];
   for (const p of sortedPlayers().filter(p => p.name))
-    rows.push([p.name, p.email || "", p.fed || "", (p.geo && p.geo.label) || p.gemeente || "", p.phone ? "+" + p.phone : ""]);
+    rows.push([p.name, p.email || "", ...(fedOn() ? [p.fed || ""] : []), ...extra.map(([k]) => (p.extra || {})[k] || ""),
+      (p.geo && p.geo.label) || p.gemeente || "", p.phone ? "+" + p.phone : ""]);
   const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(";")).join("\r\n");
   const a = document.createElement("a");
   a.href = URL.createObjectURL(new Blob(["﻿" + csv], { type: "text/csv" }));
   a.download = `ledenlijst-${TODAY}.csv`;
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+};
+
+// ploeg.html#me (from the welcome card): open my own details once the data is in.
+let openMine = location.hash === "#me";
+const renderPage = render;
+render = function () {
+  renderPage();
+  if (openMine && dataLoaded && session.pid && root.players && root.players[session.pid]) {
+    openMine = false;
+    history.replaceState(null, "", location.pathname + location.search);
+    openEdit(session.pid);
+  }
 };
 
 start();

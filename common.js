@@ -504,7 +504,7 @@ function fillLoginEmail() {
 // users/{uid}/profile holds phone, email, federation number and home town once per account; every team
 // keeps a copy in my player row. Changing them in one team updates the profile and my other teams; opening
 // a team (or getting approved) copies the profile into that team's row.
-const PROFILE_FIELDS = ["phone", "email", "fed", "gemeente", "geo"];
+const PROFILE_FIELDS = ["phone", "email", "gemeente", "geo", "photo"]; // the federation number is per team (sport)
 const profile = { data: null, teams: {}, pending: null, applied: false };
 const sameValue = (a, b) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
 
@@ -728,6 +728,44 @@ function makePalette(main, highlight) {
 }
 
 // ---- Team branding: logo (or the team name as text), colours, page links carrying ?t= ----
+// ---- Sport and player fields, chosen per team by the team admin (Admin → Player fields) ----
+const SPORTS = {
+  golf: { icon: "🏌️", venue: "⛳", suggest: ["handicap"] }, tennis: { icon: "🎾", venue: "🎾", suggest: ["ranking"] },
+  padel: { icon: "🎾", venue: "🎾", suggest: ["ranking"] }, hockey: { icon: "🏑", venue: "🏑", suggest: ["number", "position"] },
+  football: { icon: "⚽", venue: "⚽", suggest: ["number", "position"] }, basketball: { icon: "🏀", venue: "🏀", suggest: ["number", "position"] },
+  volleyball: { icon: "🏐", venue: "🏐", suggest: ["number", "position"] }, other: { icon: "🏆", venue: "📍", suggest: [] },
+};
+const sportKey = () => { const k = (root.settings || {}).sport; return SPORTS[k] ? k : "golf"; }; // existing teams: golf
+const sportInfo = () => SPORTS[sportKey()];
+const fedOn = () => !(root.settings || {}).fedOff;
+const fedLabel = () => (root.settings || {}).fedLabel || t("team.fed");
+const customFields = () => Object.entries((root.settings || {}).fields || {})
+  .filter(([k, v]) => /^c[1-4]$/.test(k) && v).sort(([a], [b]) => a.localeCompare(b)); // [["c1", "Handicap"], …]
+
+// ---- Profile photos: a small square image stored with the player (and in the profile, so it follows the person) ----
+const PHOTO_RE = /^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/]+=*$/;
+const photoOf = p => (p && typeof p.photo === "string" && PHOTO_RE.test(p.photo) ? p.photo : "");
+// Inline style for an avatar: the photo, or the name's colour (initials are then shown as text).
+const avatarBg = (p, name) => photoOf(p) ? `background:center/cover no-repeat url(${photoOf(p)});` : `background:${avColor(name || (p && p.name) || "")};`;
+async function photoFromFile(file) {
+  const img = await new Promise((ok, fail) => {
+    const i = new Image(), url = URL.createObjectURL(file);
+    i.onload = () => { URL.revokeObjectURL(url); ok(i); };
+    i.onerror = () => { URL.revokeObjectURL(url); fail(new Error("bad")); };
+    i.src = url;
+  });
+  const side = Math.min(img.naturalWidth, img.naturalHeight), size = 160; // centre square, 160 px
+  const c = document.createElement("canvas");
+  c.width = c.height = size;
+  c.getContext("2d").drawImage(img, (img.naturalWidth - side) / 2, (img.naturalHeight - side) / 2, side, side, 0, 0, size, size);
+  for (const q of [.82, .7, .55]) {
+    let d = c.toDataURL("image/webp", q);
+    if (!d.startsWith("data:image/webp")) d = c.toDataURL("image/jpeg", q); // Safari without WebP encoding
+    if (d.length <= 60000) return d;
+  }
+  throw new Error("big");
+}
+
 // Avatar colour that stays the same for a name (match cards, team page).
 const AV_COLORS = ["#6c5ce7", "#0891b2", "#16a34a", "#d97706", "#db2777", "#2563eb", "#7c3aed", "#0d9488"];
 const avColor = n => AV_COLORS[[...(n || "")].reduce((h, c) => (h * 31 + c.codePointAt(0)) >>> 0, 7) % AV_COLORS.length];
@@ -982,7 +1020,7 @@ function renderAccount() {
   const role = session.platformAdmin ? t("menu.rolePlatform") : session.admin ? t("menu.roleAdmin") : t("menu.rolePlayer");
   const initialsOf = s => String(s).replace(/@.*/, "").split(/[\s._-]+/).filter(Boolean).slice(0, 2).map(w => w[0]).join("").toUpperCase() || "?";
   acct.innerHTML = `<button class="acct-btn" id="acct-btn" aria-haspopup="menu" aria-expanded="${acctOpen}" aria-label="${esc(t("menu.open"))}">
-      <span class="avatar-sm" style="background:${avColor(name || u.email || "")}">${esc(initialsOf(label))}</span>
+      <span class="avatar-sm" style="${avatarBg(session.pid && root.players && root.players[session.pid], name || u.email || "")}">${photoOf(session.pid && root.players && root.players[session.pid]) ? "" : esc(initialsOf(label))}</span>
       <span class="nm">${esc(name || t("menu.account"))}</span>${ic("chevron-down")}</button>
     <div class="acct-menu" id="acct-menu" role="menu"${acctOpen ? "" : " hidden"}>
       <div class="menu-head"><b>${esc(label)}</b>${name && u.email ? `<span>${esc(u.email)}</span>` : ""}

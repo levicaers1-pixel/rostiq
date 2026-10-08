@@ -73,6 +73,16 @@
   #admin .panel.danger-zone { border-color: color-mix(in srgb, var(--no) 35%, var(--border)); }
   #admin .panel.danger-zone h2 .h-ic { background: var(--no-bg); color: var(--no); }
 
+  /* Player fields */
+  .fieldsform { display: grid; gap: 16px; max-width: 640px; }
+  .fieldsform label { display: grid; gap: 4px; font-size: .85rem; color: var(--muted); }
+  .fieldsform .fed-row { display: grid; gap: 10px; padding: 12px; border: 1px solid var(--border); border-radius: 12px; }
+  .fieldsform label.check { display: flex; align-items: center; gap: 8px; color: var(--text); font-size: .9rem; }
+  .custom-row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+  .custom-row input { flex: 1; min-width: 0; }
+  .suggest { display: flex; gap: 6px; flex-wrap: wrap; }
+  .suggest button { font-size: .8rem; padding: 5px 12px; border-radius: 999px; }
+
   /* Settings */
   .settings { display: grid; gap: 14px; max-width: 640px; }
   .settings label { display: grid; gap: 4px; font-size: .85rem; color: var(--muted); }
@@ -137,6 +147,7 @@
       <a href="#requests-panel"><span data-i18n="admin.requests">Access requests</span><span class="count" id="nav-req-count" hidden></span></a>
       <a href="#sec-players" data-i18n="admin.players">Players & accounts</a>
       <a href="#sec-settings" data-i18n="admin.settings">Settings</a>
+      <a href="#sec-fields" data-i18n="fields.title">Player fields</a>
       <a href="#sec-brand" data-i18n="brand.title">Branding</a>
       <a href="#sec-matches" data-i18n="admin.matches">Matches</a>
       <a href="#sec-backup" data-i18n="admin.backup">Backup</a>
@@ -177,6 +188,25 @@
           <span class="row"><input name="v" type="url" placeholder="https://chat.whatsapp.com/…" autocomplete="off"> <button data-i18n="admin.save">Save</button> <button type="button" id="wa-remove" data-i18n="wa.remove">Remove</button> <span class="msg"></span></span></label>
           <span class="muted" data-i18n="wa.help"></span></form>
       </div>
+    </section>
+
+    <!-- Sport & player fields -->
+    <section class="panel" id="sec-fields">
+      <h2 data-i18n="fields.title">Player fields</h2>
+      <p class="help" data-i18n="fields.help"></p>
+      <form class="fieldsform" id="f-fields">
+        <label><span data-i18n="fields.sport">Sport</span><select name="sport" id="sport-select"></select></label>
+        <div class="fed-row">
+          <label class="check"><input type="checkbox" name="fedOn"> <span data-i18n="fields.fedShow">Show the federation number</span></label>
+          <label><span data-i18n="fields.fedLabel">Label</span><input name="fedLabel" maxlength="40" data-i18n-placeholder="team.fed"></label>
+        </div>
+        <div>
+          <p class="field-label" data-i18n="fields.custom">Extra fields</p>
+          <div id="custom-rows"></div>
+          <div class="suggest" id="field-suggest"></div>
+        </div>
+        <div class="brand-actions"><button class="primary" data-i18n="admin.save">Save</button><span class="msg"></span></div>
+      </form>
     </section>
 
     <!-- Branding -->
@@ -269,6 +299,7 @@ function render() {
   document.getElementById("admin").hidden = !session.admin;
   if (!session.admin) return;
   addSectionIcons();
+  renderFields();
   renderTiles();
   renderRequests();
   renderPlayers();
@@ -296,8 +327,60 @@ function renderTiles() {
   badge.textContent = reqs;
 }
 
+// ---- Sport & player fields (shown on the team page, in "my details" and in the CSV) ----
+const ff = document.getElementById("f-fields");
+let fieldsDraft = null; // being edited: { sport, fedOn, fedLabel, custom: [label, …] }
+function renderFields() {
+  if (!fieldsDraft) {
+    const s = root.settings || {};
+    fieldsDraft = { sport: sportKey(), fedOn: fedOn(), fedLabel: s.fedLabel || "", custom: customFields().map(([, l]) => l) };
+  }
+  const d = fieldsDraft;
+  const sel = document.getElementById("sport-select");
+  sel.innerHTML = Object.keys(SPORTS).map(k => `<option value="${k}" ${k === d.sport ? "selected" : ""}>${SPORTS[k].icon} ${t("sport." + k)}</option>`).join("");
+  ff.fedOn.checked = d.fedOn;
+  if (document.activeElement !== ff.fedLabel) ff.fedLabel.value = d.fedLabel;
+  ff.fedLabel.disabled = !d.fedOn;
+  const focus = document.activeElement && document.activeElement.dataset.ci;
+  document.getElementById("custom-rows").innerHTML = d.custom.map((l, i) => `<div class="custom-row">
+      <input data-ci="${i}" maxlength="30" value="${esc(l)}" placeholder="${t("fields.labelPh")}">
+      <button type="button" class="link err" data-remove-field="${i}">${t("fields.remove")}</button></div>`).join("") +
+    (d.custom.length < 4 ? `<button type="button" data-add-field>${ic("plus")} ${t("fields.add")}</button>` : "");
+  if (focus !== undefined) { const el = document.querySelector(`[data-ci="${focus}"]`); if (el) { el.focus(); el.setSelectionRange(el.value.length, el.value.length); } }
+  const taken = d.custom.map(x => x.toLowerCase());
+  const sugg = SPORTS[d.sport].suggest.map(k => t("field." + k)).filter(l => !taken.includes(l.toLowerCase()));
+  document.getElementById("field-suggest").innerHTML = d.custom.length < 4 && sugg.length
+    ? `<span class="muted">${t("fields.suggest")}</span> ` + sugg.map(l => `<button type="button" data-suggest="${esc(l)}">${ic("plus")} ${esc(l)}</button>`).join("") : "";
+}
+ff.addEventListener("input", ev => {
+  const d = fieldsDraft;
+  if (ev.target.name === "sport") d.sport = ev.target.value;
+  if (ev.target.name === "fedOn") d.fedOn = ev.target.checked;
+  if (ev.target.name === "fedLabel") d.fedLabel = ev.target.value;
+  if (ev.target.dataset.ci !== undefined) d.custom[Number(ev.target.dataset.ci)] = ev.target.value;
+  if (ev.target.name !== "fedLabel" && ev.target.dataset.ci === undefined) renderFields();
+});
+ff.addEventListener("click", ev => {
+  const d = fieldsDraft;
+  if (ev.target.closest("[data-add-field]")) { d.custom.push(""); renderFields(); document.querySelector(`[data-ci="${d.custom.length - 1}"]`).focus(); }
+  const rm = ev.target.closest("[data-remove-field]");
+  if (rm) { d.custom.splice(Number(rm.dataset.removeField), 1); renderFields(); }
+  const sg = ev.target.closest("[data-suggest]");
+  if (sg && d.custom.length < 4) { d.custom.push(sg.dataset.suggest); renderFields(); }
+});
+ff.addEventListener("submit", async ev => {
+  ev.preventDefault();
+  const d = fieldsDraft, labels = d.custom.map(l => l.trim().slice(0, 30)).filter(Boolean);
+  // Fields keep their slot (c1…c4) in order, so players' values stay with the right label when you only rename.
+  const fields = Object.fromEntries(labels.map((l, i) => [`c${i + 1}`, l]));
+  const ok = await update({ "settings/sport": d.sport, "settings/fedOff": d.fedOn ? null : true,
+    "settings/fedLabel": d.fedLabel.trim().slice(0, 40) || null, "settings/fields": Object.keys(fields).length ? fields : null });
+  if (ok) { fieldsDraft = null; render(); }
+  savedMsg(ff, ok, ok ? "" : t("status.saveFailed"));
+});
+
 // Section headings get an icon.
-const SECTION_ICONS = { "requests-panel": "bell", "sec-players": "users", "sec-settings": "settings", "sec-brand": "image",
+const SECTION_ICONS = { "requests-panel": "bell", "sec-players": "users", "sec-settings": "settings", "sec-fields": "hash", "sec-brand": "image",
   "sec-matches": "calendar", "sec-backup": "download", "sec-season": "flag" };
 function addSectionIcons() { // after the texts are filled in (that replaces the heading's content)
   for (const [id, icon] of Object.entries(SECTION_ICONS)) {

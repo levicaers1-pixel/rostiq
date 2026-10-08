@@ -379,7 +379,7 @@ function renderMatch(e) {
   // How far the venue is from me (if both locations are known).
   const venue = matchInfo(e).venue;
   const toVenue = me ? kmBetween(geoOf(me), venue) : null;
-  const avatarOf = (id, cls = "") => `<span class="av${cls}" style="background:${avColor(nameOf(id))}" title="${esc(nameOf(id))}">${esc(initials(nameOf(id)))}</span>`;
+  const avatarOf = (id, cls = "") => `<span class="av${cls}" style="${avatarBg(player(id), nameOf(id))}" title="${esc(nameOf(id))}">${photoOf(player(id)) ? "" : esc(initials(nameOf(id)))}</span>`;
   let html = `
     <div class="m-head">
       <div class="m-date"><span>${fmt(e.date, { weekday: "short" }).replace(".", "")}</span><b>${parse(e.date).getDate()}</b><span>${fmt(e.date, { month: "short" }).replace(".", "")}</span></div>
@@ -564,7 +564,7 @@ function drawMap(fit) {
   }
   for (const { v, evs } of Object.values(venues)) {
     pts.push([v.lat, v.lon]);
-    L.marker([v.lat, v.lon], { icon: L.divIcon({ className: "pin venue", html: "⛳", iconSize: [30, 30] }) })
+    L.marker([v.lat, v.lon], { icon: L.divIcon({ className: "pin venue", html: sportInfo().venue, iconSize: [30, 30] }) })
       .bindPopup(`<b>${esc(v.name)}</b><br>${evs.map(e => `${esc(fmt(e.date, { day: "numeric", month: "short" }))} – ${esc(e.opp)}`).join("<br>")}`)
       .addTo(mapLayer);
   }

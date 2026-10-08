@@ -46,6 +46,9 @@
               ".validate": false
             }
           },
+          "photo": {
+            ".validate": "newData.isString() && newData.val().length <= 60000 && newData.val().matches(/^data:image\\/(png|jpeg|webp);base64,[A-Za-z0-9+\\/]+=*$/)"
+          },
           "$other": {
             ".validate": false
           }
@@ -100,6 +103,16 @@
             ".validate": false
           }
         },
+        "photo": {
+          ".write": "(auth != null && root.child('players').child($pid).child('uid').val() === auth.uid)",
+          ".validate": "newData.isString() && newData.val().length <= 60000 && newData.val().matches(/^data:image\\/(png|jpeg|webp);base64,[A-Za-z0-9+\\/]+=*$/)"
+        },
+        "extra": {
+          ".write": "(auth != null && root.child('players').child($pid).child('uid').val() === auth.uid)",
+          "$c": {
+            ".validate": "$c.matches(/^c[1-4]$/) && newData.isString() && newData.val().length <= 60"
+          }
+        },
         "avail": {
           ".write": "(auth != null && root.child('players').child($pid).child('uid').val() === auth.uid)",
           "$date": {
@@ -124,6 +137,20 @@
       },
       "waGroup": {
         ".validate": "newData.isString() && newData.val().matches(/^https:\\/\\/chat\\.whatsapp\\.com\\/[A-Za-z0-9]{10,40}$/)"
+      },
+      "sport": {
+        ".validate": "newData.isString() && newData.val().matches(/^(golf|tennis|padel|hockey|football|basketball|volleyball|other)$/)"
+      },
+      "fedOff": {
+        ".validate": "newData.isBoolean()"
+      },
+      "fedLabel": {
+        ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 40"
+      },
+      "fields": {
+        "$c": {
+          ".validate": "$c.matches(/^c[1-4]$/) && newData.isString() && newData.val().length >= 1 && newData.val().length <= 30"
+        }
       },
       "$other": {
         ".validate": false
@@ -330,6 +357,9 @@
                   ".validate": false
                 }
               },
+              "photo": {
+                ".validate": "newData.isString() && newData.val().length <= 60000 && newData.val().matches(/^data:image\\/(png|jpeg|webp);base64,[A-Za-z0-9+\\/]+=*$/)"
+              },
               "$other": {
                 ".validate": false
               }
@@ -387,6 +417,16 @@
                 ".validate": false
               }
             },
+            "photo": {
+              ".write": "(auth != null && root.child('teams').child($tid).child('players').child($pid).child('uid').val() === auth.uid)",
+              ".validate": "newData.isString() && newData.val().length <= 60000 && newData.val().matches(/^data:image\\/(png|jpeg|webp);base64,[A-Za-z0-9+\\/]+=*$/)"
+            },
+            "extra": {
+              ".write": "(auth != null && root.child('teams').child($tid).child('players').child($pid).child('uid').val() === auth.uid)",
+              "$c": {
+                ".validate": "$c.matches(/^c[1-4]$/) && newData.isString() && newData.val().length <= 60"
+              }
+            },
             "avail": {
               ".write": "(auth != null && root.child('teams').child($tid).child('players').child($pid).child('uid').val() === auth.uid)",
               "$date": {
@@ -411,6 +451,20 @@
           },
           "waGroup": {
             ".validate": "newData.isString() && newData.val().matches(/^https:\\/\\/chat\\.whatsapp\\.com\\/[A-Za-z0-9]{10,40}$/)"
+          },
+          "sport": {
+            ".validate": "newData.isString() && newData.val().matches(/^(golf|tennis|padel|hockey|football|basketball|volleyball|other)$/)"
+          },
+          "fedOff": {
+            ".validate": "newData.isBoolean()"
+          },
+          "fedLabel": {
+            ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 40"
+          },
+          "fields": {
+            "$c": {
+              ".validate": "$c.matches(/^c[1-4]$/) && newData.isString() && newData.val().length >= 1 && newData.val().length <= 30"
+            }
           },
           "$other": {
             ".validate": false
@@ -536,6 +590,9 @@
             "$other": {
               ".validate": false
             }
+          },
+          "photo": {
+            ".validate": "newData.isString() && newData.val().length <= 60000 && newData.val().matches(/^data:image\\/(png|jpeg|webp);base64,[A-Za-z0-9+\\/]+=*$/)"
           },
           "$other": {
             ".validate": false
