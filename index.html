@@ -32,6 +32,48 @@
 <script src="boot.js"></script>
 <style>
 
+  /* "Next match" hero (replaces the small countdown on this page) */
+  #countdown { display: none !important; }
+  .hero { position: relative; overflow: hidden; margin-top: 28px; padding: 22px; border-radius: 20px; display: grid; gap: 16px;
+    color: var(--brand-text); box-shadow: var(--shadow);
+    background: radial-gradient(130% 150% at 100% 0%, color-mix(in srgb, var(--pampas) 32%, var(--brand)) 0%, var(--brand) 58%); }
+  .hero::after { content: ""; position: absolute; right: -70px; top: -70px; width: 230px; height: 230px; border-radius: 50%; pointer-events: none;
+    border: 30px solid color-mix(in srgb, var(--pampas) 18%, transparent); }
+  .hero > * { position: relative; z-index: 1; }
+  .hero-top { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .hero-kicker { display: inline-flex; align-items: center; gap: 6px; font-size: .74rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; opacity: .82; }
+  .hero-when { padding: 4px 12px; border-radius: 999px; font-size: .85rem; font-weight: 700; background: var(--pampas); color: var(--brand); }
+  .hero-main { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; }
+  .hero-title { margin: 0; color: var(--brand-text); font-size: clamp(1.7rem, 1.2rem + 2vw, 2.4rem); display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .hero-date { margin-top: 2px; font-weight: 500; opacity: .88; }
+  .hero .details { margin-top: 8px; display: grid; gap: 3px; font-size: .85rem; color: color-mix(in srgb, var(--brand-text) 80%, transparent); }
+  .hero .details a { color: var(--brand-text); }
+  .hero-stat { text-align: right; line-height: 1; }
+  .hero-stat b { font-size: 2.7rem; font-weight: 800; }
+  .hero-stat span { margin-left: 4px; font-size: 1.1rem; opacity: .75; }
+  .hero-stat small { display: block; margin-top: 6px; font-size: .72rem; letter-spacing: .06em; text-transform: uppercase; opacity: .75; }
+  .hero .hero-bar .fill { background: color-mix(in srgb, var(--brand-text) 18%, transparent); }
+  .hero .hero-bar .yes { background: var(--pampas); }
+  .hero .hero-bar .maybe { background: color-mix(in srgb, var(--brand-text) 45%, transparent); }
+  .hero .hero-bar .min { background: var(--brand-text); opacity: .7; }
+  .hero-people { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; min-height: 30px; }
+  .hero .av { border-color: var(--brand); }
+  .hero-actions { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+  .hero-answer { background: color-mix(in srgb, var(--brand-text) 14%, transparent); }
+  .hero-answer button { color: color-mix(in srgb, var(--brand-text) 85%, transparent); }
+  .hero-answer button:hover:not(:disabled) { background: color-mix(in srgb, var(--brand-text) 14%, transparent); }
+  .hero-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+  .hero-btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 10px; font-size: .85rem; font-weight: 600; text-decoration: none;
+    color: var(--brand-text); background: color-mix(in srgb, var(--brand-text) 12%, transparent); border: 1px solid color-mix(in srgb, var(--brand-text) 22%, transparent); }
+  .hero-btn:hover:not(:disabled) { background: color-mix(in srgb, var(--brand-text) 20%, transparent); border-color: color-mix(in srgb, var(--brand-text) 35%, transparent); }
+  @media (max-width: 520px) {
+    .hero { padding: 18px; }
+    .hero-answer { width: 100%; } .hero-answer button { flex: 1; }
+    .hero-btns { width: 100%; gap: 6px; flex-wrap: nowrap; }
+    .hero-btns .hero-btn { flex: 1; justify-content: center; white-space: nowrap; padding: 9px 8px; font-size: .8rem; min-width: 0; }
+    .hero-btns .hero-btn[data-share] { flex: 0 0 auto; padding: 9px 12px; }
+  }
+
   /* Match cards: date, details, progress towards the minimum, who's coming, my answer, the whole team */
   .matches { display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(min(380px, 100%), 1fr)); align-items: start; }
   .match { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-sm);
@@ -227,6 +269,8 @@
   <p class="sub"><span data-i18n="avail.sub">Tap a cell to set your availability</span> · <span class="status" id="status" data-i18n="status.connecting">Connecting…</span></p>
   <p class="banner" id="banner" hidden data-i18n-html="banner.noDb"></p>
 
+  <section class="hero" id="hero" hidden aria-live="polite"></section>
+
   <div class="section-head">
     <h2 data-i18n="matches">Matches</h2>
     <div class="head-actions">
@@ -375,12 +419,49 @@ function renderMatches(players, events) {
     </article>`;
   }).join("");
 }
+// The next match, big, at the top: countdown, details, progress, who's coming, my answer, quick actions.
+function renderHero(players) {
+  const el = document.getElementById("hero");
+  const e = dataLoaded ? EVENTS.find(x => !isPast(x)) : null;
+  el.hidden = !e;
+  if (!e) return;
+  const c = tally(e, players), min = minPlayers();
+  const total = Math.max(players.filter(p => p.name).length, min, 1), pct = n => Math.min(100, n / total * 100);
+  const days = Math.round((parse(e.date) - parse(TODAY)) / 864e5);
+  const when = days <= 0 ? t("hero.today") : days === 1 ? t("hero.tomorrow") : t("hero.inDays", { n: days });
+  const me = AUTH_ON ? players.find(p => p.id === session.pid) : null;
+  const mine = me ? me.avail[e.date] || "" : null;
+  const coming = players.filter(p => p.avail[e.date] === "yes");
+  el.innerHTML = `
+    <div class="hero-top"><span class="hero-kicker">${ic("flag")} ${t("hero.next")}</span><span class="hero-when">${when}</span></div>
+    <div class="hero-main">
+      <div><h2 class="hero-title">${esc(e.opp)}${e.final ? `<span class="pill violet">${ic("trophy")} ${t("final")}</span>` : ""}</h2>
+        <div class="hero-date">${esc(fmt(e.date, { weekday: "long", day: "numeric", month: "long" }))}</div>
+        ${detailsHtml(e)}</div>
+      <div class="hero-stat"><b>${c.yes}</b><span>/ ${min}</span><small>${t("label.yes")}</small></div>
+    </div>
+    <div class="bar hero-bar"><div class="fill"><span class="yes" style="width:${pct(c.yes)}%"></span><span class="maybe" style="width:${pct(c.maybe)}%"></span></div>
+      <i class="min" style="left:${pct(min)}%" title="min. ${min}"></i></div>
+    <div class="hero-people">${coming.length ? `<span class="avatars">${coming.slice(0, 10).map(p => avatar(p, players.indexOf(p))).join("")}${
+      coming.length > 10 ? `<span class="av more">+${coming.length - 10}</span>` : ""}</span>` : `<span>${t("match.nobody")}</span>`}
+      <span class="pill ${LEVEL_PILL[c.level]}">${t("level." + c.level)}</span></div>
+    <div class="hero-actions">
+      ${mine !== null ? `<div class="answer hero-answer" role="group" aria-label="${t("match.mine")}">${["yes", "maybe", "no"].map(a =>
+        `<button data-answer="${a}" data-date="${e.date}" data-a="${a}" aria-pressed="${mine === a}">${ic({ yes: "check", maybe: "help", no: "x" }[a])} ${t("answer." + a)}</button>`).join("")}</div>` : ""}
+      <div class="hero-btns">
+        <button class="hero-btn" data-ics="${e.date}">${ic("calendar-plus")} ${t("hero.calendar")}</button>
+        <a class="hero-btn" href="${pageUrl("carpool.html")}">${ic("car")} ${t("hero.carpool")}</a>
+        <button class="hero-btn" data-share="${e.date}" title="${t("share.match")}" aria-label="${t("share.match")}">${ic("share")}</button>
+      </div>
+    </div>`;
+}
+
 const matchesEl = document.getElementById("matches");
 matchesEl.addEventListener("toggle", ev => {
   const d = ev.target.closest && ev.target.closest(".m-team");
   if (d) d.open ? openTeams.add(d.dataset.date) : openTeams.delete(d.dataset.date);
 }, true);
-matchesEl.addEventListener("click", ev => {
+function onMatchClick(ev) {
   const find = el => EVENTS.find(x => x.date === el.dataset.ics || x.date === el.dataset.share || x.date === el.dataset.edit || x.date === el.dataset.date);
   const ics = ev.target.closest("[data-ics]");
   if (ics) { const e = find(ics); downloadIcs([e], `${e.date}-${slug(e.opp)}.ics`); }
@@ -399,7 +480,9 @@ matchesEl.addEventListener("click", ev => {
     const p = sortedPlayers().find(x => x.id === chip.dataset.pid), e = find(chip);
     if (p && e) cycle(p, e);
   }
-});
+}
+matchesEl.addEventListener("click", onMatchClick);
+document.getElementById("hero").addEventListener("click", onMatchClick);
 
 const minPlayers = () => (root.settings && root.settings.minPlayers) || TEAM.minPlayers || 3;
 const shownEvents = () => EVENTS.filter(e => showPast || !isPast(e));
@@ -432,6 +515,7 @@ function render() {
 
   const players = sortedPlayers();
   const events = shownEvents();
+  renderHero(players);
   renderMatches(players, events);
   renderControls();
 
