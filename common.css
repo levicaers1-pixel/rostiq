@@ -237,3 +237,41 @@ button.link { background: none; border: none; padding: 0; text-decoration: under
 .team-list button span { color: var(--muted); font-size: .85rem; }
 .team-chip { display: inline-block; margin: 0 0 8px; padding: 3px 10px; border-radius: 999px; background: var(--brand); color: var(--brand-text); font-size: .8rem; font-weight: 600; }
 .account .switch { color: var(--brand-text); opacity: .85; text-decoration: underline; white-space: nowrap; }
+
+/* Bottom navigation on phones (a copy of the header tabs, made by common.js) */
+.bottom-nav { display: none; }
+@media (max-width: 700px) {
+  .brand .tabs { display: none; }
+  .brand-inner { padding-bottom: 14px; }
+  body.has-bottom-nav { padding-bottom: calc(68px + env(safe-area-inset-bottom)); }
+  .bottom-nav:not([hidden]) {
+    display: grid; grid-auto-flow: column; grid-auto-columns: 1fr;
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 20;
+    padding: 6px max(8px, env(safe-area-inset-right)) calc(6px + env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left));
+    background: color-mix(in srgb, var(--surface) 88%, transparent); backdrop-filter: saturate(1.4) blur(14px);
+    border-top: 1px solid var(--border); box-shadow: 0 -8px 24px -16px rgb(11 13 20 / .25);
+  }
+  .bottom-nav a[hidden] { display: none; }
+  .bottom-nav a {
+    display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 6px 2px 4px; border-radius: 12px;
+    color: var(--muted); text-decoration: none; font-size: .68rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    -webkit-tap-highlight-color: transparent; transition: color .15s var(--ease), background .15s var(--ease);
+  }
+  .bottom-nav a svg.i { width: 22px; height: 22px; vertical-align: 0; }
+  .bottom-nav a[aria-current="page"] { color: var(--accent); background: color-mix(in srgb, var(--accent) 9%, transparent); }
+}
+
+/* Toast: short confirmation at the bottom of the screen */
+.toast {
+  position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom)); z-index: 30;
+  display: inline-flex; align-items: center; gap: 8px; width: max-content; max-width: calc(100vw - 32px);
+  padding: 10px 16px; border-radius: 999px; background: var(--brand); color: var(--brand-text);
+  font-size: .88rem; font-weight: 600; box-shadow: var(--shadow);
+  opacity: 0; transform: translate(-50%, 12px); pointer-events: none;
+  transition: opacity .2s var(--ease), transform .25s var(--ease);
+}
+.toast svg.i { color: var(--pampas); }
+.toast.show { opacity: 1; transform: translate(-50%, 0); }
+.toast.err { background: var(--no); color: #fff; }
+.toast.err svg.i { color: #fff; }
+@media (max-width: 700px) { body.has-bottom-nav .toast { bottom: calc(80px + env(safe-area-inset-bottom)); } }

@@ -198,7 +198,7 @@ async function write(path, value) {
   refreshEvents();
   render();
   shareProfile({ [path]: value });
-  return send(value === null ? "DELETE" : "PUT", path, value === null ? undefined : value);
+  return saved(send(value === null ? "DELETE" : "PUT", path, value === null ? undefined : value));
 }
 // Several paths in one atomic update, e.g. { "players/p01/uid": "...", "members/<uid>": "p01" }.
 async function update(changes) {
@@ -206,7 +206,31 @@ async function update(changes) {
   refreshEvents();
   render();
   shareProfile(changes);
-  return send("PATCH", "", changes);
+  return saved(send("PATCH", "", changes));
+}
+
+// ---- Toasts: a short "Saved ✓" after something the user did (not after automatic syncing), errors always ----
+const userActed = () => !navigator.userActivation || navigator.userActivation.isActive;
+async function saved(pending) {
+  const acted = userActed(); // read now: the request takes a moment
+  const ok = await pending;
+  if (!ok) toast(t("status.saveFailed"), "err");
+  else if (acted) toast(t("toast.saved"));
+  return ok;
+}
+let toastTimer = null;
+function toast(text, kind = "") {
+  let el = document.getElementById("toast");
+  if (!el) {
+    el = document.createElement("div");
+    el.id = "toast"; el.className = "toast"; el.setAttribute("role", "status"); el.setAttribute("aria-live", "polite");
+    document.body.append(el);
+  }
+  el.innerHTML = (kind === "err" ? ic("x") : ic("check")) + `<span>${esc(text)}</span>`;
+  el.classList.toggle("err", kind === "err");
+  requestAnimationFrame(() => el.classList.add("show"));
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove("show"), kind === "err" ? 4000 : 1600);
 }
 // Outside the current team (e.g. the "my teams" index users/<uid>/teams/<id>).
 const writeAbs = (path, value) => send(value === null ? "DELETE" : "PUT", path, value === null ? undefined : value, true);
@@ -569,6 +593,16 @@ function applyBranding() {
     const file = (a.getAttribute("href") || "").split("?")[0];
     a.setAttribute("href", file + (TEAM_ID ? `?t=${TEAM_ID}` : ""));
   });
+  // Phones: the same tabs as an app-style bar at the bottom (CSS shows one or the other).
+  if (tabs) {
+    let bar = document.querySelector(".bottom-nav");
+    if (!bar) { bar = document.createElement("nav"); bar.className = "bottom-nav"; document.body.append(bar); }
+    bar.innerHTML = tabs.innerHTML;
+    bar.hidden = tabs.hidden;
+    const home = bar.querySelector('a[data-i18n="tab.availability"]');
+    if (home) home.textContent = "🗓️ " + t("matches"); // shorter label under the icon (icons.js turns the emoji into the icon)
+    document.body.classList.toggle("has-bottom-nav", !tabs.hidden);
+  }
   // Only "--name: #rrggbb" pairs reach the style sheet (the database rules allow nothing else either).
   const c = B.colors, vars = o => Object.entries(o || {}).filter(([k, v]) => /^--[a-z-]{2,20}$/.test(k) && HEX.test(v))
     .map(([k, v]) => `${k}: ${v};`).join(" ");
