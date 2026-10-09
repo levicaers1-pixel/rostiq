@@ -79,7 +79,11 @@
     background: color-mix(in srgb, var(--muted) 4%, var(--surface)); }
   .wiz-nav button { padding: 11px 18px; font-size: .95rem; }
   .wiz-nav .primary { margin-left: auto; }
-  .wiz-err { margin: 0 20px 16px; }
+  .wiz-err { margin: 0 20px 16px; background: var(--no-bg) !important; color: var(--no) !important; font-weight: 600; }
+  .wiz-err svg.i { color: var(--no) !important; }
+  .fld .fld-err { color: var(--no); font-weight: 600; }
+  .fld input.bad { background: color-mix(in srgb, var(--no) 6%, var(--bg)); animation: shake .35s; }
+  @keyframes shake { 20%, 60% { transform: translateX(-4px); } 40%, 80% { transform: translateX(4px); } }
 </style>
 </head>
 <body>
@@ -195,6 +199,32 @@ function problem(step) {
   return "";
 }
 
+// The field a step's problem belongs to (to point at it), or null.
+function problemField(step) {
+  if (step === "code") return f.code;
+  if (step === "team") return f.brand;
+  if (step === "you") return !f.you.value.trim() ? f.you : f.id;
+  return null;
+}
+// Mark a field as wrong: red, the reason right under it, scrolled into view and focused.
+function flagField(el, msg) {
+  if (!el) return;
+  if (el === f.id) document.getElementById("id-field").hidden = false;
+  el.classList.remove("bad"); void el.offsetWidth; el.classList.add("bad"); // restart the shake
+  const label = el.closest(".fld");
+  let note = label.querySelector(".fld-err");
+  if (!note) { note = document.createElement("small"); note.className = "fld-err"; label.append(note); }
+  note.textContent = msg;
+  el.scrollIntoView({ behavior: "smooth", block: "center" });
+  setTimeout(() => el.focus({ preventScroll: true }), 350);
+}
+function clearFlag(el) {
+  el.classList.remove("bad");
+  const note = el.closest(".fld") && el.closest(".fld").querySelector(".fld-err");
+  if (note) note.remove();
+}
+for (const name of ["code", "brand", "you", "id"]) f[name].addEventListener("input", () => clearFlag(f[name]));
+
 function render() {
   const signedIn = AUTH_ON ? !!session.user && session.ready : true;
   f.hidden = !signedIn;
@@ -293,7 +323,12 @@ f.addEventListener("submit", async ev => {
   ev.preventDefault();
   if (st.busy) return;
   const p = problem(cur());
-  if (p) { showErr(p); return; }
+  // Still checking the code or link (a fraction of a second): wait and try again instead of complaining.
+  if ((p === t("start.codeChecking") || p === t("start.idChecking")) && (st.retries = (st.retries || 0) + 1) < 8) {
+    setTimeout(() => f.requestSubmit(), 300); return;
+  }
+  st.retries = 0;
+  if (p) { showErr(p); flagField(problemField(cur()), p); return; }
   showErr("");
   if (st.step < steps().length - 1) { st.step++; render(); focusStep(); window.scrollTo({ top: f.offsetTop - 16, behavior: "smooth" }); return; }
   create();
