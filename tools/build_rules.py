@@ -19,6 +19,8 @@ import os
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PLATFORM_ADMINS = ["levicaers1@gmail.com"]
 
+# Signed in with a verified email address (Google, or the email sign-in link).
+VERIFIED = "auth != null && auth.token.email_verified === true"
 PA = "(auth != null && auth.token.email_verified === true && (" + " || ".join(
     f"auth.token.email === '{e}'" for e in PLATFORM_ADMINS) + "))"
 T = "root.child('teams').child($tid)"
@@ -143,7 +145,7 @@ team = {
     # Name, logo, colours…: readable by anyone signed in (shown on the 'waiting for approval' screen).
     # The team admin may change the branding fields (Admin → Branding); the rest is the RostiQ admin's.
     "info": {
-        ".read": "auth != null",
+        ".read": VERIFIED,
         ".validate": "newData.hasChild('brand')",
         "brand": {".write": TA, **s(60, 1)}, "shortName": {".write": TA, **s(60)},
         "calendarLabel": {".write": TA, **s(60)}, "adminName": {".write": TA, **s(60)},
@@ -204,18 +206,18 @@ team[".write"] = f"{PA} || ({SELF_CREATE})"
 
 signup = {
     # Platform switch: true = anyone may start a team without a code.
-    "open": {".read": "auth != null", ".write": PA, ".validate": "newData.isBoolean()"},
+    "open": {".read": VERIFIED, ".write": PA, ".validate": "newData.isBoolean()"},
     "$other": NO,
 }
 signup_codes = {
     ".read": PA,  # the list is yours; a single code can be read by whoever knows it
     "$code": {
-        ".read": "auth != null",
+        # Whoever knows a code may read how many uses it has left – only that, not the note.
         ".write": f"{PA} || (auth != null && data.exists() && newData.exists())",
         ".validate": f"$code.matches(/^[A-Z0-9-]{{3,30}}$/) && newData.hasChildren(['uses'])"
                      f" && ({PA} || (newData.child('uses').val() === data.child('uses').val() - 1"
                      " && newData.child('note').val() === data.child('note').val()))",
-        "uses": num(0, 1000),
+        "uses": {".read": VERIFIED, **num(0, 1000)},
         "note": s(60),
         "$other": NO,
     },

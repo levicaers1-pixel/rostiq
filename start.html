@@ -258,8 +258,8 @@ f.code.addEventListener("input", () => {
   codeTimer = setTimeout(async () => {
     const v = f.code.value;
     if (v.length < 3) { st.code.uses = 0; return render(); }
-    const c = await getAbs(`signupCodes/${v}`);
-    if (f.code.value === v) { st.code = { value: v, uses: c && typeof c.uses === "number" ? c.uses : 0 }; render(); }
+    const n = await getAbs(`signupCodes/${v}/uses`); // only the counter is readable
+    if (f.code.value === v) { st.code = { value: v, uses: typeof n === "number" ? n : 0 }; render(); }
   }, 350);
 });
 function setId(v) {
@@ -309,9 +309,9 @@ async function create() {
   if (!slot) return fail(t("start.max"));
   let codeUses = null, code = st.code.value;
   if (!st.open) {
-    const c = code && await getAbs(`signupCodes/${code}`);
-    if (!c || !(c.uses > 0)) { st.step = 0; return fail(t("start.codeBad")); }
-    codeUses = c.uses;
+    const n = code && await getAbs(`signupCodes/${code}/uses`);
+    if (!(n > 0)) { st.step = 0; return fail(t("start.codeBad")); }
+    codeUses = n;
   }
   const preset = BRAND_PRESETS.find(p => p[0] === st.colors);
   const colors = preset && preset !== BRAND_PRESETS[0] ? makePalette(preset[1], preset[2]) : null;

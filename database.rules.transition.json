@@ -240,7 +240,7 @@
         ".write": "(auth != null && auth.token.email_verified === true && (auth.token.email === 'levicaers1@gmail.com')) || (auth != null && auth.token.email_verified === true && !data.exists() && newData.child('admins').child(auth.uid).val() === true && newData.child('info').child('brand').isString() && newData.child('meta').child('createdBy').val() === auth.uid && newData.child('meta').child('createdAt').isNumber() && ((!root.child('users').child(auth.uid).child('created').child('s1').exists() && newData.parent().parent().child('users').child(auth.uid).child('created').child('s1').val() === $tid) || (!root.child('users').child(auth.uid).child('created').child('s2').exists() && newData.parent().parent().child('users').child(auth.uid).child('created').child('s2').val() === $tid) || (!root.child('users').child(auth.uid).child('created').child('s3').exists() && newData.parent().parent().child('users').child(auth.uid).child('created').child('s3').val() === $tid)) && (root.child('signup').child('open').val() === true     || (newData.child('meta').child('code').val() !== null && root.child('signupCodes').child(newData.child('meta').child('code').val()).child('uses').val() > 0         && newData.parent().parent().child('signupCodes').child(newData.child('meta').child('code').val()).child('uses').val() === root.child('signupCodes').child(newData.child('meta').child('code').val()).child('uses').val() - 1)))",
         ".validate": "$tid.matches(/^[a-z0-9][a-z0-9-]{1,39}$/)",
         "info": {
-          ".read": "auth != null",
+          ".read": "auth != null && auth.token.email_verified === true",
           ".validate": "newData.hasChild('brand')",
           "brand": {
             ".write": "((auth != null && auth.token.email_verified === true && (auth.token.email === 'levicaers1@gmail.com')) || (auth != null && root.child('teams').child($tid).child('admins').child(auth.uid).val() === true))",
@@ -634,7 +634,7 @@
     },
     "signup": {
       "open": {
-        ".read": "auth != null",
+        ".read": "auth != null && auth.token.email_verified === true",
         ".write": "(auth != null && auth.token.email_verified === true && (auth.token.email === 'levicaers1@gmail.com'))",
         ".validate": "newData.isBoolean()"
       },
@@ -645,10 +645,10 @@
     "signupCodes": {
       ".read": "(auth != null && auth.token.email_verified === true && (auth.token.email === 'levicaers1@gmail.com'))",
       "$code": {
-        ".read": "auth != null",
         ".write": "(auth != null && auth.token.email_verified === true && (auth.token.email === 'levicaers1@gmail.com')) || (auth != null && data.exists() && newData.exists())",
         ".validate": "$code.matches(/^[A-Z0-9-]{3,30}$/) && newData.hasChildren(['uses']) && ((auth != null && auth.token.email_verified === true && (auth.token.email === 'levicaers1@gmail.com')) || (newData.child('uses').val() === data.child('uses').val() - 1 && newData.child('note').val() === data.child('note').val()))",
         "uses": {
+          ".read": "auth != null && auth.token.email_verified === true",
           ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1000"
         },
         "note": {
