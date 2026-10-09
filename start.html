@@ -266,6 +266,7 @@ function render() {
   // summary
   document.getElementById("summary").innerHTML = [
     [t("start.name"), f.brand.value.trim()], [t("fields.sport"), `${SPORTS[st.sport].icon} ${t("sport." + st.sport)}`],
+    [t("start.minimum"), t("start.minimumVal", { n: SPORTS[st.sport].min })],
     [t("start.seasonShort"), f.season.value.trim() || "–"], [t("start.you"), f.you.value.trim()],
     [t("start.id"), linkBase() + st.id.value], [t("brand.colors"), t("brand.preset." + st.colors)],
     ...(st.open ? [] : [[t("start.code"), st.code.value]]),
@@ -351,9 +352,9 @@ async function create() {
   const preset = BRAND_PRESETS.find(p => p[0] === st.colors);
   const colors = preset && preset !== BRAND_PRESETS[0] ? makePalette(preset[1], preset[2]) : null;
   const team = {
-    info: { brand, season: season || brand, shortName: season || brand, calendarLabel: brand, teamSize: 0, minPlayers: 3,
+    info: { brand, season: season || brand, shortName: season || brand, calendarLabel: brand, teamSize: 0, minPlayers: SPORTS[st.sport].min,
       adminName: you.split(/\s+/)[0], ...(colors ? { colors } : {}) },
-    settings: { minPlayers: 3, scheduleInDb: true, seasonName: season || brand, sport: st.sport },
+    settings: { minPlayers: SPORTS[st.sport].min, scheduleInDb: true, seasonName: season || brand, sport: st.sport },
     initialized: true,
     admins: { [uid]: true },
     members: { [uid]: "p1" },

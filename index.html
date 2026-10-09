@@ -385,7 +385,7 @@ function renderMatches(players, events) {
     return `<article class="match${e.final ? " final" : ""}${isPast(e) ? " past" : ""}">
       <div class="m-date"><span>${fmt(e.date, { weekday: "short" }).replace(".", "")}</span><b>${parse(e.date).getDate()}</b><span>${fmt(e.date, { month: "short" }).replace(".", "")}</span></div>
       <div class="m-body">
-        <div class="m-title">${esc(e.opp)}${e.final ? `<span class="pill violet">${ic("trophy")} ${t("final")}</span>` : ""}</div>
+        <div class="m-title">${esc(e.opp)}${homePill(e)}${e.final ? `<span class="pill violet">${ic("trophy")} ${t("final")}</span>` : ""}</div>
         <div class="m-meta">${detailsHtml(e, "", true)}</div>
       </div>
       <div class="m-actions">
@@ -538,7 +538,7 @@ function renderHero(players) {
   el.innerHTML = `
     <div class="hero-top"><span class="hero-kicker">${ic("flag")} ${t("hero.next")}</span><span class="hero-when">${when}</span></div>
     <div class="hero-main">
-      <div><h2 class="hero-title">${esc(e.opp)}${e.final ? `<span class="pill violet">${ic("trophy")} ${t("final")}</span>` : ""}</h2>
+      <div><h2 class="hero-title">${esc(e.opp)}${homePill(e)}${e.final ? `<span class="pill violet">${ic("trophy")} ${t("final")}</span>` : ""}</h2>
         <div class="hero-date">${esc(fmt(e.date, { weekday: "long", day: "numeric", month: "long" }))}</div>
         ${detailsHtml(e)}</div>
       <div class="hero-stat"><b>${c.yes}</b><span>/ ${min}</span><small>${t("label.yes")}</small></div>
@@ -733,7 +733,7 @@ function matchMessage(e) {
   const m = matchInfo(e), v = m.venue;
   const yes = namesWith(e, "yes"), maybe = namesWith(e, "maybe"), no = namesWith(e, "no"), none = namesWith(e, "");
   return lines([
-    `*${sportInfo().icon} ${TEAM.shortName || TEAM.brand} – ${e.opp}${e.final ? " " + t("ics.final") : ""}*`,
+    `*${sportInfo().icon} ${TEAM.shortName || TEAM.brand} – ${e.opp}${e.home === true ? ` (${t("match.home").toLowerCase()})` : e.home === false ? ` (${t("match.away").toLowerCase()})` : ""}${e.final ? " " + t("ics.final") : ""}*`,
     `📅 ${longDate(e)}`,
     timeText(e) && `🕘 ${timeText(e)}`,
     v && `📍 ${venueText(v)}`,
@@ -935,15 +935,18 @@ function buildIcs(events, statusOf = () => "", player = "") {
     const d = e.date.replace(/-/g, "");
     const m = matchInfo(e), v = m.venue;
     const maybe = statusOf(e) === "maybe";
-    const start = m.start || "09:00";
-    const end = m.end || (m.start ? `${String((Number(m.start.slice(0, 2)) + 2) % 24).padStart(2, "0")}${m.start.slice(2)}` : "17:00");
+    const sp = sportInfo();
+    const allDay = !m.start && !sp.allDay; // no time known and no default day for this sport: an all-day event
+    const start = m.start || (sp.allDay || ["09:00"])[0];
+    const end = m.end || (m.start ? `${String(Math.min(23, Number(m.start.slice(0, 2)) + sp.hours)).padStart(2, "0")}${m.start.slice(2)}` : (sp.allDay || ["", "17:00"])[1]);
+    const nextDay = new Date(parse(e.date).getTime() + 864e5).toISOString().slice(0, 10).replace(/-/g, "");
     const desc = [m.meet && t("ics.meet", { meet: m.meet }), m.info, v && mapsUrl(v), t("ics.markAvail", { url })].filter(Boolean).join("\n");
     lines.push(
       "BEGIN:VEVENT",
       `UID:${d}-${slug(e.opp)}@${uidDomain}`,
       `DTSTAMP:${stamp}`,
-      `DTSTART;TZID=Europe/Brussels:${d}T${hhmmss(start)}`,
-      `DTEND;TZID=Europe/Brussels:${d}T${hhmmss(end)}`,
+      ...(allDay ? [`DTSTART;VALUE=DATE:${d}`, `DTEND;VALUE=DATE:${nextDay}`]
+        : [`DTSTART;TZID=Europe/Brussels:${d}T${hhmmss(start)}`, `DTEND;TZID=Europe/Brussels:${d}T${hhmmss(end)}`]),
       `STATUS:${maybe ? "TENTATIVE" : "CONFIRMED"}`,
       `SUMMARY:${icsText([player, TEAM.calendarLabel || TEAM.shortName || TEAM.brand, e.opp].filter(Boolean).join(" ") + (e.final ? " " + t("ics.final") : "") + (maybe ? " " + t("ics.maybe") : ""))}`,
       `LOCATION:${icsText(v ? venueText(v) : e.opp)}`,

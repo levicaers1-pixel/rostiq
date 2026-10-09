@@ -103,6 +103,10 @@
   .ghost { border-color: transparent; background: transparent; color: var(--muted); padding: 7px; }
   .ghost:hover:not(:disabled) { color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, var(--surface)); border-color: transparent; }
   .cp-pills { display: flex; gap: 6px; flex-wrap: wrap; }
+  .home-note { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 12px 14px; border-radius: 12px; font-size: .9rem;
+    background: color-mix(in srgb, var(--pampas) 12%, var(--surface)); color: var(--text); }
+  .home-note svg.i { color: color-mix(in srgb, var(--pampas) 55%, var(--text)); }
+  .home-note span { flex: 1; min-width: 180px; }
   .mine { background: none; border-top: 1px solid var(--border); border-radius: 0; padding: 14px 0 0; margin: 0; display: grid; gap: 10px; }
   .mine-label { font-size: .8rem; font-weight: 600; color: var(--muted); }
   .mine .extra { margin: 0; color: var(--muted); }
@@ -368,6 +372,7 @@ function renderPlaces() {
     : `<div class="empty">${t("carpool.noNames")}</div>`;
 }
 
+const showHomeCarpool = new Set(); // home matches where someone chose "carpool anyway"
 function renderMatch(e) {
   const st = matchState(e);
   const my = st.all[me];
@@ -384,16 +389,28 @@ function renderMatch(e) {
     <div class="m-head">
       <div class="m-date"><span>${fmt(e.date, { weekday: "short" }).replace(".", "")}</span><b>${parse(e.date).getDate()}</b><span>${fmt(e.date, { month: "short" }).replace(".", "")}</span></div>
       <div class="m-body">
-        <div class="m-title">${esc(e.opp)}${e.final ? `<span class="pill violet">${ic("trophy")} ${t("final")}</span>` : ""}</div>
+        <div class="m-title">${esc(e.opp)}${homePill(e)}${e.final ? `<span class="pill violet">${ic("trophy")} ${t("final")}</span>` : ""}</div>
         ${detailsHtml(e, venueExtra(e, toVenue))}
       </div>
       <button class="ghost" data-act="share" title="${t("share.carpool")}" aria-label="${t("share.carpool")}">${ic("share")}</button>
     </div>
-    <div class="cp-pills">
+    ${e.home === true && !showHomeCarpool.has(e.date) && !Object.keys(st.all).length ? "" : `<div class="cp-pills">
       <span class="pill gray">${ic("car")} ${t("cp.cars", { n: st.cars.length })}</span>
       <span class="pill ${freeSeats ? "yes" : "gray"}">${t("cp.free", { n: freeSeats })}</span>
       ${st.waiting.length ? `<span class="pill maybe">${t("cp.waiting", { n: st.waiting.length })}</span>` : ""}
-    </div>`;
+    </div>`}`;
+
+  // Home match: usually no carpool needed – unless someone asks for it (or already arranged something).
+  if (e.home === true && !showHomeCarpool.has(e.date) && !Object.keys(st.all).length) {
+    el.innerHTML = html + `<div class="home-note">${ic("home")} <span>${t("cp.homeNote")}</span>
+      <button class="small" data-act="home-carpool">${t("cp.homeAnyway")}</button></div>`;
+    el.addEventListener("click", ev => {
+      const b = ev.target.closest("button[data-act]");
+      if (b && b.dataset.act === "home-carpool") { showHomeCarpool.add(e.date); render(); }
+      if (b && b.dataset.act === "share") openShare(t("share.carpoolTitle", { opp: e.opp }), carpoolMessage(e));
+    });
+    return el;
+  }
 
   if (me) {
     html += `<div class="mine"><div class="mine-label">${t("carpool.myPlan")}</div>

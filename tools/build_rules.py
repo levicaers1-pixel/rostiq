@@ -100,7 +100,9 @@ def settings_rules():
 def schedule_rules():
     return {"$date": {
         ".validate": "$date.matches(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/) && newData.hasChild('opp')",
-        "opp": s(60, 1), "final": {".validate": "newData.isBoolean()"}, "$other": NO}}
+        "opp": s(60, 1), "final": {".validate": "newData.isBoolean()"},
+        "home": {".validate": "newData.isBoolean()"},  # true = home match, false = away
+        "$other": NO}}
 
 
 def matches_rules():

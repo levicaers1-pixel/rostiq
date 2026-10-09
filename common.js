@@ -41,7 +41,8 @@ function refreshEvents() {
   const s = root.schedule || {};
   const fromDb = (root.settings && root.settings.scheduleInDb) || Object.keys(s).length;
   EVENTS = fromDb
-    ? Object.keys(s).sort().map(date => ({ date, opp: s[date].opp || "?", ...(s[date].final ? { final: true } : {}) }))
+    ? Object.keys(s).sort().map(date => ({ date, opp: s[date].opp || "?", ...(s[date].final ? { final: true } : {}),
+      ...(typeof s[date].home === "boolean" ? { home: s[date].home } : {}) }))
     : (TEAM.events || []).slice();
 }
 const seasonName = () => (root.settings && root.settings.seasonName) || TEAM.season || TEAM.brand;
@@ -729,11 +730,17 @@ function makePalette(main, highlight) {
 
 // ---- Team branding: logo (or the team name as text), colours, page links carrying ?t= ----
 // ---- Sport and player fields, chosen per team by the team admin (Admin → Player fields) ----
+// min: the usual minimum number of players; hours: how long a match day takes (calendar end time when only the
+// start is known); allDay: without a start time, golf keeps its 09:00–17:00, other sports become an all-day event.
 const SPORTS = {
-  golf: { icon: "🏌️", venue: "⛳", suggest: ["handicap"] }, tennis: { icon: "🎾", venue: "🎾", suggest: ["ranking"] },
-  padel: { icon: "🎾", venue: "🎾", suggest: ["ranking"] }, hockey: { icon: "🏑", venue: "🏑", suggest: ["number", "position"] },
-  football: { icon: "⚽", venue: "⚽", suggest: ["number", "position"] }, basketball: { icon: "🏀", venue: "🏀", suggest: ["number", "position"] },
-  volleyball: { icon: "🏐", venue: "🏐", suggest: ["number", "position"] }, other: { icon: "🏆", venue: "📍", suggest: [] },
+  golf: { icon: "🏌️", venue: "⛳", suggest: ["handicap"], min: 4, hours: 5, allDay: ["09:00", "17:00"] },
+  tennis: { icon: "🎾", venue: "🎾", suggest: ["ranking"], min: 4, hours: 4 },
+  padel: { icon: "🎾", venue: "🎾", suggest: ["ranking"], min: 4, hours: 2 },
+  hockey: { icon: "🏑", venue: "🏑", suggest: ["number", "position"], min: 11, hours: 2 },
+  football: { icon: "⚽", venue: "⚽", suggest: ["number", "position"], min: 11, hours: 2 },
+  basketball: { icon: "🏀", venue: "🏀", suggest: ["number", "position"], min: 5, hours: 2 },
+  volleyball: { icon: "🏐", venue: "🏐", suggest: ["number", "position"], min: 6, hours: 2 },
+  other: { icon: "🏆", venue: "📍", suggest: [], min: 3, hours: 2 },
 };
 const sportKey = () => { const k = (root.settings || {}).sport; return SPORTS[k] ? k : "golf"; }; // existing teams: golf
 const sportInfo = () => SPORTS[sportKey()];
@@ -741,6 +748,10 @@ const fedOn = () => !(root.settings || {}).fedOff;
 const fedLabel = () => (root.settings || {}).fedLabel || t("team.fed");
 const customFields = () => Object.entries((root.settings || {}).fields || {})
   .filter(([k, v]) => /^c[1-4]$/.test(k) && v).sort(([a], [b]) => a.localeCompare(b)); // [["c1", "Handicap"], …]
+
+// Home / away pill for a match (nothing when it isn't set).
+const homePill = e => e.home === true ? `<span class="pill cyan">${ic("home")} ${t("match.home")}</span>`
+  : e.home === false ? `<span class="pill gray">${ic("car")} ${t("match.away")}</span>` : "";
 
 // ---- Profile photos: a small square image stored with the player (and in the profile, so it follows the person) ----
 const PHOTO_RE = /^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/]+=*$/;

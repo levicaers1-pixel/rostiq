@@ -247,6 +247,9 @@
             "final": {
               ".validate": "newData.isBoolean()"
             },
+            "home": {
+              ".validate": "newData.isBoolean()"
+            },
             "$other": {
               ".validate": false
             }

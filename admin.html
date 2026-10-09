@@ -81,6 +81,8 @@
   .custom-row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
   .custom-row input { flex: 1; min-width: 0; }
   .suggest { display: flex; gap: 6px; flex-wrap: wrap; }
+  .min-hint { margin: 0; padding: 10px 12px; border-radius: 10px; font-size: .85rem; background: color-mix(in srgb, var(--pampas) 12%, var(--surface)); }
+  .addmatch select { font: inherit; font-size: .9rem; padding: 7px 8px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg); color: var(--text); }
   .suggest button { font-size: .8rem; padding: 5px 12px; border-radius: 999px; }
 
   /* Settings */
@@ -205,6 +207,7 @@
           <div id="custom-rows"></div>
           <div class="suggest" id="field-suggest"></div>
         </div>
+        <p class="min-hint" id="min-hint" hidden></p>
         <div class="brand-actions"><button class="primary" data-i18n="admin.save">Save</button><span class="msg"></span></div>
       </form>
     </section>
@@ -257,6 +260,8 @@
       <form class="addmatch" id="add-match">
         <input name="date" type="date" required data-i18n-title="admin.date">
         <input name="opp" maxlength="60" required data-i18n-placeholder="admin.opp" autocomplete="off">
+        <select name="home" data-i18n-title="match.homeAway"><option value="" data-i18n="match.homeUnknown">Home / away?</option>
+          <option value="1" data-i18n="match.home">Home</option><option value="0" data-i18n="match.away">Away</option></select>
         <label class="muted"><input name="final" type="checkbox"> <span data-i18n="admin.final">Final</span></label>
         <button type="submit" class="primary" data-i18n="admin.addMatch">+ Add match</button>
         <span class="msg err"></span>
@@ -331,6 +336,7 @@ function renderTiles() {
 const ff = document.getElementById("f-fields");
 let fieldsDraft = null; // being edited: { sport, fedOn, fedLabel, custom: [label, …] }
 function renderFields() {
+  if (!dataLoaded) return; // start from the team's real settings, not the defaults
   if (!fieldsDraft) {
     const s = root.settings || {};
     fieldsDraft = { sport: sportKey(), fedOn: fedOn(), fedLabel: s.fedLabel || "", custom: customFields().map(([, l]) => l) };
@@ -347,6 +353,12 @@ function renderFields() {
       <button type="button" class="link err" data-remove-field="${i}">${t("fields.remove")}</button></div>`).join("") +
     (d.custom.length < 4 ? `<button type="button" data-add-field>${ic("plus")} ${t("fields.add")}</button>` : "");
   if (focus !== undefined) { const el = document.querySelector(`[data-ci="${focus}"]`); if (el) { el.focus(); el.setSelectionRange(el.value.length, el.value.length); } }
+  // The usual minimum for the chosen sport, when the team's minimum differs.
+  const usual = SPORTS[d.sport].min, curMin = (root.settings || {}).minPlayers || TEAM.minPlayers || 3;
+  const hint = document.getElementById("min-hint");
+  hint.hidden = usual === curMin;
+  if (!hint.hidden) hint.innerHTML = `${t("fields.minHint", { sport: t("sport." + d.sport), n: usual, cur: curMin })}
+    <button type="button" class="link" data-use-min="${usual}">${t("fields.useMin", { n: usual })}</button>`;
   const taken = d.custom.map(x => x.toLowerCase());
   const sugg = SPORTS[d.sport].suggest.map(k => t("field." + k)).filter(l => !taken.includes(l.toLowerCase()));
   document.getElementById("field-suggest").innerHTML = d.custom.length < 4 && sugg.length
@@ -365,6 +377,8 @@ ff.addEventListener("click", ev => {
   if (ev.target.closest("[data-add-field]")) { d.custom.push(""); renderFields(); document.querySelector(`[data-ci="${d.custom.length - 1}"]`).focus(); }
   const rm = ev.target.closest("[data-remove-field]");
   if (rm) { d.custom.splice(Number(rm.dataset.removeField), 1); renderFields(); }
+  const um = ev.target.closest("[data-use-min]");
+  if (um) { write("settings/minPlayers", Number(um.dataset.useMin)); return; }
   const sg = ev.target.closest("[data-suggest]");
   if (sg && d.custom.length < 4) { d.custom.push(sg.dataset.suggest); renderFields(); }
 });
@@ -474,6 +488,7 @@ function renderMatches() {
       <span class="when">${esc(fmt(e.date, { weekday: "short", day: "numeric", month: "short", year: "numeric" }))}</span>
       <div><span class="opp">${esc(e.opp)}</span>${e.final ? `<span class="tag">${t("final")}</span>` : ""}${detailsHtml(e, "", true)}</div>
       <div class="acts">
+        <button data-home-cycle="${e.date}" title="${t("match.homeAway")}">${e.home === true ? `${ic("home")} ${t("match.home")}` : e.home === false ? `${ic("car")} ${t("match.away")}` : t("match.homeUnknown")}</button>
         <a href="./?t=${TEAM_ID}#edit=${e.date}" title="${t("details.edit")}">✏️</a>
         <button data-del-match="${e.date}" title="${t("admin.remove")}">🗑️</button>
       </div>
@@ -639,7 +654,7 @@ function scheduleUpdate(changes) {
   const base = {};
   if (!(root.settings && root.settings.scheduleInDb)) {
     base["settings/scheduleInDb"] = true;
-    for (const e of EVENTS) base[`schedule/${e.date}`] = { opp: e.opp, ...(e.final ? { final: true } : {}) };
+    for (const e of EVENTS) base[`schedule/${e.date}`] = { opp: e.opp, ...(e.final ? { final: true } : {}), ...(typeof e.home === "boolean" ? { home: e.home } : {}) };
   }
   return update({ ...base, ...changes });
 }
@@ -649,10 +664,16 @@ document.getElementById("add-match").addEventListener("submit", ev => {
   if (!date || !opp) return;
   if (EVENTS.some(e => e.date === date)) { f.querySelector(".msg").textContent = t("admin.matchExists"); return; }
   f.querySelector(".msg").textContent = "";
-  scheduleUpdate({ [`schedule/${date}`]: { opp, ...(f.final.checked ? { final: true } : {}) } });
+  scheduleUpdate({ [`schedule/${date}`]: { opp, ...(f.final.checked ? { final: true } : {}), ...(f.home.value ? { home: f.home.value === "1" } : {}) } });
   f.reset();
 });
 document.getElementById("matches").addEventListener("click", ev => {
+  // Home → away → not set → home …
+  const hc = ev.target.closest("[data-home-cycle]");
+  if (hc) {
+    const e = EVENTS.find(x => x.date === hc.dataset.homeCycle);
+    return scheduleUpdate({ [`schedule/${e.date}/home`]: e.home === true ? false : e.home === false ? null : true });
+  }
   const b = ev.target.closest("[data-del-match]");
   if (!b) return;
   const e = EVENTS.find(x => x.date === b.dataset.delMatch);
