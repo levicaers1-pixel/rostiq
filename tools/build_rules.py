@@ -267,8 +267,19 @@ feedback_last = {"$uid": {
     ".validate": "newData.isNumber() && newData.val() === now && (!data.exists() || now - data.val() >= 60000)",
 }}
 
+# ---- Last seen per player, only for the team's admins (outside the team, because members can read the whole team) ----
+# Each member stamps only their own entry, and only with the server's clock.
+last_seen = {"$tid": {
+    ".read": TA,
+    ".write": PA,  # e.g. when a team is deleted
+    "$uid": {
+        ".write": "auth != null && auth.uid === $uid && root.child('teams').child($tid).child('members').child($uid).exists()",
+        ".validate": "newData.isNumber() && newData.val() === now",
+    },
+}}
+
 final = {"rules": {"teams": {".read": PA, "$tid": team}, "users": users, "signup": signup, "signupCodes": signup_codes,
-                   "feedback": feedback, "feedbackLast": feedback_last, "$other": NO}}
+                   "feedback": feedback, "feedbackLast": feedback_last, "lastSeen": last_seen, "$other": NO}}
 
 # ---- Transition: also allow the old single-team structure at the root (Pampas, pre-migration) ----
 L_OWNER = "(auth != null && root.child('players').child($pid).child('uid').val() === auth.uid)"

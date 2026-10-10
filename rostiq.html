@@ -219,7 +219,7 @@ document.getElementById("codes").addEventListener("click", async ev => {
 async function deleteTeam(id) {
   const x = teams.find(tm => tm.id === id);
   if (!x || !confirm(t("rostiq.deleteConfirm", { name: x.info.brand || id }))) return;
-  const changes = { [`teams/${id}`]: null };
+  const changes = { [`teams/${id}`]: null, [`lastSeen/${id}`]: null };
   for (const uid of x.memberIds) changes[`users/${uid}/teams/${id}`] = null;
   if (x.meta && x.meta.createdBy) {
     const slots = (await getAbs(`users/${x.meta.createdBy}/created`)) || {};

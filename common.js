@@ -586,6 +586,19 @@ function applyProfile() {
   if (Object.keys(extra).length) shareProfile(extra);
 }
 
+// "Last seen" for the team's admins: a member stamps their own entry with the server's clock (lastSeen/<team>/<uid>,
+// outside the team so other players can't read it). At most once per 10 minutes per team and device.
+function stampLastSeen() {
+  const uid = AUTH_ON && session.user && session.user.uid;
+  if (!uid || !TEAM_ID || NO_TEAM_PAGE || netDown || !(root.members && root.members[uid])) return;
+  const key = "lastSeenSent:" + TEAM_ID;
+  if (Date.now() - Number(pref.get(key, 0)) < 10 * 60e3) return;
+  pref.set(key, Date.now());
+  // Silent on purpose: no status message or outbox for something the player didn't do.
+  dbUrlAbs(`lastSeen/${TEAM_ID}/${uid}`).then(url => fetch(url, { method: "PUT", body: '{".sv":"timestamp"}' }))
+    .then(res => { if (!res.ok) pref.set(key, 0); }, () => pref.set(key, 0));
+}
+
 function syncSession() {
   if (root.info) mergeTeamInfo(root.info);
   if (AUTH_ON) {
@@ -597,6 +610,7 @@ function syncSession() {
   }
   applyBranding();
   applyProfile();
+  stampLastSeen();
   fillLoginEmail();
   refreshEvents();
   renderCountdown();

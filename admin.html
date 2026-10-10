@@ -37,6 +37,10 @@
   .plist .name { font-weight: 600; }
   .plist .flags { display: flex; gap: 10px; flex-wrap: wrap; font-size: .8rem; color: var(--muted); }
   .plist .flags .off { opacity: .45; text-decoration: line-through; }
+  .seen { display: inline-flex; align-items: center; gap: 6px; }
+  .seen::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--muted); opacity: .5; }
+  .seen.fresh::before { background: var(--yes); opacity: 1; }
+  .seen.stale::before { background: var(--maybe); opacity: 1; }
   .plist .acts { display: flex; gap: 12px; align-items: center; grid-row: span 2; flex-wrap: wrap; justify-content: flex-end; }
   .invite { margin-top: 14px; border-top: 1px solid var(--border); padding-top: 12px; }
   .invite label { display: grid; gap: 6px; font-size: .9rem; }
@@ -305,12 +309,35 @@ function render() {
   if (!session.admin) return;
   addSectionIcons();
   renderFields();
+  loadLastSeen();
   renderTiles();
   renderRequests();
   renderPlayers();
   renderSettings();
   renderBrand();
   renderMatches();
+}
+
+// ---- Last seen (lastSeen/<team>/<uid>: only admins can read it; each player's app stamps it with the server's clock) ----
+let lastSeen = null, lastSeenLoaded = 0;
+function loadLastSeen() {
+  if (!AUTH_ON || !dataLoaded || Date.now() - lastSeenLoaded < 5 * 60e3) return;
+  lastSeenLoaded = Date.now();
+  getAbs(`lastSeen/${TEAM_ID}`).then(v => { lastSeen = v || {}; renderTiles(); renderPlayers(); });
+}
+const DAY = 864e5;
+function seenHtml(uid) {
+  if (!lastSeen || !uid) return "";
+  const at = lastSeen[uid];
+  if (typeof at !== "number") return `<span class="seen">${t("seen.never")}</span>`;
+  const ago = Date.now() - at, rtf = new Intl.RelativeTimeFormat(LOCALE, { numeric: "auto" });
+  const when = ago < 60e3 * 5 ? t("seen.now")
+    : ago < 3600e3 ? rtf.format(-Math.round(ago / 60e3), "minute")
+    : ago < DAY ? rtf.format(-Math.round(ago / 3600e3), "hour")
+    : ago < 30 * DAY ? rtf.format(-Math.round(ago / DAY), "day")
+    : new Date(at).toLocaleDateString(LOCALE, { day: "numeric", month: "short", year: "numeric" });
+  const tone = ago < 7 * DAY ? "fresh" : ago < 30 * DAY ? "stale" : "";
+  return `<span class="seen ${tone}" title="${esc(new Date(at).toLocaleString(LOCALE))}">${t("seen.label", { when })}</span>`;
 }
 
 // ---- Dashboard tiles: what needs attention ----
@@ -326,7 +353,11 @@ function renderTiles() {
     tile("#requests-panel", "bell", reqs, t("tile.requests"), reqs ? t("tile.requestsSub") : t("tile.none"), reqs ? "warn" : "ok") +
     tile("#sec-players", "users", `${linked}/${players.length}`, t("tile.linked"), notLinked ? t("tile.notLinked", { n: notLinked }) : t("tile.allLinked"), notLinked ? "" : "ok") +
     tile("#sec-matches", "calendar", upcoming.length, t("tile.upcoming"), next ? `${t("tile.next")}: ${esc(next.opp)} · ${esc(shortDate(next.date))}` : "") +
-    tile(pageUrl(""), "help", next ? missing : "–", t("tile.missing"), next ? t("tile.missingSub", { opp: esc(next.opp) }) : "", next && missing ? "warn" : "ok");
+    tile(pageUrl(""), "help", next ? missing : "–", t("tile.missing"), next ? t("tile.missingSub", { opp: esc(next.opp) }) : "", next && missing ? "warn" : "ok") +
+    (lastSeen ? (() => {
+      const active = players.filter(p => p.uid && Date.now() - (lastSeen[p.uid] || 0) < 7 * DAY).length;
+      return tile("#sec-players", "clock", `${active}/${linked}`, t("tile.active"), t("tile.activeSub"), linked && active === linked ? "ok" : "");
+    })() : "");
   const badge = document.getElementById("nav-req-count");
   badge.hidden = !reqs;
   badge.textContent = reqs;
@@ -463,6 +494,7 @@ function renderPlayers() {
           ${p.email ? `<span>✉️ ${esc(p.email)}</span>` : ""}
           ${flag(!!p.phone, t("admin.hasPhone"))}
           ${flag(!!(p.geo || p.gemeente), t("admin.hasPlace"))}
+          ${seenHtml(p.uid)}
         </div></div>
       <div class="acts">
         ${AUTH_ON && p.uid && session.platformAdmin ? `<button class="link" data-admin="${p.id}">${t(root.admins && root.admins[p.uid] ? "admin.removeAdmin" : "admin.makeAdmin")}</button>` : ""}
