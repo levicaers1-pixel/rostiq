@@ -32,7 +32,7 @@ RostiQ (one site, one login, one Firebase Realtime Database)
 
 Pages: `index.html` (availability), `carpool.html`, `ploeg.html` (team), `admin.html` (team admin),
 `rostiq.html` (RostiQ admin).
-All texts are in `i18n.js` (NL/EN).
+All texts are in `i18n.js` (NL/EN/FR); the default follows the browser language, switchable in the menu.
 
 ## Personal details across teams
 

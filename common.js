@@ -421,7 +421,8 @@ function renderWaGroup() {
 }
 
 // ---- Places (gemeente): OpenStreetMap Nominatim, confirmed from a list so everyone's distances are right ----
-const COUNTRY = LANG === "nl" ? { be: "", nl: "Nederland", fr: "Frankrijk", lu: "Luxemburg" } : { be: "", nl: "Netherlands", fr: "France", lu: "Luxembourg" };
+const COUNTRY = { nl: { be: "", nl: "Nederland", fr: "Frankrijk", lu: "Luxemburg" }, fr: { be: "", nl: "Pays-Bas", fr: "France", lu: "Luxembourg" } }[LANG]
+  || { be: "", nl: "Netherlands", fr: "France", lu: "Luxembourg" };
 function describePlace(r) {
   const a = r.address || {};
   const name = r.name || (r.display_name || "").split(",")[0];
@@ -433,7 +434,7 @@ function describePlace(r) {
 async function searchPlaces(q) {
   const url = "https://nominatim.openstreetmap.org/search?format=jsonv2&limit=10&addressdetails=1" +
     "&countrycodes=be,nl,fr,lu&q=" + encodeURIComponent(q.trim());
-  const hits = await fetch(url, { headers: { "Accept-Language": "nl,en" } }).then(r => r.json());
+  const hits = await fetch(url, { headers: { "Accept-Language": LANG === "fr" ? "fr,nl,en" : "nl,en" } }).then(r => r.json());
   const seen = new Set();
   return hits
     .filter(r => ["boundary", "place"].includes(r.category))
@@ -1017,7 +1018,7 @@ function gateMessage(text, err) { gateMsg = { text, err }; renderAuth(); }
 const appUrl = file => location.href.split(/[?#]/)[0].replace(/[^/]*$/, file);
 
 // ---- Feedback to RostiQ (account menu, footer): only the RostiQ admin reads it ----
-const APP_VERSION = "2026.10.8";
+const APP_VERSION = "2026.10.10";
 function deviceText() {
   const ua = navigator.userAgent;
   const os = /iPhone/.test(ua) ? "iPhone" : /iPad/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1) ? "iPad"
@@ -1096,7 +1097,7 @@ async function installApp() {
   }
   dlg.showModal();
 }
-const langButtons = () => `<button data-lang="nl" aria-pressed="${LANG === "nl"}">NL</button><button data-lang="en" aria-pressed="${LANG === "en"}">EN</button>`;
+const langButtons = () => ["nl", "en", "fr"].map(l => `<button data-lang="${l}" aria-pressed="${LANG === l}">${l.toUpperCase()}</button>`).join("");
 document.addEventListener("click", ev => {
   const fbl = ev.target.closest(".site-footer [data-feedback]");
   if (fbl) { ev.preventDefault(); openFeedback(); }
