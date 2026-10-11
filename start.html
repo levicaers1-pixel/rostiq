@@ -44,6 +44,10 @@
   .fld input.good { border-color: var(--yes) !important; }
   .fld small { font-size: .8rem; color: var(--muted); line-height: 1.4; }
   .fld small.ok { color: var(--yes); } .fld small.err { color: var(--no); }
+  .code-ask { display: flex; gap: 10px; align-items: flex-start; margin: 0; padding: 12px 14px; border-radius: 12px; font-size: .9rem; line-height: 1.45;
+    background: color-mix(in srgb, var(--pampas) 12%, var(--surface)); }
+  .code-ask svg.i { flex-shrink: 0; margin-top: 3px; color: var(--accent); }
+  .code-ask a { color: var(--accent); font-weight: 700; }
   .code-input { text-transform: uppercase; letter-spacing: .06em; font-weight: 700; }
 
   /* Sport tiles */
@@ -109,6 +113,7 @@
       <label class="fld"><span data-i18n="start.code">Pilot code</span>
         <input name="code" class="code-input" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="30" placeholder="PILOT-…">
         <small id="code-msg"></small></label>
+      <p class="code-ask"><span data-ic-mail></span><span data-i18n-html="start.codeAsk"></span></p>
     </section>
 
     <!-- 2. The team -->
@@ -370,6 +375,7 @@ async function create() {
   location.href = appUrl("index.html") + "?t=" + encodeURIComponent(id); // the setup checklist takes it from here
 }
 
+document.querySelectorAll("[data-ic-mail]").forEach(el => { el.innerHTML = ic("mail"); });
 start();
 </script>
 </body>
