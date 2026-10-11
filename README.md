@@ -55,6 +55,12 @@ They were tested against the Firebase Realtime Database emulator (197 cases: str
 team admins, RostiQ admin, isolation between teams, approval flow, branding, profiles, migration,
 last seen, account deletion, error reports).
 
+## Landing page
+
+`home.html` is the public landing page (NL/FR/EN, no sign-in, no database). `index.html` sends a visitor there
+only when there is no team link (`?t=`), no `?pick`, no team remembered on the device and no sign-in in
+progress (email link or Google redirect); everyone else goes straight to the app.
+
 ## Privacy and error reports
 
 `privacy.html` holds the privacy statement (NL/EN/FR, readable without signing in) and, when signed in,

@@ -2,6 +2,14 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<script>
+// New visitors (no team link, no team on this device, not in the middle of signing in) get the landing page.
+(function () { try {
+  if (/[?&](t|pick|mode|oobCode|apiKey)(=|&|$)/.test(location.search) || location.hash) return;
+  if (localStorage.getItem("team") || sessionStorage.getItem("authFlow")) return;
+  location.replace("home.html");
+} catch (e) {} })();
+</script>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title data-i18n-doc="page.title">RostiQ · Availability</title>
 <meta name="theme-color" content="#1e1b4b">

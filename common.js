@@ -1058,7 +1058,7 @@ function gateMessage(text, err) { gateMsg = { text, err }; renderAuth(); }
 const appUrl = file => location.href.split(/[?#]/)[0].replace(/[^/]*$/, file);
 
 // ---- Feedback to RostiQ (account menu, footer): only the RostiQ admin reads it ----
-const APP_VERSION = "2026.10.11";
+const APP_VERSION = "2026.10.12";
 function deviceText() {
   const ua = navigator.userAgent;
   const os = /iPhone/.test(ua) ? "iPhone" : /iPad/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1) ? "iPad"
@@ -1284,7 +1284,10 @@ async function onGateClick(ev) {
       // Phones handle a full-page redirect better than a popup tab; the home-screen
       // app and desktops keep the popup so the page itself isn't navigated away.
       const phoneBrowser = matchMedia("(pointer: coarse)").matches && !standalone();
-      if (phoneBrowser) return await A.signInWithRedirect(fbAuth, new A.GoogleAuthProvider());
+      if (phoneBrowser) {
+        try { sessionStorage.setItem("authFlow", "1"); } catch {} // coming back here must not open the landing page
+        return await A.signInWithRedirect(fbAuth, new A.GoogleAuthProvider());
+      }
       await A.signInWithPopup(fbAuth, new A.GoogleAuthProvider());
       gateMsg = { text: "", err: false };
     } catch (e) {
