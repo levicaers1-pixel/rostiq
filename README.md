@@ -62,6 +62,12 @@ The public website with the landing page lives in the separate repo `rostiq-site
 remembered on the device and no sign-in in progress (email link or Google redirect); everyone else goes
 straight to the app. Old links to rostiq.be are forwarded to app.rostiq.be by that repo.
 
+## Demo teams
+
+`?demo=football|padel|hockey|golf` opens a complete fictional team, built in the browser by `demo.js` with match
+dates relative to today. No sign-in and no database: the visitor is "You (demo)", a team admin, and every change
+stays in that browser tab (sessionStorage). Messages shared from the app end with "Planned with RostiQ · rostiq.be".
+
 ## Privacy and error reports
 
 `privacy.html` holds the privacy statement (NL/EN/FR, readable without signing in) and, when signed in,

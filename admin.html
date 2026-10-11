@@ -552,7 +552,7 @@ function renderMatches() {
       <div><span class="opp">${esc(e.opp)}</span>${e.final ? `<span class="tag">${t("final")}</span>` : ""}${detailsHtml(e, "", true)}</div>
       <div class="acts">
         <button data-home-cycle="${e.date}" title="${t("match.homeAway")}">${e.home === true ? `${ic("home")} ${t("match.home")}` : e.home === false ? `${ic("car")} ${t("match.away")}` : t("match.homeUnknown")}</button>
-        <a href="./?t=${TEAM_ID}#edit=${e.date}" title="${t("details.edit")}">✏️</a>
+        <a href="./${teamQuery()}#edit=${e.date}" title="${t("details.edit")}">✏️</a>
         <button data-del-match="${e.date}" title="${t("admin.remove")}">🗑️</button>
       </div>
     </li>`).join("") : `<li class="list-empty">${emptyState("calendar", t("admin.noMatchesTitle"), t("admin.noMatches"), "", true)}</li>`;

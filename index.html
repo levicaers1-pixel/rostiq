@@ -5,7 +5,7 @@
 <script>
 // New visitors (no team link, no team on this device, not in the middle of signing in) get the landing page.
 (function () { try {
-  if (/[?&](t|pick|mode|oobCode|apiKey)(=|&|$)/.test(location.search) || location.hash) return;
+  if (/[?&](t|pick|demo|mode|oobCode|apiKey)(=|&|$)/.test(location.search) || location.hash) return;
   if (localStorage.getItem("team") || sessionStorage.getItem("authFlow")) return;
   location.replace("https://rostiq.be/"); // the website with the landing page
 } catch (e) {} })();
@@ -456,7 +456,7 @@ const cardHtml = (title, sub, steps, hideKey) => {
 function renderWelcome(players) {
   const el = document.getElementById("welcome");
   const me = AUTH_ON && dataLoaded ? players.find(p => p.id === session.pid) : null;
-  if (!me || pref.get(flagKey("welcomeHidden"), "")) { el.hidden = true; return; }
+  if (!me || DEMO || pref.get(flagKey("welcomeHidden"), "")) { el.hidden = true; return; }
   const upcoming = EVENTS.filter(e => !isPast(e));
   const answered = upcoming.filter(e => me.avail[e.date]).length;
   const wa = root.settings && root.settings.waGroup;
@@ -492,7 +492,7 @@ function renderWelcome(players) {
 
 function renderSetup(players) {
   const el = document.getElementById("setup");
-  if (!AUTH_ON || !dataLoaded || !session.admin || pref.get(flagKey("setupHidden"), "")) { el.hidden = true; return; }
+  if (!AUTH_ON || DEMO || !dataLoaded || !session.admin || pref.get(flagKey("setupHidden"), "")) { el.hidden = true; return; }
   const s = root.settings || {};
   const link = (h, label) => `<a class="btn-like action" href="${pageUrl("admin.html")}${h}">${label}</a>`;
   const steps = [
@@ -726,7 +726,7 @@ function openPendingEdit() {
   if (!pendingEdit || !session.admin || !session.ready || !root.players) return;
   const e = EVENTS.find(x => x.date === pendingEdit);
   pendingEdit = "";
-  history.replaceState(null, "", location.pathname + (TEAM_ID ? `?t=${TEAM_ID}` : ""));
+  history.replaceState(null, "", location.pathname + teamQuery());
   if (e) setTimeout(() => openDetails(e), 0);
 }
 

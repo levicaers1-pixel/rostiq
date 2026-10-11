@@ -47,6 +47,12 @@ window.addEventListener("unhandledrejection", ev => {
 const QUERY = new URLSearchParams(location.search);
 const WANT_PICKER = QUERY.has("pick");
 let TEAM_ID = WANT_PICKER ? "" : (QUERY.get("t") || pref.get("team", "") || "").toLowerCase();
+// Demo teams (?demo=football|padel|hockey|golf): built in the browser by demo.js, without sign-in or database.
+// The visitor can try everything; changes stay in this browser tab (sessionStorage) and are never sent.
+const DEMO = ["football", "padel", "hockey", "golf"].includes(QUERY.get("demo")) ? QUERY.get("demo") : "";
+if (DEMO) TEAM_ID = "demo-" + DEMO;
+// The part of a link that keeps you in this team (or demo).
+const teamQuery = () => DEMO ? `?demo=${DEMO}` : TEAM_ID ? `?t=${TEAM_ID}` : "";
 const NO_TEAM_PAGE = !!window.PLATFORM_PAGE; // the RostiQ admin page works across teams
 
 // True while the team's name/logo aren't known yet on this device: the header stays empty instead of showing "RostiQ".
@@ -218,6 +224,7 @@ const dbUrl = (path, forceRefresh) => dbUrlAbs(`teams/${TEAM_ID}${path ? "/" + p
 let netDown = false;
 const isOffline = () => !navigator.onLine || netDown;
 async function getAbs(path) {
+  if (DEMO) return demoAbs[path] ?? null;
   try {
     const r = await fetch(await dbUrlAbs(path));
     netDown = false;
@@ -227,6 +234,7 @@ async function getAbs(path) {
 
 // Returns true (saved), "queued" (no network: kept in the outbox, sent later) or false (refused).
 async function send(method, path, value, abs, noQueue) {
+  if (DEMO) { saveDemo(); return true; } // a demo saves nothing online
   if (!DB) return false;
   const full = abs ? path : `teams/${TEAM_ID}${path ? "/" + path : ""}`;
   // Only what the user did goes into the outbox; automatic saves (profile sync, login email…) are redone online anyway.
@@ -360,7 +368,7 @@ async function saved(pending) {
   const acted = userActed(); // read now: the request takes a moment
   const ok = await pending;
   if (!ok) toast(t("status.saveFailed"), "err");
-  else if (acted) toast(t(ok === "queued" ? "toast.queued" : "toast.saved"));
+  else if (acted) toast(t(DEMO ? "demo.saved" : ok === "queued" ? "toast.queued" : "toast.saved"));
   return ok;
 }
 let toastTimer = null;
@@ -630,7 +638,7 @@ function applyProfile() {
 // outside the team so other players can't read it). At most once per 10 minutes per team and device.
 function stampLastSeen() {
   const uid = AUTH_ON && session.user && session.user.uid;
-  if (!uid || !TEAM_ID || NO_TEAM_PAGE || netDown || !(root.members && root.members[uid])) return;
+  if (!uid || !TEAM_ID || NO_TEAM_PAGE || DEMO || netDown || !(root.members && root.members[uid])) return;
   const key = "lastSeenSent:" + TEAM_ID;
   if (Date.now() - Number(pref.get(key, 0)) < 10 * 60e3) return;
   pref.set(key, Date.now());
@@ -726,7 +734,7 @@ function injectShareDialog() {
       t(group ? "share.hintGroup" : canShare ? "share.hintNative" : "share.hintCopy");
     document.getElementById("share-title").textContent = title;
     document.getElementById("share-copy").textContent = t("copy");
-    ta.value = text;
+    ta.value = text + "\n\n" + t("msg.madeWith"); // every shared message carries a small "made with RostiQ"
     dlg.showModal();
   };
 }
@@ -738,7 +746,7 @@ const chatMapsUrl = v => "https://maps.google.com/?q=" +
 const lines = arr => arr.filter(l => l === BLANK || (typeof l === "string" && l))
   .map(l => (l === BLANK ? "" : l)).join("\n");
 // Link to a page of this team (used in messages and calendar files), e.g. ".../carpool.html?t=ic-heren-1".
-const pageUrl = file => location.href.split(/[?#]/)[0].replace(/[^/]*$/, file) + (TEAM_ID ? `?t=${TEAM_ID}` : "");
+const pageUrl = file => location.href.split(/[?#]/)[0].replace(/[^/]*$/, file) + teamQuery();
 
 // ---- Team colours: a full light + dark palette from two picks (header colour, highlight colour) ----
 const HEX = /^#[0-9a-fA-F]{6}$/;
@@ -854,7 +862,7 @@ function applyBranding() {
   if (tabs) tabs.hidden = !TEAM_ID; // no team chosen yet: nothing to navigate to
   document.querySelectorAll(".tabs a").forEach(a => {
     const file = (a.getAttribute("href") || "").split("?")[0];
-    a.setAttribute("href", file + (TEAM_ID ? `?t=${TEAM_ID}` : ""));
+    a.setAttribute("href", file + teamQuery());
   });
   // Phones: the same tabs as an app-style bar at the bottom (CSS shows one or the other).
   if (tabs) {
@@ -902,7 +910,41 @@ function start() {
   }
   document.body.insertAdjacentHTML("beforeend", `<footer class="site-footer">${t("footer")} · <a href="#" data-feedback>${t("fb.footer")}</a> · <a href="${appUrl("privacy.html")}">${t("priv.footer")}</a></footer>`);
   injectShareDialog();
-  if (AUTH_ON) initAuth(); else if (!NO_TEAM_PAGE) connect(); else render();
+  if (DEMO) startDemo(); else if (AUTH_ON) initAuth(); else if (!NO_TEAM_PAGE) connect(); else render();
+}
+
+// ---- Demo mode ----
+let demoAbs = {};
+const demoKey = () => "demo:" + DEMO + ":" + LANG;
+function saveDemo() { try { sessionStorage.setItem(demoKey(), JSON.stringify({ root, abs: demoAbs })); } catch {} }
+const loadScript = src => new Promise((ok, fail) => { const s = document.createElement("script"); s.src = src; s.onload = ok; s.onerror = fail; document.head.append(s); });
+async function startDemo() {
+  // A signed-in team admin called "You (demo)": everything is visible and can be tried out.
+  session.user = { uid: "demo", email: "demo@rostiq.be", emailVerified: true, getIdToken: async () => null };
+  session.ready = true;
+  let saved = null;
+  try { saved = JSON.parse(sessionStorage.getItem(demoKey()) || "null"); } catch {}
+  if (!saved) {
+    try { await loadScript("demo.js"); } catch { return setStatus("err", t("status.notConnected")); }
+    const d = buildDemo(DEMO, TODAY);
+    saved = { root: d.team, abs: { [`lastSeen/${TEAM_ID}`]: d.lastSeen } };
+  }
+  root = saved.root; demoAbs = saved.abs || {};
+  dataLoaded = true;
+  saveDemo();
+  renderDemoBar();
+  renderAuth();
+  syncSession();
+  setStatus("live", t("demo.status"));
+}
+// A strip under the header: this is a demo, switch demos, start your own team.
+function renderDemoBar() {
+  if (document.getElementById("demo-bar")) return;
+  const link = k => `<a href="${location.pathname}?demo=${k}"${k === DEMO ? ' aria-current="true"' : ""}>${t("demo." + k)}</a>`;
+  document.querySelector("header.brand").insertAdjacentHTML("afterend", `<div class="demo-bar" id="demo-bar" data-no-icons>
+    <span class="demo-tag">DEMO</span><span class="demo-txt">${t("demo.bar")}</span>
+    <span class="demo-switch">${["football", "padel", "hockey", "golf"].map(link).join("")}</span>
+    <a class="demo-cta" href="start.html">${t("demo.cta")} →</a></div>`);
 }
 
 async function initAuth() {
@@ -1043,7 +1085,7 @@ function injectAuthUI() {
   if (!NO_TEAM_PAGE) document.querySelector("main .sub").insertAdjacentHTML("afterend",
     `<a class="wa-group" id="wa-group" hidden target="_blank" rel="noopener" title="${t("wa.title")}">${t("wa.open")}</a>`);
   document.getElementById("account").addEventListener("click", ev => {
-    if (ev.target.closest("[data-signout]")) A.signOut(fbAuth);
+    if (ev.target.closest("[data-signout]")) { if (DEMO) location.href = "https://rostiq.be/"; else A.signOut(fbAuth); }
   });
   document.getElementById("gate").addEventListener("click", onGateClick);
   document.getElementById("gate").addEventListener("submit", onGateSubmit);
@@ -1058,7 +1100,7 @@ function gateMessage(text, err) { gateMsg = { text, err }; renderAuth(); }
 const appUrl = file => location.href.split(/[?#]/)[0].replace(/[^/]*$/, file);
 
 // ---- Feedback to RostiQ (account menu, footer): only the RostiQ admin reads it ----
-const APP_VERSION = "2026.10.13";
+const APP_VERSION = "2026.10.14";
 function deviceText() {
   const ua = navigator.userAgent;
   const os = /iPhone/.test(ua) ? "iPhone" : /iPad/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1) ? "iPad"
@@ -1121,7 +1163,7 @@ async function sendFeedback(ev) {
 let errSending = false;
 async function flushErrors() {
   const u = session.user, list = errq.get().slice(0, 10);
-  if (!list.length || !u || !u.emailVerified || !DB || errSending || isOffline()) return;
+  if (!list.length || !u || !u.emailVerified || !DB || DEMO || errSending || isOffline()) return;
   if (Date.now() - Number(pref.get("errLast", 0)) < 65e3) return;
   errSending = true;
   pref.set("errLast", String(Date.now()));
@@ -1181,11 +1223,11 @@ function renderAccount() {
       ${session.platformAdmin ? `<a class="menu-item" role="menuitem" href="${appUrl("rostiq.html")}">${ic("settings")} ${t("menu.platform")}${
         session.feedbackNew ? ` <span class="pill cyan">${t("fb.newCount", { n: session.feedbackNew })}</span>` : ""}</a>` : ""}
       <a class="menu-item" role="menuitem" href="${appUrl("start.html")}">${ic("plus")} ${t("menu.newTeam")}</a>
-      <button class="menu-item" role="menuitem" data-feedback>${ic("message")} ${t("fb.menu")}</button>
+      ${DEMO ? "" : `<button class="menu-item" role="menuitem" data-feedback>${ic("message")} ${t("fb.menu")}</button>`}
       <a class="menu-item" role="menuitem" href="${appUrl("privacy.html")}">${ic("shield")} ${t("priv.menu")}</a>
       ${canInstall() ? `<button class="menu-item" role="menuitem" data-install>${ic("download")} ${t("menu.install")}</button>` : ""}
       <div class="menu-lang"><span>${t("menu.language")}</span><div class="lang">${langButtons()}</div></div>
-      <button class="menu-item danger" role="menuitem" data-signout>${ic("x")} ${t("auth.signOut")}</button>
+      <button class="menu-item danger" role="menuitem" data-signout>${ic("x")} ${t(DEMO ? "demo.exit" : "auth.signOut")}</button>
     </div>`;
 }
 
