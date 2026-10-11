@@ -1058,7 +1058,7 @@ function gateMessage(text, err) { gateMsg = { text, err }; renderAuth(); }
 const appUrl = file => location.href.split(/[?#]/)[0].replace(/[^/]*$/, file);
 
 // ---- Feedback to RostiQ (account menu, footer): only the RostiQ admin reads it ----
-const APP_VERSION = "2026.10.12";
+const APP_VERSION = "2026.10.13";
 function deviceText() {
   const ua = navigator.userAgent;
   const os = /iPhone/.test(ua) ? "iPhone" : /iPad/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1) ? "iPad"
@@ -1281,16 +1281,16 @@ const initials0 = s => String(s).split(/\s+/).filter(Boolean).slice(0, 2).map(w 
 async function onGateClick(ev) {
   if (ev.target.closest("[data-google]")) {
     try {
-      // Phones handle a full-page redirect better than a popup tab; the home-screen
-      // app and desktops keep the popup so the page itself isn't navigated away.
-      const phoneBrowser = matchMedia("(pointer: coarse)").matches && !standalone();
-      if (phoneBrowser) {
-        try { sessionStorage.setItem("authFlow", "1"); } catch {} // coming back here must not open the landing page
-        return await A.signInWithRedirect(fbAuth, new A.GoogleAuthProvider());
-      }
+      // Everywhere a sign-in tab (popup): it hands the login straight back to this page. The full-page
+      // redirect has to pass the result through browser storage, which some phones lose (endless loop back
+      // to Google), so it's only the fallback when the browser refuses to open the tab.
       await A.signInWithPopup(fbAuth, new A.GoogleAuthProvider());
       gateMsg = { text: "", err: false };
     } catch (e) {
+      if (e.code === "auth/popup-blocked" || e.code === "auth/operation-not-supported-in-this-environment") {
+        try { sessionStorage.setItem("authFlow", "1"); } catch {} // coming back here must not open the landing page
+        return A.signInWithRedirect(fbAuth, new A.GoogleAuthProvider()).catch(() => gateMessage(t("auth.googleFailed"), true));
+      }
       if (e.code !== "auth/popup-closed-by-user" && e.code !== "auth/cancelled-popup-request")
         gateMessage(t("auth.googleFailed"), true);
     }
