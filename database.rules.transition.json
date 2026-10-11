@@ -308,13 +308,14 @@
         "admins": {
           "$uid": {
             ".read": "auth != null && auth.uid === $uid",
+            ".write": "(((auth != null && auth.token.email_verified === true && (auth.token.email === 'levicaers1@gmail.com')) || (auth != null && root.child('teams').child($tid).child('admins').child(auth.uid).val() === true)) && newData.val() === true && root.child('teams').child($tid).child('members').child($uid).exists()) || (auth != null && auth.uid === $uid && !newData.exists())",
             ".validate": "newData.val() === true && ((auth != null && auth.token.email_verified === true && (auth.token.email === 'levicaers1@gmail.com')) || $uid === auth.uid || root.child('teams').child($tid).exists())"
           }
         },
         "members": {
           "$uid": {
             ".read": "auth != null && auth.uid === $uid",
-            ".write": "((auth != null && auth.token.email_verified === true && (auth.token.email === 'levicaers1@gmail.com')) || (auth != null && root.child('teams').child($tid).child('admins').child(auth.uid).val() === true))",
+            ".write": "((auth != null && auth.token.email_verified === true && (auth.token.email === 'levicaers1@gmail.com')) || (auth != null && root.child('teams').child($tid).child('admins').child(auth.uid).val() === true)) || (auth != null && auth.uid === $uid && !newData.exists())",
             ".validate": "newData.isString() && newData.parent().parent().child('players').child(newData.val()).child('uid').val() === $uid && ((auth != null && auth.token.email_verified === true && (auth.token.email === 'levicaers1@gmail.com')) || $uid === auth.uid || root.child('teams').child($tid).exists())"
           }
         },
@@ -377,7 +378,7 @@
         },
         "players": {
           "$pid": {
-            ".write": "((auth != null && auth.token.email_verified === true && (auth.token.email === 'levicaers1@gmail.com')) || (auth != null && root.child('teams').child($tid).child('admins').child(auth.uid).val() === true))",
+            ".write": "((auth != null && auth.token.email_verified === true && (auth.token.email === 'levicaers1@gmail.com')) || (auth != null && root.child('teams').child($tid).child('admins').child(auth.uid).val() === true)) || ((auth != null && root.child('teams').child($tid).child('players').child($pid).child('uid').val() === auth.uid) && !newData.exists())",
             "uid": {
               ".validate": "newData.isString()"
             },
@@ -561,9 +562,11 @@
             ".validate": "newData.isNumber()"
           },
           "creatorName": {
+            ".write": "auth != null && data.parent().child('createdBy').val() === auth.uid && !newData.exists()",
             ".validate": "newData.isString() && newData.val().length <= 60"
           },
           "creatorEmail": {
+            ".write": "auth != null && data.parent().child('createdBy').val() === auth.uid && !newData.exists()",
             ".validate": "newData.isString() && newData.val().length <= 100"
           },
           "code": {
@@ -624,6 +627,12 @@
             ".validate": false
           }
         },
+        "feedback": {
+          "$id": {
+            ".write": "auth != null && auth.uid === $uid",
+            ".validate": "$id.matches(/^[a-z0-9]{8,30}$/) && newData.val() === true"
+          }
+        },
         "created": {
           "$slot": {
             ".write": "auth != null && auth.uid === $uid && newData.exists() && !data.exists()",
@@ -668,7 +677,8 @@
     "feedback": {
       ".read": "(auth != null && auth.token.email_verified === true && (auth.token.email === 'levicaers1@gmail.com'))",
       "$id": {
-        ".write": "(auth != null && auth.token.email_verified === true && (auth.token.email === 'levicaers1@gmail.com')) || (auth != null && !data.exists() && newData.child('uid').val() === auth.uid && newData.parent().parent().child('feedbackLast').child(auth.uid).val() === now)",
+        ".read": "auth != null && data.child('uid').val() === auth.uid",
+        ".write": "(auth != null && auth.token.email_verified === true && (auth.token.email === 'levicaers1@gmail.com')) || (auth != null && !data.exists() && newData.child('uid').val() === auth.uid && newData.parent().parent().child('feedbackLast').child(auth.uid).val() === now) || (auth != null && data.child('uid').val() === auth.uid && !newData.exists())",
         ".validate": "$id.matches(/^[a-z0-9]{8,30}$/) && newData.hasChildren(['uid', 'type', 'text', 'at', 'status'])",
         "uid": {
           ".validate": "newData.isString()"
@@ -726,9 +736,63 @@
         ".read": "((auth != null && auth.token.email_verified === true && (auth.token.email === 'levicaers1@gmail.com')) || (auth != null && root.child('teams').child($tid).child('admins').child(auth.uid).val() === true))",
         ".write": "(auth != null && auth.token.email_verified === true && (auth.token.email === 'levicaers1@gmail.com'))",
         "$uid": {
+          ".read": "auth != null && auth.uid === $uid",
           ".write": "auth != null && auth.uid === $uid && root.child('teams').child($tid).child('members').child($uid).exists()",
           ".validate": "newData.isNumber() && newData.val() === now"
         }
+      }
+    },
+    "errors": {
+      ".read": "(auth != null && auth.token.email_verified === true && (auth.token.email === 'levicaers1@gmail.com'))",
+      ".write": "(auth != null && auth.token.email_verified === true && (auth.token.email === 'levicaers1@gmail.com'))",
+      "$id": {
+        ".write": "(auth != null && auth.token.email_verified === true && (auth.token.email === 'levicaers1@gmail.com')) || (auth != null && auth.token.email_verified === true && !data.exists() && newData.parent().parent().child('errorsLast').child(auth.uid).val() === now)",
+        ".validate": "$id.matches(/^[a-z0-9]{8,30}$/) && newData.hasChildren(['at', 'items'])",
+        "at": {
+          ".validate": "newData.isNumber()"
+        },
+        "page": {
+          ".validate": "newData.isString() && newData.val().length <= 40"
+        },
+        "team": {
+          ".validate": "newData.isString() && newData.val().length <= 40"
+        },
+        "device": {
+          ".validate": "newData.isString() && newData.val().length <= 120"
+        },
+        "lang": {
+          ".validate": "newData.isString() && newData.val().length <= 5"
+        },
+        "version": {
+          ".validate": "newData.isString() && newData.val().length <= 20"
+        },
+        "items": {
+          "$i": {
+            ".validate": "$i.matches(/^[0-9]$/) && newData.hasChildren(['msg'])",
+            "msg": {
+              ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 300"
+            },
+            "src": {
+              ".validate": "newData.isString() && newData.val().length <= 200"
+            },
+            "n": {
+              ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 1000"
+            },
+            "$other": {
+              ".validate": false
+            }
+          }
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
+    },
+    "errorsLast": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid",
+        ".validate": "newData.isNumber() && newData.val() === now && (!data.exists() || now - data.val() >= 60000)"
       }
     },
     "$other": {

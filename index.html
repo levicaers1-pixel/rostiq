@@ -105,6 +105,7 @@
 
   /* Match cards: date, details, progress towards the minimum, who's coming, my answer, the whole team */
   .matches { display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(min(380px, 100%), 1fr)); align-items: start; }
+  .matches > .empty-state { grid-column: 1 / -1; }
   .match { display: grid; grid-template-columns: 58px 1fr auto; gap: 14px; }
   .m-body { min-width: 0; }
   .m-meta .details { display: grid; gap: 3px; margin-top: 6px; }
@@ -275,7 +276,7 @@
   </div>
   <div class="matches" id="matches"></div>
 
-  <div class="section-head">
+  <div class="section-head" id="overview-head">
     <h2 data-i18n="overview">Overview</h2>
     <div class="head-actions">
       <div class="legend">
@@ -294,7 +295,7 @@
       <tfoot><tr id="foot"></tr></tfoot>
     </table>
   </div>
-  <p class="note" data-i18n="note"></p>
+  <p class="note" id="table-note" data-i18n="note"></p>
 
 </main>
 
@@ -361,8 +362,19 @@ const animStyle = (key, ms, extra = "") => {
 
 function renderMatches(players, events) {
   const box = document.getElementById("matches");
-  document.getElementById("table-view").hidden = !dataLoaded;
+  // No matches yet: one clear empty state instead of an empty list and an empty table.
+  const none = dataLoaded && !EVENTS.length;
+  document.getElementById("table-view").hidden = !dataLoaded || none;
+  for (const id of ["overview-head", "table-note", "share-overview", "ics-all"]) document.getElementById(id).hidden = none;
   if (!dataLoaded) { box.innerHTML = skeletonCards(4); return; }
+  if (none) {
+    box.innerHTML = session.admin || !AUTH_ON
+      ? emptyState("calendar", t("empty.noMatches"), t("empty.noMatchesAdmin"),
+          `<a class="btn primary" href="${pageUrl("admin.html")}#sec-matches">${ic("plus")} ${t("empty.addMatches")}</a>`)
+      : emptyState("calendar", t("empty.noMatches"), t("empty.noMatchesPlayer"));
+    return;
+  }
+  if (!events.length) { box.innerHTML = emptyState("calendar-check", t("empty.noUpcoming"), t("empty.noUpcomingText"), "", true); return; }
   const min = minPlayers(), named = players.filter(p => p.name), total = Math.max(named.length, min, 1);
   const pct = n => Math.min(100, n / total * 100);
   const me = AUTH_ON ? players.find(p => p.id === session.pid) : null;
@@ -455,8 +467,8 @@ function renderWelcome(players) {
         ${onb.phoneErr ? `<div class="results"><small class="err">${t("phone.invalid")}</small></div>` : ""}` },
     ...(wa && WA_LINK.test(wa) ? [{ icon: "message", done: !!pref.get(flagKey("onbWa"), ""), title: t("onb.wa"), sub: t("onb.waSub"),
       action: `<a class="btn-like action" data-onb="wa" href="${esc(wa)}" target="_blank" rel="noopener">${t("onb.open")}</a>` }] : []),
-    { icon: "calendar-plus", done: !!pref.get(flagKey("onbCal"), ""), title: t("onb.calendar"), sub: t("onb.calendarSub"),
-      action: `<button data-onb="cal">${t("onb.download")}</button>` },
+    ...(EVENTS.length ? [{ icon: "calendar-plus", done: !!pref.get(flagKey("onbCal"), ""), title: t("onb.calendar"), sub: t("onb.calendarSub"),
+      action: `<button data-onb="cal">${t("onb.download")}</button>` }] : []), // nothing to put in a calendar yet
     { icon: "user", done: !!photoOf(me), title: t("onb.photo"), sub: t("onb.photoSub"),
       action: `<a class="btn-like action" href="${pageUrl("ploeg.html")}#me">${t("onb.add")}</a>` },
   ];

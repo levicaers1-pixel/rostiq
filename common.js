@@ -10,6 +10,39 @@ const pref = {
   set(k, v) { try { localStorage.setItem(k, v); } catch {} },
 };
 
+// ---- Error reports: the app's own JavaScript errors are collected on this device and sent (without name or account)
+// to the RostiQ admin, at most once a minute. Errors from browser extensions or other sites are ignored. ----
+const errq = {
+  get() { try { return JSON.parse(pref.get("errq", "[]")) || []; } catch { return []; } },
+  set(list) { pref.set("errq", JSON.stringify(list.slice(-10))); },
+};
+function noteError(msg, src) {
+  try {
+    msg = String(msg || "").replace(/\s+/g, " ").trim().slice(0, 300);
+    if (!msg || /^(Uncaught )?Script error\.?$|ResizeObserver loop|Failed to fetch|NetworkError|Load failed|AbortError/i.test(msg)) return;
+    const list = errq.get(), hit = list.find(x => x.msg === msg && x.src === src);
+    if (hit) hit.n = Math.min(1000, (hit.n || 1) + 1); else list.push({ msg, src: String(src || "").slice(0, 200), n: 1 });
+    errq.set(list);
+  } catch {}
+}
+// "https://…/rostiq/common.js:12:3" → "common.js:12:3", only for this site's own files.
+function ownFrame(text) {
+  text = String(text || "");
+  const at = text.indexOf(location.origin + "/");
+  if (at < 0) return null;
+  const url = text.slice(at).split(/[\s)]/)[0], file = url.slice(url.lastIndexOf("/") + 1);
+  return /^[\w.-]+\.(js|html)(:\d+){0,2}$/.test(file) ? file : null;
+}
+window.addEventListener("error", ev => {
+  if (!ev.message) return; // a picture or script that failed to load: no code error
+  const src = ownFrame(`${ev.filename}:${ev.lineno}:${ev.colno}`);
+  if (src) noteError(ev.message, src);
+});
+window.addEventListener("unhandledrejection", ev => {
+  const r = ev.reason, src = ownFrame(r && r.stack);
+  if (src) noteError(r && r.message || r, src);
+});
+
 // ---- Which team: ?t=<id> in the address, else the last team used on this device ----
 const QUERY = new URLSearchParams(location.search);
 const WANT_PICKER = QUERY.has("pick");
@@ -331,6 +364,12 @@ async function saved(pending) {
   return ok;
 }
 let toastTimer = null;
+// Empty state: an icon, what's missing, a hint and optionally a button (HTML).
+function emptyState(icon, title, text = "", action = "", small = false) {
+  return `<div class="empty-state${small ? " small" : ""}"><span class="empty-ic">${ic(icon)}</span><b>${title}</b>${text ? `<p>${text}</p>` : ""}${
+    action ? `<div class="empty-act">${action}</div>` : ""}</div>`;
+}
+
 function toast(text, kind = "") {
   let el = document.getElementById("toast");
   if (!el) {
@@ -848,6 +887,7 @@ function chooseTeam(id) {
 
 // Kick off: with login, wait for the user; otherwise connect straight away.
 function start() {
+  setTimeout(flushErrors, 10e3); setInterval(flushErrors, 70e3); // error reports, see noteError()
   if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost"))
     navigator.serviceWorker.register("sw.js").catch(() => {});
   const cached = cachedTeamInfo();
@@ -860,7 +900,7 @@ function start() {
     injectCountdown();
     injectPhonePrompt();
   }
-  document.body.insertAdjacentHTML("beforeend", `<footer class="site-footer">${t("footer")} · <a href="#" data-feedback>${t("fb.footer")}</a></footer>`);
+  document.body.insertAdjacentHTML("beforeend", `<footer class="site-footer">${t("footer")} · <a href="#" data-feedback>${t("fb.footer")}</a> · <a href="${appUrl("privacy.html")}">${t("priv.footer")}</a></footer>`);
   injectShareDialog();
   if (AUTH_ON) initAuth(); else if (!NO_TEAM_PAGE) connect(); else render();
 }
@@ -1018,7 +1058,7 @@ function gateMessage(text, err) { gateMsg = { text, err }; renderAuth(); }
 const appUrl = file => location.href.split(/[?#]/)[0].replace(/[^/]*$/, file);
 
 // ---- Feedback to RostiQ (account menu, footer): only the RostiQ admin reads it ----
-const APP_VERSION = "2026.10.10";
+const APP_VERSION = "2026.10.11";
 function deviceText() {
   const ua = navigator.userAgent;
   const os = /iPhone/.test(ua) ? "iPhone" : /iPad/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1) ? "iPad"
@@ -1066,16 +1106,36 @@ async function sendFeedback(ev) {
   const id = (Date.now().toString(36) + Math.random().toString(36).slice(2, 8)).slice(0, 20);
   const TS = { ".sv": "timestamp" };
   const item = { uid: u.uid, type: fbType, text: text.slice(0, 1000), at: TS, status: "new",
-    page: (location.pathname.split("/").pop() || "index.html").replace(".html", "").slice(0, 40) || "index",
+    page: pageName(),
     team: (TEAM_ID || "").slice(0, 40), device: deviceText(), lang: LANG, version: APP_VERSION,
     ...(form.contact.checked && u.email ? { contact: true, email: u.email.slice(0, 100), ...(me && me.name ? { name: me.name.slice(0, 60) } : {}) } : {}) };
-  const ok = await send("PATCH", "", { [`feedback/${id}`]: item, [`feedbackLast/${u.uid}`]: TS }, true, true);
+  const ok = await send("PATCH", "", { [`feedback/${id}`]: item, [`feedbackLast/${u.uid}`]: TS, [`users/${u.uid}/feedback/${id}`]: true }, true, true);
   if (ok !== true) return show(t(isOffline() ? "fb.offline" : "fb.failed"));
   pref.set("fbLast", String(Date.now()));
   form.reset();
   document.getElementById("fb-dlg").close();
   toast(t("fb.thanks"));
 }
+
+// Send the collected error reports (one report per minute at most; the database rules enforce that too).
+let errSending = false;
+async function flushErrors() {
+  const u = session.user, list = errq.get().slice(0, 10);
+  if (!list.length || !u || !u.emailVerified || !DB || errSending || isOffline()) return;
+  if (Date.now() - Number(pref.get("errLast", 0)) < 65e3) return;
+  errSending = true;
+  pref.set("errLast", String(Date.now()));
+  const TS = { ".sv": "timestamp" }, id = "e" + (Date.now().toString(36) + Math.random().toString(36).slice(2, 8)).slice(0, 19);
+  const report = { at: TS, items: Object.fromEntries(list.map((x, i) => [i, x])), page: pageName(), team: (TEAM_ID || "").slice(0, 40),
+    device: deviceText(), lang: LANG, version: APP_VERSION };
+  try {
+    const res = await fetch(await dbUrlAbs(""), { method: "PATCH", body: JSON.stringify({ [`errors/${id}`]: report, [`errorsLast/${u.uid}`]: TS }) });
+    // Sent, or refused for good (e.g. older database rules): either way don't keep resending the same ones.
+    if (res.ok || res.status === 400 || res.status === 401) errq.set(errq.get().slice(list.length));
+  } catch {}
+  errSending = false;
+}
+const pageName = () => (location.pathname.split("/").pop() || "index.html").replace(".html", "").slice(0, 40) || "index";
 
 // ---- Account menu in the header (avatar button → name, role, switch team, RostiQ, language, sign out) ----
 let acctOpen = false;
@@ -1122,6 +1182,7 @@ function renderAccount() {
         session.feedbackNew ? ` <span class="pill cyan">${t("fb.newCount", { n: session.feedbackNew })}</span>` : ""}</a>` : ""}
       <a class="menu-item" role="menuitem" href="${appUrl("start.html")}">${ic("plus")} ${t("menu.newTeam")}</a>
       <button class="menu-item" role="menuitem" data-feedback>${ic("message")} ${t("fb.menu")}</button>
+      <a class="menu-item" role="menuitem" href="${appUrl("privacy.html")}">${ic("shield")} ${t("priv.menu")}</a>
       ${canInstall() ? `<button class="menu-item" role="menuitem" data-install>${ic("download")} ${t("menu.install")}</button>` : ""}
       <div class="menu-lang"><span>${t("menu.language")}</span><div class="lang">${langButtons()}</div></div>
       <button class="menu-item danger" role="menuitem" data-signout>${ic("x")} ${t("auth.signOut")}</button>
@@ -1134,7 +1195,7 @@ function renderAuth() {
   const u = session.user;
   const picking = u && session.picking && !NO_TEAM_PAGE;
   const needClaim = u && !picking && !NO_TEAM_PAGE && (session.pending || (session.ready && !session.pid && !session.admin));
-  const showGate = !u || picking || needClaim;
+  const showGate = (!u && !(window.PUBLIC_PAGE && !session.wantLogin)) || picking || needClaim;
   gate.hidden = !showGate;
   // Pages with skeleton placeholders show right away; others wait until the data is in.
   main.hidden = showGate || (u && !session.ready && !window.SKELETON_PAGE);

@@ -400,3 +400,40 @@ details.panel[open] > summary::after { transform: translateY(2px) rotate(-135deg
 .fb-dlg textarea { min-height: 120px; }
 .fb-contact { display: flex; align-items: center; gap: 8px; margin: 12px 0 6px; font-size: .88rem; }
 .fb-dlg .err { color: var(--no); font-size: .85rem; margin: 6px 0 0; }
+
+/* ---- Empty states: what's missing, and what to do about it ---- */
+.empty-state { display: grid; justify-items: center; gap: 6px; text-align: center; padding: 28px 18px; border: 1.5px dashed var(--border);
+  border-radius: var(--radius); color: var(--muted); background: color-mix(in srgb, var(--surface) 60%, transparent); }
+.empty-state .empty-ic { width: 48px; height: 48px; border-radius: 14px; display: flex; align-items: center; justify-content: center; margin-bottom: 4px;
+  background: color-mix(in srgb, var(--accent) 9%, var(--surface)); color: var(--accent); }
+.empty-state .empty-ic svg.i { width: 24px; height: 24px; }
+.empty-state b { color: var(--text); font-size: 1rem; }
+.empty-state p { margin: 0; max-width: 46ch; font-size: .88rem; line-height: 1.5; }
+.empty-state .empty-act { margin-top: 8px; display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+.empty-state.small { padding: 16px; gap: 4px; }
+.empty-state.small .empty-ic { width: 36px; height: 36px; border-radius: 10px; }
+.empty-state.small .empty-ic svg.i { width: 18px; height: 18px; }
+.empty-state.small b { font-size: .9rem; }
+a.btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: var(--radius-sm); border: 1px solid var(--border);
+  background: var(--surface); color: var(--text); text-decoration: none; font-size: .9rem; }
+
+/* ---- Forms: label above, help below, one clear save button ---- */
+.form-card { display: grid; gap: 14px; padding: 16px; margin-top: 14px; border: 1px solid var(--border); border-radius: var(--radius);
+  background: color-mix(in srgb, var(--accent) 3%, var(--surface)); }
+.form-card > h3 { margin: 0; font-size: .95rem; display: flex; align-items: center; gap: 8px; }
+.form-card > h3 svg.i { color: var(--accent); }
+.form-grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr)); align-items: start; }
+.ff { display: grid; gap: 6px; min-width: 0; align-content: start; }
+.ff > .ff-label { font-size: .88rem; font-weight: 600; color: var(--text); }
+.ff > .ff-label em { font-style: normal; font-weight: 400; color: var(--muted); }
+.ff input:not([type=checkbox]):not([type=color]):not([type=radio]), .ff select { width: 100%; min-width: 0; }
+.ff-help { margin: 0; font-size: .8rem; line-height: 1.45; color: var(--muted); }
+.ff-err { margin: 0; font-size: .82rem; font-weight: 600; color: var(--no); }
+.ff input.bad, .ff select.bad { border-color: var(--no) !important; }
+.ff.check { display: flex; align-items: center; gap: 8px; font-size: .9rem; color: var(--text); padding-top: 26px; }
+.ff-inline { display: flex; gap: 8px; align-items: center; }
+.ff-inline input { flex: 1; }
+.form-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.form-actions .msg { font-size: .85rem; }
+.form-actions .msg.ok { color: var(--yes); }
+.form-actions .msg.dirty { color: var(--maybe); }

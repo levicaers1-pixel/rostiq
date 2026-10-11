@@ -162,15 +162,18 @@ team = {
     },
     # Starting a team: the only admin and member a self-starter can add is themselves.
     "admins": {"$uid": {".read": "auth != null && auth.uid === $uid",
+                        # A team admin may make a linked member admin too; anyone may step down (e.g. when deleting their account).
+                        ".write": f"({TA} && newData.val() === true && root.child('teams').child($tid).child('members').child($uid).exists())"
+                                  " || (auth != null && auth.uid === $uid && !newData.exists())",
                         ".validate": f"newData.val() === true && ({PA} || $uid === auth.uid || root.child('teams').child($tid).exists())"}},
     "members": {"$uid": {
         ".read": "auth != null && auth.uid === $uid",
-        ".write": TA,
+        ".write": f"{TA} || (auth != null && auth.uid === $uid && !newData.exists())",  # leaving: only yourself
         ".validate": "newData.isString() && newData.parent().parent().child('players').child(newData.val()).child('uid').val() === $uid"
                      f" && ({PA} || $uid === auth.uid || root.child('teams').child($tid).exists())"}},
     "requests": request_rules(f"auth != null && (auth.uid === $uid || {TA})", " && newData.parent().parent().child('info').exists()", TA),  # the team (also when created in the same write)
     "initialized": {".write": TA},
-    "players": {"$pid": {".write": TA, **player_rules(OWNER)}},
+    "players": {"$pid": {".write": f"{TA} || ({OWNER} && !newData.exists())", **player_rules(OWNER)}},  # own row: remove only
     "settings": {".write": TA, **settings_rules()},
     "schedule": {".write": TA, **schedule_rules()},
     "matches": {".write": TA, **matches_rules()},
@@ -179,8 +182,9 @@ team = {
     "meta": {
         "createdBy": {".validate": "newData.isString()"},
         "createdAt": {".validate": "newData.isNumber()"},
-        "creatorName": s(60),
-        "creatorEmail": s(100),
+        # The creator may erase their own name and email (account deletion).
+        "creatorName": {".write": "auth != null && data.parent().child('createdBy').val() === auth.uid && !newData.exists()", **s(60)},
+        "creatorEmail": {".write": "auth != null && data.parent().child('createdBy').val() === auth.uid && !newData.exists()", **s(100)},
         "code": s(30, 1),
         "$other": NO,
     },
@@ -235,6 +239,9 @@ users = {"$uid": {
         ".validate": "newData.isString() && newData.val() === newData.parent().parent().parent().parent().child('teams').child($tid).child('members').child($uid).val()"}},
     # My personal details, shared by all my teams (each team keeps a copy in my player row).
     "profile": {".write": "auth != null && auth.uid === $uid", **personal(), "$other": NO},
+    # Ids of my own feedback messages, so I can read or delete them later (Privacy → my data).
+    "feedback": {"$id": {".write": "auth != null && auth.uid === $uid",
+                         ".validate": "$id.matches(/^[a-z0-9]{8,30}$/) && newData.val() === true"}},
     # Teams I started myself (max 3, checked when creating). Only added, never removed by the user.
     "created": {"$slot": {".write": "auth != null && auth.uid === $uid && newData.exists() && !data.exists()",
                           ".validate": "$slot.matches(/^s[1-3]$/) && newData.isString() && newData.parent().parent().parent().parent().child('teams').child(newData.val()).child('meta').child('createdBy').val() === $uid"}},
@@ -247,8 +254,10 @@ users = {"$uid": {
 feedback = {
     ".read": PA,
     "$id": {
+        ".read": "auth != null && data.child('uid').val() === auth.uid",  # your own messages (download / delete)
         ".write": f"{PA} || (auth != null && !data.exists() && newData.child('uid').val() === auth.uid"
-                  " && newData.parent().parent().child('feedbackLast').child(auth.uid).val() === now)",
+                  " && newData.parent().parent().child('feedbackLast').child(auth.uid).val() === now)"
+                  " || (auth != null && data.child('uid').val() === auth.uid && !newData.exists())",
         ".validate": "$id.matches(/^[a-z0-9]{8,30}$/) && newData.hasChildren(['uid', 'type', 'text', 'at', 'status'])",
         "uid": {".validate": "newData.isString()"},
         "type": {".validate": "newData.val() === 'idea' || newData.val() === 'bug' || newData.val() === 'praise'"},
@@ -273,13 +282,36 @@ last_seen = {"$tid": {
     ".read": TA,
     ".write": PA,  # e.g. when a team is deleted
     "$uid": {
+        ".read": "auth != null && auth.uid === $uid",  # your own (download my data)
         ".write": "auth != null && auth.uid === $uid && root.child('teams').child($tid).child('members').child($uid).exists()",
         ".validate": "newData.isNumber() && newData.val() === now",
     },
 }}
 
+# ---- Error reports from the app: anonymous (no uid or name), at most one report per minute per person ----
+errors = {
+    ".read": PA,
+    ".write": PA,  # clear the list
+    "$id": {
+        ".write": f"{PA} || ({VERIFIED} && !data.exists() && newData.parent().parent().child('errorsLast').child(auth.uid).val() === now)",
+        ".validate": "$id.matches(/^[a-z0-9]{8,30}$/) && newData.hasChildren(['at', 'items'])",
+        "at": {".validate": "newData.isNumber()"},
+        "page": s(40), "team": s(40), "device": s(120), "lang": s(5), "version": s(20),
+        "items": {"$i": {
+            ".validate": "$i.matches(/^[0-9]$/) && newData.hasChildren(['msg'])",
+            "msg": s(300, 1), "src": s(200), "n": num(1, 1000), "$other": NO}},
+        "$other": NO,
+    },
+}
+errors_last = {"$uid": {
+    ".read": "auth != null && auth.uid === $uid",
+    ".write": "auth != null && auth.uid === $uid",
+    ".validate": "newData.isNumber() && newData.val() === now && (!data.exists() || now - data.val() >= 60000)",
+}}
+
 final = {"rules": {"teams": {".read": PA, "$tid": team}, "users": users, "signup": signup, "signupCodes": signup_codes,
-                   "feedback": feedback, "feedbackLast": feedback_last, "lastSeen": last_seen, "$other": NO}}
+                   "feedback": feedback, "feedbackLast": feedback_last, "lastSeen": last_seen,
+                   "errors": errors, "errorsLast": errors_last, "$other": NO}}
 
 # ---- Transition: also allow the old single-team structure at the root (Pampas, pre-migration) ----
 L_OWNER = "(auth != null && root.child('players').child($pid).child('uid').val() === auth.uid)"

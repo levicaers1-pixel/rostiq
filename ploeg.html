@@ -22,6 +22,7 @@
   .toolbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 18px 0 12px; }
   .toolbar input { flex: 1 1 220px; min-width: 0; font: inherit; font-size: .9rem; padding: 7px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text); }
   .grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr)); }
+  .grid > .empty-state { grid-column: 1 / -1; }
   .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-sm); padding: 14px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
   .card.me { border-color: var(--accent); box-shadow: inset 3px 0 0 var(--accent); }
   .head { display: flex; gap: 12px; align-items: center; }
@@ -138,7 +139,11 @@ let render = function () {
     .filter(p => !q || [p.name, p.gemeente, p.email, p.fed, ...Object.values(p.extra || {})].some(x => String(x || "").toLowerCase().includes(q)));
   const grid = document.getElementById("grid");
   if (!dataLoaded) { grid.innerHTML = skeletonCards(6); return; }
-  if (!players.length) { grid.innerHTML = `<p class="empty">${t("team.none")}</p>`; return; }
+  if (!players.length) {
+    grid.innerHTML = q ? emptyState("search", t("team.none"), t("empty.searchText"), `<button type="button" data-clear-search>${ic("x")} ${t("empty.clearSearch")}</button>`)
+      : emptyState("users", t("empty.noPlayers"), t(session.admin ? "empty.noPlayersAdmin" : "empty.noPlayersPlayer"));
+    return;
+  }
   grid.innerHTML = players.map(p => {
     const st = statsFor(p), mine = AUTH_ON && p.id === session.pid, editable = canEdit(p.id);
     const place = (p.geo && p.geo.label) || p.gemeente;
@@ -171,6 +176,11 @@ let render = function () {
 };
 
 document.getElementById("filter").addEventListener("input", ev => { filterText = ev.target.value.trim(); render(); });
+document.addEventListener("click", ev => {
+  if (!ev.target.closest("[data-clear-search]")) return;
+  const f = document.getElementById("filter");
+  f.value = ""; filterText = ""; render(); f.focus();
+});
 document.getElementById("grid").addEventListener("click", async ev => {
   const c = ev.target.closest("[data-copy]");
   if (c) {

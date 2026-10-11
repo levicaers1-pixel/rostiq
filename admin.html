@@ -34,6 +34,7 @@
   .plist { list-style: none; margin: 0 0 12px; padding: 0; }
   .plist li { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; align-items: center; padding: 8px 0; border-top: 1px solid var(--border); }
   .plist li:first-child { border-top: none; }
+  .plist li.list-empty, .mlist li.list-empty { display: block; border-top: none; padding: 4px 0 0; }
   .plist .name { font-weight: 600; }
   .plist .flags { display: flex; gap: 10px; flex-wrap: wrap; font-size: .8rem; color: var(--muted); }
   .plist .flags .off { opacity: .45; text-decoration: line-through; }
@@ -86,12 +87,14 @@
   .custom-row input { flex: 1; min-width: 0; }
   .suggest { display: flex; gap: 6px; flex-wrap: wrap; }
   .min-hint { margin: 0; padding: 10px 12px; border-radius: 10px; font-size: .85rem; background: color-mix(in srgb, var(--pampas) 12%, var(--surface)); }
-  .addmatch select { font: inherit; font-size: .9rem; padding: 7px 8px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg); color: var(--text); }
+  .ff select { font: inherit; font-size: .9rem; padding: 7px 8px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg); color: var(--text); }
   .suggest button { font-size: .8rem; padding: 5px 12px; border-radius: 999px; }
 
-  /* Settings */
-  .settings { display: grid; gap: 14px; max-width: 640px; }
-  .settings label { display: grid; gap: 4px; font-size: .85rem; color: var(--muted); }
+  /* Forms (settings, add player, add match): see .form-card / .ff in common.css */
+  #admin .form-card { max-width: 720px; }
+  .fieldsform label > span:first-child, .brandform label > span:first-child, .field-label { font-size: .88rem; font-weight: 600; color: var(--text); }
+  #f-settings { margin-top: 4px; }
+  .ff input[name=min] { max-width: 120px; }
 
   /* Branding */
   .brandform { display: grid; gap: 14px; max-width: 640px; }
@@ -125,8 +128,6 @@
   .mlist .acts { display: flex; gap: 6px; align-items: center; }
   .mlist .acts a, .mlist .acts button { font-size: .85rem; padding: 4px 8px; text-decoration: none; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text); }
   .tag { font-size: .7rem; font-weight: 600; color: var(--final); border: 1px solid var(--final); border-radius: 999px; padding: 0 6px; margin-left: 6px; white-space: nowrap; }
-  .addmatch { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-  .addmatch input[name=opp] { flex: 1 1 200px; min-width: 0; }
   @media (max-width: 480px) {
     .mlist li { grid-template-columns: 1fr auto; }
     .mlist .when { grid-column: 1 / -1; }
@@ -176,24 +177,32 @@
       <h2 data-i18n="admin.players">Players & accounts</h2>
       <p class="help" data-i18n="admin.playersHelp"></p>
       <ul class="plist" id="players"></ul>
-      <form class="row" id="add-player">
-        <input name="name" maxlength="60" data-i18n-placeholder="admin.addPh" autocomplete="off" required>
-        <button type="submit" class="primary" data-i18n="admin.add">+ Add</button>
+      <form class="form-card" id="add-player" novalidate>
+        <label class="ff"><span class="ff-label" data-i18n="admin.addTitle">Add a player</span>
+          <span class="ff-inline"><input name="name" maxlength="60" data-i18n-placeholder="admin.addPh" autocomplete="off">
+            <button type="submit" class="primary" data-i18n="admin.add">+ Add</button></span>
+          <span class="ff-err" hidden></span>
+          <span class="ff-help" data-i18n="admin.addHelp"></span></label>
       </form>
     </section>
 
     <!-- Settings -->
     <section class="panel" id="sec-settings">
       <h2 data-i18n="admin.settings">Settings</h2>
-      <div class="settings">
-        <form id="f-season"><label><span data-i18n="admin.season">Season name</span>
-          <span class="row"><input name="v" maxlength="60" required> <button data-i18n="admin.save">Save</button> <span class="msg"></span></span></label></form>
-        <form id="f-min"><label><span data-i18n="admin.min">Minimum players</span>
-          <span class="row"><input name="v" type="number" min="1" max="50" inputmode="numeric" required style="width:90px"> <button data-i18n="admin.save">Save</button> <span class="msg"></span></span></label></form>
-        <form id="f-wa"><label><span data-i18n="wa.setting">WhatsApp group link</span>
-          <span class="row"><input name="v" type="url" placeholder="https://chat.whatsapp.com/…" autocomplete="off"> <button data-i18n="admin.save">Save</button> <button type="button" id="wa-remove" data-i18n="wa.remove">Remove</button> <span class="msg"></span></span></label>
-          <span class="muted" data-i18n="wa.help"></span></form>
-      </div>
+      <form class="form-card" id="f-settings" novalidate>
+        <div class="form-grid">
+          <label class="ff"><span class="ff-label" data-i18n="admin.season">Season name</span>
+            <input name="season" maxlength="60" autocomplete="off">
+            <span class="ff-err" hidden></span><span class="ff-help" data-i18n="set.seasonHelp"></span></label>
+          <label class="ff"><span class="ff-label" data-i18n="admin.min">Minimum players</span>
+            <input name="min" type="number" min="1" max="50" inputmode="numeric">
+            <span class="ff-err" hidden></span><span class="ff-help" data-i18n="setup.minSub"></span></label>
+        </div>
+        <label class="ff"><span class="ff-label"><span data-i18n="wa.setting">WhatsApp group link</span> <em data-i18n="start.optional"></em></span>
+          <input name="wa" type="url" placeholder="https://chat.whatsapp.com/…" autocomplete="off">
+          <span class="ff-err" hidden></span><span class="ff-help" data-i18n="set.waHelp"></span></label>
+        <div class="form-actions"><button type="submit" class="primary" data-i18n="admin.save" disabled>Save</button><span class="msg" id="settings-msg"></span></div>
+      </form>
     </section>
 
     <!-- Sport & player fields -->
@@ -261,14 +270,19 @@
       <h2 data-i18n="admin.matches">Matches</h2>
       <p class="help" data-i18n="admin.matchesHelp"></p>
       <ul class="mlist" id="matches"></ul>
-      <form class="addmatch" id="add-match">
-        <input name="date" type="date" required data-i18n-title="admin.date">
-        <input name="opp" maxlength="60" required data-i18n-placeholder="admin.opp" autocomplete="off">
-        <select name="home" data-i18n-title="match.homeAway"><option value="" data-i18n="match.homeUnknown">Home / away?</option>
-          <option value="1" data-i18n="match.home">Home</option><option value="0" data-i18n="match.away">Away</option></select>
-        <label class="muted"><input name="final" type="checkbox"> <span data-i18n="admin.final">Final</span></label>
-        <button type="submit" class="primary" data-i18n="admin.addMatch">+ Add match</button>
-        <span class="msg err"></span>
+      <form class="form-card" id="add-match" novalidate>
+        <h3 data-i18n="admin.addMatchTitle">Add a match</h3>
+        <div class="form-grid">
+          <label class="ff"><span class="ff-label" data-i18n="admin.date">Date</span><input name="date" type="date"><span class="ff-err" hidden></span></label>
+          <label class="ff"><span class="ff-label" data-i18n="admin.opp">Opponent / location</span>
+            <input name="opp" maxlength="60" autocomplete="off" data-i18n-placeholder="admin.oppPh"><span class="ff-err" hidden></span></label>
+          <label class="ff"><span class="ff-label" data-i18n="match.homeAway">Home or away</span>
+            <select name="home"><option value="" data-i18n="admin.homeLater">Not known yet</option>
+              <option value="1" data-i18n="match.home">Home</option><option value="0" data-i18n="match.away">Away</option></select></label>
+          <label class="ff check"><input name="final" type="checkbox"> <span data-i18n="admin.final">Final</span></label>
+        </div>
+        <div class="form-actions"><button type="submit" class="primary" data-i18n="admin.addMatch">+ Add match</button>
+          <span class="ff-help" data-i18n="admin.addMatchHelp"></span></div>
       </form>
     </section>
 
@@ -301,6 +315,16 @@ const savedMsg = (form, ok, text) => {
   m.textContent = text || (ok ? t("admin.saved") : "");
   m.className = "msg " + (ok ? "ok" : "err");
 };
+
+// Inline field errors: red border + message under the field; cleared as soon as it's edited.
+function fieldErr(input, msg) {
+  const box = input.closest(".ff"), out = box && box.querySelector(".ff-err");
+  input.classList.toggle("bad", !!msg);
+  if (out) { out.textContent = msg || ""; out.hidden = !msg; }
+  if (msg) input.focus();
+  return !msg;
+}
+document.addEventListener("input", ev => { if (ev.target.classList && ev.target.classList.contains("bad")) fieldErr(ev.target, ""); });
 
 // ---- Rendering ----
 function render() {
@@ -456,7 +480,7 @@ function renderRequests() {
         <button class="primary" data-req-link="${uid}">${t("admin.link")}</button>
         <button class="link err" data-req-reject="${uid}">${t("admin.reject")}</button>
       </div>
-    </li>`).join("") : `<li class="muted">${t("admin.noRequests")}</li>`;
+    </li>`).join("") : `<li class="list-empty">${emptyState("inbox", t("admin.noRequests"), t("admin.noRequestsText"), "", true)}</li>`;
 }
 document.getElementById("requests").addEventListener("click", ev => {
   const link = ev.target.closest("[data-req-link]");
@@ -497,7 +521,7 @@ function renderPlayers() {
           ${seenHtml(p.uid)}
         </div></div>
       <div class="acts">
-        ${AUTH_ON && p.uid && session.platformAdmin ? `<button class="link" data-admin="${p.id}">${t(root.admins && root.admins[p.uid] ? "admin.removeAdmin" : "admin.makeAdmin")}</button>` : ""}
+        ${AUTH_ON && p.uid && (session.platformAdmin || !(root.admins && root.admins[p.uid])) ? `<button class="link" data-admin="${p.id}">${t(root.admins && root.admins[p.uid] ? "admin.removeAdmin" : "admin.makeAdmin")}</button>` : ""}
         ${AUTH_ON && p.uid ? `<button class="link" data-reset="${p.id}">${t("accounts.reset")}</button>` : ""}
         ${AUTH_ON && !p.uid && p.name && !session.pid ? `<button class="link" data-mine="${p.id}">${t("accounts.mine")}</button>` : ""}
         <button class="link err" data-remove="${p.id}">${t("admin.remove")}</button>
@@ -505,13 +529,20 @@ function renderPlayers() {
     </li>`).join("");
 }
 
+// Settings: one form; the save button wakes up once something changed.
+const sf = document.getElementById("f-settings");
+let settingsDirty = false;
 function renderSettings() {
   const s = root.settings || {};
-  const set = (id, v) => { const inp = document.querySelector(`#${id} [name=v]`); if (document.activeElement !== inp) inp.value = v; };
-  set("f-season", seasonName());
-  set("f-min", s.minPlayers || TEAM.minPlayers || 3);
-  set("f-wa", s.waGroup || "");
-  document.getElementById("wa-remove").hidden = !s.waGroup;
+  if (!settingsDirty) {
+    sf.season.value = seasonName();
+    sf.min.value = s.minPlayers || TEAM.minPlayers || 3;
+    sf.wa.value = s.waGroup || "";
+  }
+  sf.querySelector("[type=submit]").disabled = !settingsDirty;
+  const msg = document.getElementById("settings-msg");
+  if (settingsDirty) { msg.textContent = t("admin.unsaved"); msg.className = "msg dirty"; }
+  else if (msg.classList.contains("dirty")) msg.textContent = "";
 }
 
 function renderMatches() {
@@ -524,7 +555,7 @@ function renderMatches() {
         <a href="./?t=${TEAM_ID}#edit=${e.date}" title="${t("details.edit")}">✏️</a>
         <button data-del-match="${e.date}" title="${t("admin.remove")}">🗑️</button>
       </div>
-    </li>`).join("") : `<li class="muted">${t("admin.noMatches")}</li>`;
+    </li>`).join("") : `<li class="list-empty">${emptyState("calendar", t("admin.noMatchesTitle"), t("admin.noMatches"), "", true)}</li>`;
 }
 
 // ---- Players ----
@@ -533,8 +564,9 @@ document.getElementById("players").addEventListener("click", ev => {
   if (mine) return linkAccount(session.user.uid, mine.dataset.mine).then(syncSession);
   const adm = ev.target.closest("[data-admin]");
   if (adm) {
-    const uid = root.players[adm.dataset.admin].uid;
-    return write(`admins/${uid}`, root.admins && root.admins[uid] ? null : true);
+    const p = root.players[adm.dataset.admin], uid = p.uid, isAdm = root.admins && root.admins[uid];
+    if (!isAdm && !confirm(t("admin.makeAdminConfirm", { name: p.name || "?" }))) return;
+    return write(`admins/${uid}`, isAdm ? null : true);
   }
   const reset = ev.target.closest("[data-reset]");
   if (reset) {
@@ -554,31 +586,28 @@ document.getElementById("players").addEventListener("click", ev => {
 document.getElementById("add-player").addEventListener("submit", ev => {
   ev.preventDefault();
   const name = ev.target.name.value.trim();
-  if (!name) return;
+  if (!fieldErr(ev.target.name, name ? "" : t("team.errName"))) return;
   const order = sortedPlayers().reduce((m, p) => Math.max(m, p.order || 0), 0) + 1;
   write(`players/p${Date.now().toString(36)}`, { order, name: name.slice(0, 60) });
   ev.target.reset();
 });
 
 // ---- Settings ----
-document.getElementById("f-season").addEventListener("submit", ev => {
+sf.addEventListener("input", () => { settingsDirty = true; renderSettings(); });
+sf.addEventListener("submit", async ev => {
   ev.preventDefault();
-  const v = ev.target.v.value.trim().slice(0, 60);
-  if (!v) return;
-  write("settings/seasonName", v); savedMsg(ev.target, true);
+  const season = sf.season.value.trim().slice(0, 60), n = Math.round(Number(sf.min.value));
+  const link = sf.wa.value.trim().replace(/[?#].*$/, "");
+  if (!fieldErr(sf.season, season ? "" : t("set.seasonNeeded"))) return;
+  if (!fieldErr(sf.min, n >= 1 && n <= 50 ? "" : t("set.minRange"))) return;
+  if (!fieldErr(sf.wa, !link || WA_LINK.test(link) ? "" : t("wa.invalid"))) return;
+  const ok = await update({ "settings/seasonName": season, "settings/minPlayers": n, "settings/waGroup": link || null });
+  const msg = document.getElementById("settings-msg");
+  if (!ok) { msg.textContent = t("status.saveFailed"); msg.className = "msg err"; return; }
+  settingsDirty = false;
+  msg.textContent = ok === "queued" ? t("toast.queued") : t("admin.saved"); msg.className = "msg ok";
+  renderSettings();
 });
-document.getElementById("f-min").addEventListener("submit", ev => {
-  ev.preventDefault();
-  const n = Math.round(Number(ev.target.v.value));
-  if (n >= 1 && n <= 50) { write("settings/minPlayers", n); savedMsg(ev.target, true); }
-});
-document.getElementById("f-wa").addEventListener("submit", ev => {
-  ev.preventDefault();
-  const link = ev.target.v.value.trim().replace(/[?#].*$/, "");
-  if (!WA_LINK.test(link)) return savedMsg(ev.target, false, t("wa.invalid"));
-  write("settings/waGroup", link); savedMsg(ev.target, true);
-});
-document.getElementById("wa-remove").onclick = () => write("settings/waGroup", null);
 
 // ---- Branding: name, logo and colours of this team (shown live while editing) ----
 const bf = document.getElementById("f-brand");
@@ -693,9 +722,8 @@ function scheduleUpdate(changes) {
 document.getElementById("add-match").addEventListener("submit", ev => {
   ev.preventDefault();
   const f = ev.target, date = f.date.value, opp = f.opp.value.trim().slice(0, 60);
-  if (!date || !opp) return;
-  if (EVENTS.some(e => e.date === date)) { f.querySelector(".msg").textContent = t("admin.matchExists"); return; }
-  f.querySelector(".msg").textContent = "";
+  if (!fieldErr(f.date, !date ? t("admin.dateNeeded") : EVENTS.some(e => e.date === date) ? t("admin.matchExists") : "")) return;
+  if (!fieldErr(f.opp, opp ? "" : t("admin.oppNeeded"))) return;
   scheduleUpdate({ [`schedule/${date}`]: { opp, ...(f.final.checked ? { final: true } : {}), ...(f.home.value ? { home: f.home.value === "1" } : {}) } });
   f.reset();
 });

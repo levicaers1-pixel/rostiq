@@ -1,0 +1,402 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title data-i18n-doc="priv.pageTitle">RostiQ · Privacy</title>
+<meta name="theme-color" content="#1e1b4b">
+<meta name="description" content="Hoe RostiQ omgaat met je gegevens, en hoe je ze downloadt of je account verwijdert.">
+<link rel="icon" type="image/png" href="assets/favicon.png">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Cormorant+Garamond:wght@600&display=swap">
+<link rel="stylesheet" href="common.css">
+<style>
+  main.privacy { max-width: 760px; }
+  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-sm); padding: 18px 20px; margin-top: 18px; }
+  .mydata h2 { margin: 0 0 4px; display: flex; align-items: center; gap: 10px; font-size: 1.15rem; }
+  .mydata h2 svg.i { color: var(--accent); }
+  .mydata > p { margin: 0; color: var(--muted); font-size: .9rem; }
+  .data-actions { display: grid; gap: 12px; margin-top: 16px; grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr)); }
+  .data-act { display: grid; gap: 8px; align-content: start; padding: 14px; border: 1px solid var(--border); border-radius: 12px; }
+  .data-act b { display: flex; align-items: center; gap: 8px; }
+  .data-act p { margin: 0; font-size: .85rem; color: var(--muted); line-height: 1.45; }
+  .data-act button { justify-self: start; }
+  .data-act.danger { border-color: color-mix(in srgb, var(--no) 35%, var(--border)); }
+  .data-act.danger b svg.i { color: var(--no); }
+  button.danger { color: var(--no); border-color: color-mix(in srgb, var(--no) 45%, var(--border)); }
+  button.danger.solid { background: var(--no); color: #fff; border-color: var(--no); font-weight: 600; }
+  .statement h2 { font-size: 1.05rem; margin: 26px 0 6px; }
+  .statement h2:first-child { margin-top: 4px; }
+  .statement p, .statement li { font-size: .92rem; line-height: 1.6; }
+  .statement ul { padding-left: 20px; margin: 6px 0; }
+  .statement .updated { color: var(--muted); font-size: .82rem; margin-top: 24px; }
+  .del-dlg { max-width: 520px; width: calc(100% - 32px); border: none; border-radius: var(--radius); padding: 20px; background: var(--surface); color: var(--text); box-shadow: var(--shadow); }
+  .del-dlg::backdrop { background: rgb(0 0 0 / .45); }
+  .del-dlg h3 { margin: 0 0 10px; display: flex; gap: 8px; align-items: center; }
+  .del-dlg h3 svg.i { color: var(--no); }
+  .del-dlg ul { padding-left: 20px; margin: 8px 0 14px; font-size: .9rem; line-height: 1.55; }
+  .del-dlg .blocker { padding: 12px; border-radius: 10px; background: var(--no-bg); color: var(--no); font-size: .88rem; font-weight: 600; margin-bottom: 12px; }
+  .del-dlg .row { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap; margin-top: 14px; }
+  .del-dlg input { width: 100%; font: inherit; padding: 10px 12px; border: 1.5px solid var(--border); border-radius: 10px; background: var(--bg); color: var(--text); }
+  .del-dlg .ff-err { margin-top: 8px; }
+  .done-card { text-align: center; }
+</style>
+</head>
+<body>
+<header class="brand">
+  <div class="brand-inner">
+    <a href="./"><img class="logo rostiq-logo" src="assets/rostiq-logo-header.png" alt="RostiQ"></a>
+  </div>
+</header>
+<main class="privacy">
+  <h1 data-i18n="priv.title">Privacy</h1>
+  <p class="sub" data-i18n="priv.sub"></p>
+
+  <section class="panel mydata" id="mydata"></section>
+
+  <section class="panel statement" id="statement"></section>
+</main>
+
+<!-- The privacy statement, one per language; the page shows the one for the chosen language. -->
+<template data-statement="nl">
+  <h2>Wie zijn we?</h2>
+  <p>RostiQ is een teamplanner voor sportploegen, een project van <a href="https://www.caersultancy.com" target="_blank" rel="noopener">Caersultancy</a>. Wij zijn verantwoordelijk voor de gegevens die je in RostiQ invult. Vragen? Gebruik <b>Feedback</b> onderaan elke pagina, of de contactgegevens op caersultancy.com.</p>
+
+  <h2>Welke gegevens bewaren we?</h2>
+  <ul>
+    <li><b>Je login</b>: je e-mailadres en een technische account-ID (via Google of een inloglink per e-mail).</li>
+    <li><b>Wat je zelf invult</b>: je naam, gsm-nummer, e-mailadres, gemeente (met de ligging op de kaart), federatienummer, de extra velden van je ploeg en eventueel een profielfoto.</li>
+    <li><b>Wat je in de app doet</b>: je beschikbaarheid per wedstrijd en je carpools.</li>
+    <li><b>Laatst gezien</b>: wanneer je de app voor het laatst opende in een ploeg.</li>
+    <li><b>Feedback</b> die je stuurt, met de pagina, je toestel (bv. „iPhone · Safari”) en de appversie.</li>
+    <li><b>Foutmeldingen</b>: als de app een fout tegenkomt, sturen we de foutmelding met de pagina, je toestel en de appversie. Zonder je naam of account.</li>
+    <li><b>Op je eigen toestel</b>: je taal, je laatste ploeg, een kopie van de ploeggegevens om offline te werken en wijzigingen die nog verstuurd moeten worden. Geen tracking-cookies, geen advertenties, geen statistiekdiensten.</li>
+  </ul>
+
+  <h2>Waarom?</h2>
+  <p>Enkel om de teamplanner te laten werken waarvoor jij en je ploeg RostiQ gebruiken: zien wie er kan spelen, carpools regelen en elkaar bereiken. Je gsm-nummer dient alleen voor de WhatsApp-knoppen. Feedback en foutmeldingen gebruiken we om RostiQ te verbeteren. We verkopen niets door en tonen geen reclame.</p>
+
+  <h2>Wie ziet wat?</h2>
+  <ul>
+    <li><b>Je ploegmaten</b> (aangemeld en door de beheerder gekoppeld) zien je naam, foto, contactgegevens, gemeente, beschikbaarheid en carpools. Je gsm-nummer staat nergens op de site, maar ploegmaten kunnen je via de WhatsApp-knoppen een bericht sturen.</li>
+    <li><b>De beheerders van je ploeg</b> zien daarnaast wanneer je de app laatst opende en de toegangsaanvragen.</li>
+    <li><b>De RostiQ-beheerder</b> heeft technisch toegang tot alle gegevens, en gebruikt die alleen voor support en onderhoud.</li>
+    <li>Iemand die niet in je ploeg zit, ziet niets behalve de naam en het logo van de ploeg (op het aanmeldscherm).</li>
+  </ul>
+
+  <h2>Waar staan je gegevens?</h2>
+  <ul>
+    <li>De database en de logins: <b>Google Firebase</b>, met de database in de EU (België, europe-west1).</li>
+    <li>De website zelf: <b>GitHub Pages</b>. Lettertypes: <b>Google Fonts</b>.</li>
+    <li>Kaarten: <b>OpenStreetMap</b>. Een plaats zoeken: <b>Nominatim</b> en <b>Photon</b> (alleen de tekst die je intypt). Rijtijden: <b>OSRM</b> (de coördinaten van vertrek en wedstrijd). Weer: <b>Open-Meteo</b> (de ligging van de wedstrijd).</li>
+    <li><b>WhatsApp</b> opent pas als je zelf op een WhatsApp-knop drukt.</li>
+  </ul>
+  <p>Deze diensten zien bij gebruik ook je IP-adres, zoals elke website.</p>
+
+  <h2>Hoe lang?</h2>
+  <p>Zolang je account en je ploeg bestaan. Een nieuw seizoen wist de antwoorden en carpools. Verwijder je je account, dan verdwijnen je gegevens meteen uit RostiQ. Een back-up die een ploegbeheerder zelf downloadde, valt daarbuiten. Foutmeldingen worden gewist zodra ze bekeken zijn.</p>
+
+  <h2>Je rechten</h2>
+  <ul>
+    <li><b>Inzien</b>: op de pagina Ploeg, of download alles hierboven met <b>Download mijn gegevens</b>.</li>
+    <li><b>Aanpassen</b>: via <b>Mijn gegevens aanpassen</b> op de pagina Ploeg.</li>
+    <li><b>Wissen</b>: met <b>Verwijder mijn account</b> hierboven.</li>
+    <li>Niet tevreden? Je kunt klacht indienen bij de <a href="https://www.gegevensbeschermingsautoriteit.be" target="_blank" rel="noopener">Gegevensbeschermingsautoriteit</a>.</li>
+  </ul>
+  <p class="updated">Laatst bijgewerkt: 11 oktober 2026</p>
+</template>
+
+<template data-statement="en">
+  <h2>Who are we?</h2>
+  <p>RostiQ is a team planner for sports teams, a project of <a href="https://www.caersultancy.com" target="_blank" rel="noopener">Caersultancy</a>. We are responsible for the data you enter in RostiQ. Questions? Use <b>Feedback</b> at the bottom of every page, or the contact details on caersultancy.com.</p>
+
+  <h2>What data do we keep?</h2>
+  <ul>
+    <li><b>Your login</b>: your email address and a technical account ID (via Google or a sign-in link by email).</li>
+    <li><b>What you fill in</b>: your name, mobile number, email address, town (with its location on the map), federation number, your team's extra fields and, if you like, a profile photo.</li>
+    <li><b>What you do in the app</b>: your availability per match and your carpools.</li>
+    <li><b>Last seen</b>: when you last opened the app in a team.</li>
+    <li><b>Feedback</b> you send, with the page, your device (e.g. “iPhone · Safari”) and the app version.</li>
+    <li><b>Error reports</b>: when the app runs into an error, we send the error with the page, your device and the app version. Without your name or account.</li>
+    <li><b>On your own device</b>: your language, your last team, a copy of the team's data to work offline and changes still waiting to be sent. No tracking cookies, no ads, no analytics services.</li>
+  </ul>
+
+  <h2>Why?</h2>
+  <p>Only to run the team planner you and your team use RostiQ for: seeing who can play, arranging carpools and reaching each other. Your mobile number is only used for the WhatsApp buttons. We use feedback and error reports to improve RostiQ. We don't sell anything on and show no ads.</p>
+
+  <h2>Who sees what?</h2>
+  <ul>
+    <li><b>Your teammates</b> (signed in and linked by the admin) see your name, photo, contact details, town, availability and carpools. Your mobile number isn't shown anywhere on the site, but teammates can message you through the WhatsApp buttons.</li>
+    <li><b>Your team's admins</b> also see when you last opened the app, and the access requests.</li>
+    <li><b>The RostiQ admin</b> has technical access to all data, and uses it only for support and maintenance.</li>
+    <li>Someone outside your team sees nothing except the team's name and logo (on the sign-in screen).</li>
+  </ul>
+
+  <h2>Where is your data?</h2>
+  <ul>
+    <li>The database and the logins: <b>Google Firebase</b>, with the database in the EU (Belgium, europe-west1).</li>
+    <li>The website itself: <b>GitHub Pages</b>. Fonts: <b>Google Fonts</b>.</li>
+    <li>Maps: <b>OpenStreetMap</b>. Finding a place: <b>Nominatim</b> and <b>Photon</b> (only the text you type). Driving times: <b>OSRM</b> (the coordinates of departure and match). Weather: <b>Open-Meteo</b> (the match location).</li>
+    <li><b>WhatsApp</b> only opens when you press a WhatsApp button yourself.</li>
+  </ul>
+  <p>Like any website, these services also see your IP address when used.</p>
+
+  <h2>How long?</h2>
+  <p>As long as your account and your team exist. A new season clears the answers and carpools. If you delete your account, your data disappears from RostiQ right away. A backup a team admin downloaded themselves is outside of that. Error reports are deleted once they've been looked at.</p>
+
+  <h2>Your rights</h2>
+  <ul>
+    <li><b>See</b> your data: on the Team page, or download everything above with <b>Download my data</b>.</li>
+    <li><b>Correct</b> it: with <b>Edit my details</b> on the Team page.</li>
+    <li><b>Erase</b> it: with <b>Delete my account</b> above.</li>
+    <li>Not happy? You can file a complaint with the Belgian <a href="https://www.dataprotectionauthority.be" target="_blank" rel="noopener">Data Protection Authority</a>.</li>
+  </ul>
+  <p class="updated">Last updated: 11 October 2026</p>
+</template>
+
+<template data-statement="fr">
+  <h2>Qui sommes-nous ?</h2>
+  <p>RostiQ est un planificateur pour équipes sportives, un projet de <a href="https://www.caersultancy.com" target="_blank" rel="noopener">Caersultancy</a>. Nous sommes responsables des données que tu saisis dans RostiQ. Des questions ? Utilise <b>Avis</b> en bas de chaque page, ou les coordonnées sur caersultancy.com.</p>
+
+  <h2>Quelles données conservons-nous ?</h2>
+  <ul>
+    <li><b>Ta connexion</b> : ton adresse e-mail et un identifiant technique de compte (via Google ou un lien de connexion par e-mail).</li>
+    <li><b>Ce que tu remplis</b> : ton nom, ton numéro de portable, ton adresse e-mail, ta commune (avec sa position sur la carte), ton numéro de fédération, les champs supplémentaires de ton équipe et, si tu veux, une photo de profil.</li>
+    <li><b>Ce que tu fais dans l'app</b> : tes disponibilités par match et tes covoiturages.</li>
+    <li><b>Dernière visite</b> : quand tu as ouvert l'app pour la dernière fois dans une équipe.</li>
+    <li><b>Les avis</b> que tu envoies, avec la page, ton appareil (p. ex. « iPhone · Safari ») et la version de l'app.</li>
+    <li><b>Rapports d'erreur</b> : quand l'app rencontre une erreur, nous envoyons l'erreur avec la page, ton appareil et la version de l'app. Sans ton nom ni ton compte.</li>
+    <li><b>Sur ton propre appareil</b> : ta langue, ta dernière équipe, une copie des données de l'équipe pour travailler hors ligne et les modifications pas encore envoyées. Pas de cookies de suivi, pas de publicité, pas de services de statistiques.</li>
+  </ul>
+
+  <h2>Pourquoi ?</h2>
+  <p>Uniquement pour faire fonctionner le planificateur pour lequel toi et ton équipe utilisez RostiQ : voir qui peut jouer, organiser les covoiturages et vous joindre. Ton numéro de portable sert uniquement aux boutons WhatsApp. Nous utilisons les avis et les rapports d'erreur pour améliorer RostiQ. Nous ne revendons rien et n'affichons pas de publicité.</p>
+
+  <h2>Qui voit quoi ?</h2>
+  <ul>
+    <li><b>Tes coéquipiers</b> (connectés et liés par l'administrateur) voient ton nom, ta photo, tes coordonnées, ta commune, tes disponibilités et tes covoiturages. Ton numéro de portable n'est affiché nulle part sur le site, mais tes coéquipiers peuvent t'écrire via les boutons WhatsApp.</li>
+    <li><b>Les administrateurs de ton équipe</b> voient en plus quand tu as ouvert l'app pour la dernière fois, et les demandes d'accès.</li>
+    <li><b>L'administrateur RostiQ</b> a un accès technique à toutes les données, et ne l'utilise que pour le support et la maintenance.</li>
+    <li>Une personne extérieure à ton équipe ne voit rien, sauf le nom et le logo de l'équipe (sur l'écran de connexion).</li>
+  </ul>
+
+  <h2>Où sont tes données ?</h2>
+  <ul>
+    <li>La base de données et les connexions : <b>Google Firebase</b>, avec la base de données dans l'UE (Belgique, europe-west1).</li>
+    <li>Le site lui-même : <b>GitHub Pages</b>. Polices : <b>Google Fonts</b>.</li>
+    <li>Cartes : <b>OpenStreetMap</b>. Recherche d'un lieu : <b>Nominatim</b> et <b>Photon</b> (uniquement le texte que tu tapes). Temps de trajet : <b>OSRM</b> (les coordonnées du départ et du match). Météo : <b>Open-Meteo</b> (le lieu du match).</li>
+    <li><b>WhatsApp</b> ne s'ouvre que lorsque tu appuies toi-même sur un bouton WhatsApp.</li>
+  </ul>
+  <p>Comme pour tout site web, ces services voient aussi ton adresse IP lors de leur utilisation.</p>
+
+  <h2>Combien de temps ?</h2>
+  <p>Tant que ton compte et ton équipe existent. Une nouvelle saison efface les réponses et les covoiturages. Si tu supprimes ton compte, tes données disparaissent immédiatement de RostiQ. Une sauvegarde téléchargée par un administrateur d'équipe lui-même n'en fait pas partie. Les rapports d'erreur sont effacés une fois consultés.</p>
+
+  <h2>Tes droits</h2>
+  <ul>
+    <li><b>Consulter</b> : sur la page Équipe, ou télécharge tout ci-dessus avec <b>Télécharger mes données</b>.</li>
+    <li><b>Corriger</b> : avec <b>Modifier mes données</b> sur la page Équipe.</li>
+    <li><b>Effacer</b> : avec <b>Supprimer mon compte</b> ci-dessus.</li>
+    <li>Pas satisfait ? Tu peux introduire une plainte auprès de l'<a href="https://www.autoriteprotectiondonnees.be" target="_blank" rel="noopener">Autorité de protection des données</a>.</li>
+  </ul>
+  <p class="updated">Dernière mise à jour : 11 octobre 2026</p>
+</template>
+
+<dialog class="del-dlg" id="del-dlg"></dialog>
+
+<script>window.PLATFORM_PAGE = true; window.PUBLIC_PAGE = true;</script>
+<script src="icons.js"></script>
+<script src="config.js"></script>
+<script src="team.js"></script>
+<script src="i18n.js"></script>
+<script src="common.js"></script>
+<script>
+// The statement in the chosen language.
+document.getElementById("statement").innerHTML =
+  (document.querySelector(`template[data-statement="${LANG}"]`) || document.querySelector('template[data-statement="en"]')).innerHTML;
+
+// Signed in again on purpose (to confirm deleting the account): show the sign-in screen, then reopen the dialog.
+const REAUTH = "reauthDelete";
+if (pref.get(REAUTH, "")) session.wantLogin = true;
+const RECENT = 5 * 60e3; // Firebase only deletes a login that signed in during the last few minutes
+let done = false, busy = false;
+
+function render() {
+  const box = document.getElementById("mydata"), u = session.user;
+  if (done) {
+    box.innerHTML = `<div class="done-card">${emptyState("check", t("priv.done"), t("priv.doneSub"),
+      `<a class="btn" href="./">${t("priv.home")}</a>`)}</div>`;
+    return;
+  }
+  if (!u) {
+    box.innerHTML = `<h2>${ic("shield")} ${t("priv.mine")}</h2><p>${t("priv.mineSignedOut")}</p>
+      <div class="data-actions"><div><button class="primary" data-login>${ic("user")} ${t("priv.signIn")}</button></div></div>`;
+    return;
+  }
+  box.innerHTML = `<h2>${ic("shield")} ${t("priv.mine")}</h2><p>${t("priv.signedInAs", { email: esc(u.email || "") })}</p>
+    <div class="data-actions">
+      <div class="data-act"><b>${ic("download")} ${t("priv.download")}</b><p>${t("priv.downloadHelp")}</p>
+        <button data-export>${ic("download")} ${t("priv.download")}</button></div>
+      <div class="data-act danger"><b>${ic("trash")} ${t("priv.delete")}</b><p>${t("priv.deleteHelp")}</p>
+        <button class="danger" data-delete>${ic("trash")} ${t("priv.delete")}…</button></div>
+    </div>`;
+  if (pref.get(REAUTH, "") && isRecent()) { pref.set(REAUTH, ""); session.wantLogin = false; openDelete(); }
+}
+
+const isRecent = () => {
+  const m = fbAuth && fbAuth.currentUser && fbAuth.currentUser.metadata, at = Date.parse(m && m.lastSignInTime);
+  return !at || Date.now() - at < RECENT;
+};
+
+// Everything of mine: my-teams index, profile, feedback ids, and per team the team data and my last-seen.
+async function loadMine() {
+  const uid = session.user.uid, me = (await getAbs(`users/${uid}`)) || {};
+  const teams = await Promise.all(Object.entries(me.teams || {}).map(async ([id, pid]) => ({
+    id, pid, data: await getAbs(`teams/${id}`), seen: await getAbs(`lastSeen/${id}/${uid}`) })));
+  const fbIds = Object.keys(me.feedback || {});
+  const feedback = (await Promise.all(fbIds.map(id => getAbs(`feedback/${id}`)))).map((x, i) => x && { id: fbIds[i], ...x }).filter(Boolean);
+  return { uid, me, teams, feedback };
+}
+
+async function exportData(btn) {
+  btn.disabled = true;
+  try {
+    const { uid, me, teams, feedback } = await loadMine();
+    const out = {
+      app: "RostiQ", exportedAt: new Date().toISOString(),
+      account: { uid, email: session.user.email || null },
+      profile: me.profile || {},
+      teams: teams.map(x => {
+        const d = x.data || {}, carpool = {};
+        for (const [date, entries] of Object.entries(d.carpool || {})) if (entries && entries[x.pid]) carpool[date] = entries[x.pid];
+        return { team: x.id, name: (d.info || {}).brand || x.id, player: (d.players || {})[x.pid] || null, carpool,
+          admin: !!(d.admins || {})[uid], lastSeen: typeof x.seen === "number" ? new Date(x.seen).toISOString() : null,
+          startedByYou: (d.meta || {}).createdBy === uid };
+      }),
+      feedback: feedback.map(f => ({ ...f, at: typeof f.at === "number" ? new Date(f.at).toISOString() : f.at })),
+      teamsYouStarted: Object.values(me.created || {}),
+    };
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([JSON.stringify(out, null, 2)], { type: "application/json" }));
+    a.download = t("priv.fileName");
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  } catch { toast(t("priv.failed"), "err"); }
+  btn.disabled = false;
+}
+
+// One atomic write that removes everything of mine (the database rules allow exactly this for your own data).
+function deletionPlan({ uid, me, teams, feedback }) {
+  const ch = {}, names = [], blockers = [];
+  for (const x of teams) {
+    ch[`users/${uid}/teams/${x.id}`] = null;
+    const d = x.data;
+    if (!d) continue; // no access any more: only the index entry
+    const T = `teams/${x.id}`, name = (d.info || {}).brand || x.id, admins = d.admins || {};
+    const isAdmin = admins[uid] === true;
+    const otherAdmins = Object.keys(admins).filter(a => a !== uid && admins[a] === true).length;
+    const others = Object.keys(d.members || {}).filter(m => m !== uid).length;
+    if (isAdmin && !otherAdmins && others) blockers.push(name);
+    names.push(name);
+    if (((d.players || {})[x.pid] || {}).uid === uid) {
+      ch[`${T}/players/${x.pid}`] = null;
+      for (const [date, entries] of Object.entries(d.carpool || {})) {
+        if (entries[x.pid]) ch[`${T}/carpool/${date}/${x.pid}`] = null;
+        for (const [o, en] of Object.entries(entries)) if (o !== x.pid && en && en.with === x.pid) ch[`${T}/carpool/${date}/${o}/with`] = null;
+      }
+    }
+    if ((d.members || {})[uid]) { ch[`${T}/members/${uid}`] = null; ch[`lastSeen/${x.id}/${uid}`] = null; }
+    if (isAdmin) ch[`${T}/admins/${uid}`] = null;
+    if ((d.requests || {})[uid]) ch[`${T}/requests/${uid}`] = null;
+    const meta = d.meta || {};
+    if (meta.createdBy === uid) {
+      if (meta.creatorName) ch[`${T}/meta/creatorName`] = null;
+      if (meta.creatorEmail) ch[`${T}/meta/creatorEmail`] = null;
+    }
+  }
+  if (me.profile) ch[`users/${uid}/profile`] = null;
+  for (const id of Object.keys(me.feedback || {})) ch[`users/${uid}/feedback/${id}`] = null;
+  for (const f of feedback) ch[`feedback/${f.id}`] = null;
+  ch[`feedbackLast/${uid}`] = null;
+  ch[`errorsLast/${uid}`] = null;
+  return { ch, names, blockers };
+}
+
+let plan = null;
+async function openDelete() {
+  const dlg = document.getElementById("del-dlg");
+  if (!isRecent()) {
+    dlg.innerHTML = `<h3>${ic("shield")} ${t("priv.reauthTitle")}</h3><p>${t("priv.reauth")}</p>
+      <div class="row"><button data-close>${t("details.cancel")}</button><button class="primary" data-reauth>${t("priv.reauthBtn")}</button></div>`;
+    dlg.showModal();
+    return;
+  }
+  dlg.innerHTML = `<p>${t("priv.loading")}</p>`;
+  dlg.showModal();
+  try { plan = deletionPlan(await loadMine()); } catch { dlg.innerHTML = `<p class="ff-err">${t("priv.failed")}</p><div class="row"><button data-close>${t("close")}</button></div>`; return; }
+  const word = t("priv.confirmWord");
+  dlg.innerHTML = `<h3>${ic("trash")} ${t("priv.dlgTitle")}</h3>
+    ${plan.blockers.length ? `<div class="blocker">${t("priv.soleAdmin", { teams: plan.blockers.map(esc).join(", ") })}</div>` : ""}
+    <p>${t("priv.willIntro")}</p>
+    <ul>
+      <li>${t("priv.willProfile")}</li>
+      ${plan.names.map(n => `<li>${t("priv.willTeam", { team: esc(n) })}</li>`).join("")}
+      <li>${t("priv.willFeedback")}</li>
+      <li>${t("priv.willLogin")}</li>
+    </ul>
+    <p class="ff-help">${t("priv.afterNote")}</p>
+    <label class="ff" style="margin-top:12px"><span class="ff-label">${t("priv.confirmLabel", { word })}</span>
+      <input id="del-word" autocomplete="off" autocapitalize="characters" ${plan.blockers.length ? "disabled" : ""}></label>
+    <p class="ff-err" id="del-err" hidden></p>
+    <div class="row"><button data-close>${t("details.cancel")}</button>
+      <button class="danger solid" data-confirm-delete disabled>${t("priv.confirmBtn")}</button></div>`;
+  const inp = document.getElementById("del-word"), go = dlg.querySelector("[data-confirm-delete]");
+  inp.addEventListener("input", () => { go.disabled = inp.value.trim().toUpperCase() !== word; });
+  if (!plan.blockers.length) inp.focus();
+}
+
+async function doDelete(btn) {
+  if (busy || !plan) return;
+  busy = true; btn.disabled = true; btn.textContent = t("priv.deleting");
+  const err = document.getElementById("del-err");
+  const fail = msg => { err.textContent = msg; err.hidden = false; busy = false; btn.disabled = false; btn.textContent = t("priv.confirmBtn"); };
+  let res;
+  try { res = await fetch(await dbUrlAbs(""), { method: "PATCH", body: JSON.stringify(plan.ch) }); } catch { return fail(t("fb.offline")); }
+  if (!res.ok) return fail(t("priv.failedNothing")); // one write: either everything is removed, or nothing
+  forgetDevice();
+  try { await A.deleteUser(fbAuth.currentUser); }
+  catch { document.getElementById("del-dlg").close(); try { await A.signOut(fbAuth); } catch {} toast(t("priv.loginLeft"), "err"); }
+  done = true; busy = false;
+  const dlg = document.getElementById("del-dlg");
+  if (dlg.open) dlg.close();
+  render();
+}
+
+// This device forgets everything of the account too (only the language stays).
+function forgetDevice() {
+  try {
+    const keep = localStorage.getItem("lang");
+    localStorage.clear();
+    if (keep) localStorage.setItem("lang", keep);
+  } catch {}
+}
+
+document.addEventListener("click", ev => {
+  if (ev.target.closest("[data-login]")) { session.wantLogin = true; renderAuth(); scrollTo(0, 0); }
+  const ex = ev.target.closest("[data-export]");
+  if (ex) exportData(ex);
+  if (ev.target.closest("[data-delete]")) openDelete();
+  const dlg = document.getElementById("del-dlg");
+  if (ev.target.closest("[data-close]") || ev.target === dlg) { if (!busy) dlg.close(); }
+  if (ev.target.closest("[data-reauth]")) { pref.set(REAUTH, "1"); dlg.close(); session.wantLogin = true; A.signOut(fbAuth); }
+  const go = ev.target.closest("[data-confirm-delete]");
+  if (go) doDelete(go);
+});
+
+start();
+</script>
+</body>
+</html>

@@ -53,6 +53,15 @@
   .fb-list .ctx { font-size: .76rem; color: var(--muted); }
   .fb-list .acts { display: flex; gap: 12px; flex-wrap: wrap; font-size: .85rem; }
   .fb-list .acts a { color: var(--accent); }
+  .err-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .err-head button { font-size: .85rem; font-weight: 500; }
+  .err-list { list-style: none; margin: 10px 0 0; padding: 0; }
+  .err-list li { padding: 10px 0; border-top: 1px solid var(--border); display: grid; gap: 4px; }
+  .err-list li:first-child { border-top: none; }
+  .err-list li.list-empty { border-top: none; }
+  .err-list code { font-size: .85rem; word-break: break-word; white-space: pre-wrap; }
+  .err-list .ctx { font-size: .78rem; color: var(--muted); }
+  .teams li.list-empty, .fb-list li.list-empty { display: block; border-top: none; }
 </style>
 </head>
 <body>
@@ -76,6 +85,12 @@
       <h2 data-i18n="fb.inbox">Feedback</h2>
       <div class="fb-filters" id="fb-filters"></div>
       <ul class="fb-list" id="fb-list"><li class="muted">…</li></ul>
+    </section>
+
+    <section class="panel" id="err-panel">
+      <h2 class="err-head"><span data-i18n="err.title">Error reports</span> <button class="link del" id="err-clear" hidden data-i18n="err.clear">Clear all</button></h2>
+      <p class="muted" data-i18n="err.help"></p>
+      <ul class="err-list" id="err-list"><li class="muted">…</li></ul>
     </section>
 
     <section class="panel signup">
@@ -124,10 +139,12 @@ async function loadTeams() {
   const ids = Object.keys((await fetch(await shallow("teams")).then(r => r.json()).catch(() => null)) || {});
   teams = await Promise.all(ids.map(async id => {
     const memberIds = Object.keys((await fetch(await shallow(`teams/${id}/members`)).then(r => r.json()).catch(() => null)) || {});
-    return { id, info: (await getAbs(`teams/${id}/info`)) || {}, meta: (await getAbs(`teams/${id}/meta`)) || null, memberIds, members: memberIds.length };
+    const admins = Object.keys((await fetch(await shallow(`teams/${id}/admins`)).then(r => r.json()).catch(() => null)) || {}).length;
+    return { id, info: (await getAbs(`teams/${id}/info`)) || {}, meta: (await getAbs(`teams/${id}/meta`)) || null, memberIds, members: memberIds.length, admins };
   }));
   signup = { open: (await getAbs("signup/open")) === true, codes: (await getAbs("signupCodes")) || {} };
   feedback = (await getAbs("feedback")) || {};
+  errors = (await getAbs("errors")) || {};
   teams.sort((a, b) => (a.info.brand || a.id).localeCompare(b.info.brand || b.id));
   render();
 }
@@ -144,15 +161,17 @@ function render() {
     return `<li>
       <span class="swatch" style="background:${esc(color)}"></span>
       <div class="grow"><div class="name">${esc(x.info.brand || x.id)}</div>
-        <div class="muted">${esc(x.info.season || "")} · ${esc(x.id)} · ${t("rostiq.members", { n: x.members })}</div>
+        <div class="muted">${esc(x.info.season || "")} · ${esc(x.id)} · ${t("rostiq.members", { n: x.members })}
+          ${!x.members ? `<span class="pill gray">${t("rostiq.emptyTeam")}</span>` : !x.admins ? `<span class="pill maybe">${t("rostiq.noAdmin")}</span>` : ""}</div>
         ${x.meta ? `<div class="by">${t("rostiq.startedBy", { who: esc(x.meta.creatorName || "?") + (x.meta.creatorEmail ? ` (${esc(x.meta.creatorEmail)})` : ""),
           when: esc(new Date(x.meta.createdAt || 0).toLocaleDateString(LOCALE)) })}${x.meta.code ? ` · ${esc(x.meta.code)}` : ""}</div>` : ""}</div>
       <button class="link" data-copy="${esc(link)}">${t("rostiq.copyInvite")}</button>
       <a class="open" href="${esc(link)}">${t("rostiq.open")}</a>
       <button class="link del" data-delete="${esc(x.id)}">${t("rostiq.delete")}</button>
     </li>`;
-  }).join("") : `<li class="muted">${t("rostiq.none")}</li>`;
+  }).join("") : `<li class="list-empty">${emptyState("users", t("rostiq.none"), "", "", true)}</li>`;
   renderFeedback();
+  renderErrors();
   // Self-service
   document.getElementById("signup-open").checked = signup.open;
   const codes = Object.entries(signup.codes).sort(([a], [b]) => a.localeCompare(b));
@@ -185,8 +204,33 @@ function renderFeedback() {
         ${x.status !== "seen" && x.status !== "done" ? `<button class="link" data-fbs="${id}" data-to="seen">${t("fb.markSeen")}</button>` : ""}
         ${x.status !== "done" ? `<button class="link" data-fbs="${id}" data-to="done">${t("fb.markDone")}</button>` : `<button class="link" data-fbs="${id}" data-to="seen">${t("fb.reopen")}</button>`}
         <button class="link del" data-fbdel="${id}">${t("rostiq.delete")}</button>
-      </div></li>`).join("") : `<li class="muted">${t("fb.none")}</li>`;
+      </div></li>`).join("") : `<li class="list-empty">${emptyState("inbox", t("fb.none"), "", "", true)}</li>`;
 }
+// ---- Error reports: the same error from many devices is shown once, with a count ----
+let errors = {};
+function renderErrors() {
+  const groups = new Map();
+  for (const r of Object.values(errors)) {
+    if (!r || !r.items) continue;
+    for (const it of Object.values(r.items)) {
+      const key = it.msg + "|" + (it.src || ""), g = groups.get(key) || { msg: it.msg, src: it.src || "", n: 0, last: 0, pages: new Set(), devices: new Set(), versions: new Set() };
+      g.n += it.n || 1; g.last = Math.max(g.last, r.at || 0);
+      if (r.page) g.pages.add(r.page); if (r.device) g.devices.add(r.device.split(" · ").slice(0, 2).join(" · ")); if (r.version) g.versions.add(r.version);
+      groups.set(key, g);
+    }
+  }
+  const list = [...groups.values()].sort((a, b) => b.last - a.last);
+  document.getElementById("err-clear").hidden = !list.length;
+  document.getElementById("err-list").innerHTML = list.length ? list.map(g => `<li>
+      <code>${esc(g.msg)}</code>
+      <div class="ctx">${[g.src && esc(g.src), t("err.times", { n: g.n }), esc(new Date(g.last).toLocaleString(LOCALE, { dateStyle: "medium", timeStyle: "short" })),
+        `${t("fb.page")}: ${esc([...g.pages].join(", "))}`, esc([...g.devices].slice(0, 3).join(" / ")), [...g.versions].map(v => "v" + esc(v)).join(", ")].filter(Boolean).join(" · ")}</div>
+    </li>`).join("") : `<li class="list-empty">${emptyState("check", t("err.none"), t("err.noneText"), "", true)}</li>`;
+}
+document.getElementById("err-clear").addEventListener("click", async () => {
+  if (confirm(t("err.clearConfirm")) && await writeAbs("errors", null)) { errors = {}; renderErrors(); }
+});
+
 document.getElementById("fb-panel").addEventListener("click", async ev => {
   const f = ev.target.closest("[data-fbf]");
   if (f) { fbFilter = f.dataset.fbf; renderFeedback(); return; }

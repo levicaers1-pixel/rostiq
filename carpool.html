@@ -664,7 +664,7 @@ function render() {
   wrap.innerHTML = "";
   const upcoming = EVENTS.filter(e => !isPast(e));
   upcoming.forEach(e => wrap.append(renderMatch(e)));
-  if (!upcoming.length) wrap.innerHTML = `<div class="empty">${t("carpool.none")}</div>`;
+  if (!upcoming.length) wrap.innerHTML = emptyState("car", t("carpool.none"), t("empty.carpoolText"));
 
   if (key) {
     const el = document.querySelector(`[data-key="${key}"]`);
