@@ -3,7 +3,7 @@
 RostiQ is a team planner by [Caersultancy](https://www.caersultancy.com) for sports teams:
 availability, calendar, carpool and WhatsApp sharing — one app, one login, many teams.
 
-**Live:** https://levicaers1-pixel.github.io/rostiq/
+**Live:** https://rostiq.be/
 
 ## How it is organised
 
