@@ -4,7 +4,7 @@
 // - Fonts and the Firebase login library: the stored copy right away, refreshed in the background.
 // - Team data (Firebase database), maps, weather and place search are never stored here; common.js keeps
 //   the last-known team data itself.
-const CACHE = "rostiq-v1";
+const CACHE = "rostiq-v2";
 const SHELL = [
   "./", "index.html", "carpool.html", "ploeg.html", "admin.html", "rostiq.html", "start.html", "privacy.html", "demo.js",
   "common.css", "common.js", "i18n.js", "icons.js", "boot.js", "team.js", "config.js", "manifest.webmanifest",
@@ -40,7 +40,9 @@ const keyOf = url => url.origin + url.pathname;
 async function networkFirst(req, url) {
   const cache = await caches.open(CACHE);
   try {
-    const res = await fetch(req);
+    // "no-cache": always ask the server whether there's a newer version (GitHub Pages lets browsers keep files
+    // 10 minutes), so a new page never runs with an older script right after an update.
+    const res = await fetch(url.href, { cache: "no-cache", credentials: "same-origin" });
     if (res.ok) cache.put(keyOf(url), res.clone());
     return res;
   } catch {
