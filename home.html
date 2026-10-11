@@ -238,6 +238,8 @@
   .price li svg.i { width: 20px; height: 20px; margin-top: 2px; color: var(--yes); }
   .price.main li svg.i { color: var(--lime); }
   .price .btn { margin-top: auto; align-self: flex-start; }
+  .mail-note { font-size: .88rem; color: var(--muted); }
+  .mail-note a { color: var(--ink-2); font-weight: 600; }
   .price p { margin: 6px 0 0; }
   .price.main p { color: rgb(255 255 255 / .75); }
   @media (max-width: 800px) { .prices { grid-template-columns: 1fr; } }
@@ -520,7 +522,8 @@
             <li><span data-ic="check"></span><span data-t="pr.c2">Eén huisstijl voor iedereen</span></li>
             <li><span data-ic="check"></span><span data-t="pr.c3">Persoonlijke hulp bij de start</span></li>
           </ul>
-          <a class="btn btn-dark" href="https://www.caersultancy.com" target="_blank" rel="noopener" data-t="pr.clubCta">Neem contact op</a>
+          <a class="btn btn-dark" href="mailto:levi@caersultancy.com?subject=RostiQ%20voor%20onze%20club" data-t="pr.clubCta">Neem contact op</a>
+          <p class="mail-note"><a href="mailto:levi@caersultancy.com">levi@caersultancy.com</a></p>
         </div>
       </div>
     </div>
@@ -565,6 +568,7 @@
       <a href="privacy.html" data-t="ft.privacy">Privacy</a>
       <a href="index.html?pick" data-t="nav.signin">Aanmelden</a>
       <a href="start.html" data-t="nav.start">Start gratis</a>
+      <a href="mailto:levi@caersultancy.com" data-t="ft.contact">Contact</a>
     </nav>
     <span>© 2026 RostiQ · <span data-t="ft.by">een project van</span> <a href="https://www.caersultancy.com" target="_blank" rel="noopener">Caersultancy</a></span>
   </div>
@@ -628,7 +632,7 @@ const TXT = {
     "q6": "Can RostiQ use our club colours?", "a6": "Yes. As an admin you choose your own logo, colours and font. Your players see your house style right away.",
     "q7": "How fast can I start?", "a7": "Your team is online within a minute. Add matches, share the link, and the first answers come in.",
     "end.h": "Ready for Saturday?", "end.p": "Put your team on RostiQ today. Free, in a minute, without anyone having to install anything.", "end.signin": "I already have a team",
-    "ft.privacy": "Privacy", "ft.by": "a project of",
+    "ft.privacy": "Privacy", "ft.by": "a project of", "ft.contact": "Contact",
     "doc.title": "RostiQ – Your team sorted, no app needed",
   },
   fr: {
@@ -685,7 +689,7 @@ const TXT = {
     "q6": "Peut-on mettre RostiQ aux couleurs du club ?", "a6": "Oui. En tant qu'administrateur, tu choisis ton logo, tes couleurs et ta police. Tes joueurs voient tout de suite ton style.",
     "q7": "En combien de temps puis-je commencer ?", "a7": "Ton équipe est en ligne en une minute. Ajoute les matchs, partage le lien, et les premières réponses arrivent.",
     "end.h": "Prêt pour samedi ?", "end.p": "Mets ton équipe sur RostiQ dès aujourd'hui. Gratuit, en une minute, sans que personne n'ait rien à installer.", "end.signin": "J'ai déjà une équipe",
-    "ft.privacy": "Confidentialité", "ft.by": "un projet de",
+    "ft.privacy": "Confidentialité", "ft.by": "un projet de", "ft.contact": "Contact",
     "doc.title": "RostiQ – Ton équipe organisée, sans app",
   },
 };
