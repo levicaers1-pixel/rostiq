@@ -7,7 +7,7 @@
 (function () { try {
   if (/[?&](t|pick|mode|oobCode|apiKey)(=|&|$)/.test(location.search) || location.hash) return;
   if (localStorage.getItem("team") || sessionStorage.getItem("authFlow")) return;
-  location.replace("home.html");
+  location.replace("https://rostiq.be/"); // the website with the landing page
 } catch (e) {} })();
 </script>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -19,8 +19,8 @@
 <meta property="og:site_name" content="RostiQ">
 <meta property="og:title" content="RostiQ">
 <meta property="og:description" content="RostiQ – teamplanner voor sportploegen: beschikbaarheid, kalender, carpool en WhatsApp.">
-<meta property="og:url" content="https://rostiq.be/">
-<meta property="og:image" content="https://rostiq.be/assets/og-image.png">
+<meta property="og:url" content="https://app.rostiq.be/">
+<meta property="og:image" content="https://app.rostiq.be/assets/og-image.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="RostiQ – teamplanner">

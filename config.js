@@ -8,7 +8,7 @@ window.FIREBASE_CONFIG = {
   apiKey: "AIzaSyCUyqCemJncGy0tWRUi6JXfrclAGWePzto",
   // Sign-in helper is self-hosted on this site (/__/auth, copied from wintermidam.firebaseapp.com),
   // so phones don't block it as a third-party site.
-  authDomain: "rostiq.be",
+  authDomain: "levicaers1-pixel.github.io",
   databaseURL: "https://wintermidam-default-rtdb.europe-west1.firebasedatabase.app",
   projectId: "wintermidam",
   appId: "1:354856091940:web:25d894cffb78f312feb3b1",

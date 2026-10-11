@@ -3,7 +3,7 @@
 RostiQ is a team planner by [Caersultancy](https://www.caersultancy.com) for sports teams:
 availability, calendar, carpool and WhatsApp sharing — one app, one login, many teams.
 
-**Live:** https://rostiq.be/
+**Live:** https://app.rostiq.be/ (website: https://rostiq.be, repo rostiq-site)
 
 ## How it is organised
 
@@ -55,11 +55,12 @@ They were tested against the Firebase Realtime Database emulator (197 cases: str
 team admins, RostiQ admin, isolation between teams, approval flow, branding, profiles, migration,
 last seen, account deletion, error reports).
 
-## Landing page
+## Website and landing page
 
-`home.html` is the public landing page (NL/FR/EN, no sign-in, no database). `index.html` sends a visitor there
-only when there is no team link (`?t=`), no `?pick`, no team remembered on the device and no sign-in in
-progress (email link or Google redirect); everyone else goes straight to the app.
+The public website with the landing page lives in the separate repo `rostiq-site` at https://rostiq.be.
+`index.html` here sends a visitor there only when there is no team link (`?t=`), no `?pick`, no team
+remembered on the device and no sign-in in progress (email link or Google redirect); everyone else goes
+straight to the app. Old links to rostiq.be are forwarded to app.rostiq.be by that repo.
 
 ## Privacy and error reports
 
