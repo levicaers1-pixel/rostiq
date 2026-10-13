@@ -10,7 +10,7 @@ window.FIREBASE_VAPID_KEY = "BKoBDqp8uzkXXea-Z4AeND7wgXJgkQY44XfPiMAiy59CBZUjv7T
 
 // Calendar subscriptions: where the personal calendar feeds are served (functions/, deployed with Firebase).
 // Empty = the subscribe dialog doesn't appear and "Add to calendar" downloads a one-off .ics file.
-window.CAL_BASE = "";
+window.CAL_BASE = "https://wintermidam.web.app/cal/";
 
 window.FIREBASE_CONFIG = {
   apiKey: "AIzaSyCUyqCemJncGy0tWRUi6JXfrclAGWePzto",
