@@ -1014,7 +1014,7 @@ async function startDemo() {
 }
 // A strip under the header: this is a demo, switch demos, start your own team.
 function renderDemoBar() {
-  if (document.getElementById("demo-bar")) return;
+  if (document.getElementById("demo-bar") || QUERY.has("shot")) return; // ?shot: clean screenshots for the website
   const link = k => `<a href="${location.pathname}?demo=${k}"${k === DEMO ? ' aria-current="true"' : ""}>${t("demo." + k)}</a>`;
   document.querySelector("header.brand").insertAdjacentHTML("afterend", `<div class="demo-bar" id="demo-bar" data-no-icons>
     <span class="demo-tag">DEMO</span><span class="demo-txt">${t("demo.bar")}</span>
