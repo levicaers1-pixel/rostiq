@@ -40,13 +40,20 @@ self.addEventListener("push", e => {
   let msg = {};
   try { msg = e.data ? e.data.json() : {}; } catch {}
   const d = msg.data || msg;
+  // Match reminders carry answer buttons: actions = [{ action: "yes", title: "Ja" }, …], links = { yes: url, … }.
+  // Browsers show as many as they can (Chrome and Edge: 2, iPhone: none – there a tap opens the answer page).
+  const json = s => { try { return JSON.parse(s || "null"); } catch { return null; } };
+  const actions = (json(d.actions) || []).filter(a => a && a.action && a.title).slice(0, 3);
   e.waitUntil(self.registration.showNotification(d.title || "RostiQ", {
-    body: d.body || "", icon: "assets/icon-192.png", badge: "assets/icon-192.png", tag: d.tag || undefined, data: { link: d.link || "./" },
+    body: d.body || "", icon: "assets/icon-192.png", badge: "assets/icon-192.png", tag: d.tag || undefined,
+    actions, data: { link: d.link || "./", links: json(d.links) || {} },
   }));
 });
 self.addEventListener("notificationclick", e => {
   e.notification.close();
-  const link = (e.notification.data && e.notification.data.link) || "./";
+  const data = e.notification.data || {};
+  // A button: its own link (which saves that answer); the notification itself: the general link.
+  const link = (e.action && data.links && data.links[e.action]) || data.link || "./";
   e.waitUntil(self.clients.matchAll({ type: "window", includeUncontrolled: true }).then(list => {
     const open = list.find(c => new URL(c.url).origin === location.origin && "focus" in c);
     if (open) return open.navigate(link).then(c => (c || open).focus());

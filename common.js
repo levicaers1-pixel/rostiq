@@ -556,11 +556,13 @@ async function dropQuickKey(pid) {
   delete idx[pid];
   send("PATCH", "", { [`quickKeys/${old}`]: null, [`quickIndex/${TEAM_ID}/${pid}`]: null }, true, true);
 }
-// Short form: /a/?<key> opens the answer page, /a/?<key><y|m|n><yymmdd> answers a match in one tap.
+// Short form: /a/?<key> opens the answer page, /a/?<key>q<yymmdd> opens it on one match,
+// /a/?<key><y|m|n><yymmdd> answers a match in one tap.
 const quickUrl = (key, date, r, bare) => (bare ? location.host : location.origin) + `/a/?${key}` + (date ? r[0] + date.slice(2).replace(/-/g, "") : "");
-// "✅ Yes: …  ❓ Maybe: …  ❌ No: …" lines for a personal message about one match.
-// No emoji here: WhatsApp mangles them in messages pre-filled through a wa.me link. WhatsApp links "app.rostiq.be/…" by itself.
-const quickLines = (key, date) => ["yes", "maybe", "no"].map(r => `${t("answer." + r)} → ${quickUrl(key, date, r, true)}`).join("\n");
+// The one link in a personal reminder: the answer page with this match on top and big Yes / Maybe / No buttons.
+// Bare host ("app.rostiq.be/…"): WhatsApp makes it clickable by itself. No emoji in these messages: WhatsApp mangles
+// them when they're pre-filled through a wa.me link.
+const quickAsk = (key, date) => quickUrl(key, date, "q", true);
 const shortDate = d => fmt(d, { weekday: "short", day: "numeric", month: "numeric" });
 
 // Ask the signed-in player for their number once (until they fill it in or tap "Later").
@@ -1181,7 +1183,7 @@ function gateMessage(text, err) { gateMsg = { text, err }; renderAuth(); }
 const appUrl = file => location.href.split(/[?#]/)[0].replace(/[^/]*$/, file);
 
 // ---- Feedback to RostiQ (account menu, footer): only the RostiQ admin reads it ----
-const APP_VERSION = "2026.10.22";
+const APP_VERSION = "2026.10.23";
 function deviceText() {
   const ua = navigator.userAgent;
   const os = /iPhone/.test(ua) ? "iPhone" : /iPad/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1) ? "iPad"

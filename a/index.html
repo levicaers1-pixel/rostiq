@@ -60,8 +60,9 @@
 const SDK = "https://www.gstatic.com/firebasejs/12.12.0/";
 const DB = (window.FIREBASE_DB_URL || "").replace(/\/+$/, "");
 const Q = new URLSearchParams(location.search);
-// Short form ?<key>[<y|m|n><yymmdd>] (what the messages use), or the long ?k=<key>&d=<date>&r=<answer>.
-const SHORT = /^([A-Za-z0-9_-]{22})(?:([ymn])(\d{2})(\d{2})(\d{2}))?$/.exec(location.search.slice(1));
+// Short form ?<key>[<y|m|n|q><yymmdd>] (what the messages use), or the long ?k=<key>&d=<date>&r=<answer>.
+// y/m/n answer that match straight away; q only opens the page on it (the one link in a WhatsApp reminder).
+const SHORT = /^([A-Za-z0-9_-]{22})(?:([ymnq])(\d{2})(\d{2})(\d{2}))?$/.exec(location.search.slice(1));
 const KEY = SHORT ? SHORT[1] : Q.get("k") || "";
 const D = SHORT ? (SHORT[2] ? `20${SHORT[3]}-${SHORT[4]}-${SHORT[5]}` : "") : Q.get("d") || "";
 const R = SHORT ? ({ y: "yes", m: "maybe", n: "no" }[SHORT[2]] || "") : Q.get("r") || "";
@@ -143,6 +144,8 @@ const yesCount = d => Object.values(answers).filter(a => a[d] === "yes").length;
 function render() {
   const upcoming = Object.keys(schedule).filter(d => d >= TODAY).sort();
   if (!upcoming.length) { $("q-list").innerHTML = `<p class="hint">${t("qa.none")}</p>`; return; }
+  // The match the link was about goes on top (it's the one highlighted).
+  if (D && upcoming.includes(D)) upcoming.unshift(...upcoming.splice(upcoming.indexOf(D), 1));
   $("q-list").innerHTML = upcoming.map((d, i) => {
     const e = schedule[d], m = matches[d] || {}, mine = (answers[PID] || {})[d] || "", y = yesCount(d);
     const dt = new Date(d + "T12:00:00");

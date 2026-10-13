@@ -8,6 +8,7 @@
 // Needs the secret FIREBASE_SERVICE_ACCOUNT (the JSON key of the project's service account).
 // Dry run (sends nothing, writes nothing):  DRY_RUN=1 node send.mjs
 import admin from "firebase-admin";
+import crypto from "node:crypto";
 
 const DB_URL = "https://wintermidam-default-rtdb.europe-west1.firebasedatabase.app";
 const APP = "https://app.rostiq.be";
@@ -22,15 +23,19 @@ admin.initializeApp(EMU ? { projectId: "demo-rostiq", databaseURL: `http://${EMU
   : { credential: admin.credential.cert(sa), databaseURL: DB_URL });
 const db = admin.database();
 
+const ACTIONS_TEST = { nl: [["yes", "✅ Ja"], ["no", "❌ Nee"]], fr: [["yes", "✅ Oui"], ["no", "❌ Non"]], en: [["yes", "✅ Yes"], ["no", "❌ No"]] };
 // Test: send one notification to the devices of one account (workflow input "test_email"), then stop.
 if (process.env.TEST_EMAIL) {
   const user = await admin.auth().getUserByEmail(process.env.TEST_EMAIL).catch(() => null);
   const devices = user ? Object.values((await db.ref(`pushTokens/${user.uid}`).once("value")).val() || {}) : [];
   let ok = 0;
   for (const d of devices) {
-    const body = { nl: "Testmelding: meldingen werken op dit toestel ✅", fr: "Notification test : les notifications fonctionnent sur cet appareil ✅",
-                   en: "Test notification: notifications work on this device ✅" }[d.lang] || "Test ✅";
-    try { await admin.messaging().send({ token: d.token, data: { title: "RostiQ", body, link: `${APP}/`, tag: "test" } }); ok++; }
+    const body = { nl: "Testmelding: meldingen werken op dit toestel ✅ (de knoppen openen gewoon de app)", fr: "Notification test : les notifications fonctionnent sur cet appareil ✅ (les boutons ouvrent simplement l'app)",
+                   en: "Test notification: notifications work on this device ✅ (the buttons just open the app)" }[d.lang] || "Test ✅";
+    const lang = ACTIONS_TEST[d.lang] ? d.lang : "nl";
+    const data = { title: "RostiQ", body, link: `${APP}/`, tag: "test",
+      actions: JSON.stringify(ACTIONS_TEST[lang].map(([action, title]) => ({ action, title }))), links: JSON.stringify({ yes: `${APP}/`, no: `${APP}/` }) };
+    try { await admin.messaging().send({ token: d.token, data }); ok++; }
     catch (e) { console.warn("test send failed:", (e && e.code) || e); }
   }
   console.log(`Test: ${user ? "account found" : "no account with that email"}, ${devices.length} device(s), ${ok} sent.`);
@@ -50,19 +55,35 @@ const TEXT = {
   en: { r3: (opp, when) => `${when}: ${opp}. You haven't said yet whether you can make it 👉 tap to answer.`,
         r1: (opp) => `Tomorrow: ${opp}. Let the team know quickly whether you can make it 👉` },
 };
+// Answer buttons on the notification (Chrome and Edge show the first two, so "maybe" goes last; the notification
+// itself opens the answer page with all three).
+const ACTIONS = {
+  nl: [["yes", "✅ Ja"], ["no", "❌ Nee"], ["maybe", "❓ Misschien"]],
+  fr: [["yes", "✅ Oui"], ["no", "❌ Non"], ["maybe", "❓ Peut-être"]],
+  en: [["yes", "✅ Yes"], ["no", "❌ No"], ["maybe", "❓ Maybe"]],
+};
+// A player's personal answer link (the same key the app makes: quickKeys/<key> = { t, p, at }, quickIndex/<team>/<pid>).
+// With it a button answers without being signed in. Without (team turned personal links off): the app, signed in.
+const newKey = () => crypto.randomBytes(16).toString("base64url"); // 128 bits, 22 characters
+const yymmdd = date => date.slice(2).replace(/-/g, "");
+function answerLinks(tid, date, key) {
+  if (key) return { open: `${APP}/a/?${key}q${yymmdd(date)}`, yes: `${APP}/a/?${key}y${yymmdd(date)}`, maybe: `${APP}/a/?${key}m${yymmdd(date)}`, no: `${APP}/a/?${key}n${yymmdd(date)}` };
+  const app = `${APP}/?t=${encodeURIComponent(tid)}`;
+  return { open: app, yes: `${app}&ans=yes&d=${date}`, maybe: `${app}&ans=maybe&d=${date}`, no: `${app}&ans=no&d=${date}` };
+}
 const whenText = (date, lang) => new Date(date + "T12:00:00Z").toLocaleDateString(LOCALES[lang], { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" });
 
-const [teamsSnap, tokensSnap, logSnap] = await Promise.all(["teams", "pushTokens", "pushLog"].map(p => db.ref(p).once("value")));
-const teams = teamsSnap.val() || {}, tokens = tokensSnap.val() || {}, log = logSnap.val() || {};
+const [teamsSnap, tokensSnap, logSnap, quickSnap] = await Promise.all(["teams", "pushTokens", "pushLog", "quickIndex"].map(p => db.ref(p).once("value")));
+const teams = teamsSnap.val() || {}, tokens = tokensSnap.val() || {}, log = logSnap.val() || {}, quickIndex = quickSnap.val() || {};
 
 // MODE=requests (every 10 minutes): only new access requests. Otherwise (daily run, manual run): everything.
 const MODE = process.env.MODE || "all";
-let sent = 0, skipped = 0, removed = 0, reqSent = 0;
+let sent = 0, skipped = 0, removed = 0, reqSent = 0, madeKeys = 0;
 const logWrites = {}, deadTokens = {};
 
 // One notification to one device; devices that no longer exist are removed.
 async function push(uid, dev, info, data) {
-  if (DRY) return true;
+  if (DRY) { if (process.env.VERBOSE) console.log(JSON.stringify(data)); return true; }
   try { await admin.messaging().send({ token: info.token, data, webpush: { headers: { Urgency: "normal", TTL: String(20 * 3600) } } }); return true; }
   catch (e) {
     const code = (e && (e.code || e.errorInfo && e.errorInfo.code)) || "";
@@ -115,10 +136,23 @@ if (MODE !== "requests") {
         if ((((log[tid] || {})[date] || {})[kind] || {})[uid]) continue; // sent already
         const devices = Object.entries(tokens[uid] || {});
         if (!devices.length) { skipped++; continue; }
+        let key = null;
+        if ((team.settings || {}).quickLinks !== false && player.name) {
+          key = (quickIndex[tid] || {})[pid];
+          if (!key) { // made once, kept until an admin resets it (like the ones the app makes)
+            key = newKey();
+            (quickIndex[tid] = quickIndex[tid] || {})[pid] = key;
+            logWrites[`quickKeys/${key}`] = { t: tid, p: pid, at: admin.database.ServerValue.TIMESTAMP };
+            logWrites[`quickIndex/${tid}/${pid}`] = key;
+            madeKeys++;
+          }
+        }
+        const links = answerLinks(tid, date, key);
         for (const [dev, info] of devices) {
           const lang = TEXT[info.lang] ? info.lang : "nl";
           const body = kind === "r1" ? TEXT[lang].r1(m.opp) : TEXT[lang].r3(m.opp, whenText(date, lang));
-          if (await push(uid, dev, info, { title: brand, body, link: `${APP}/?t=${encodeURIComponent(tid)}`, tag: `${tid}-${date}` })) sent++;
+          const actions = JSON.stringify(ACTIONS[lang].map(([action, title]) => ({ action, title })));
+          if (await push(uid, dev, info, { title: brand, body, link: links.open, links: JSON.stringify({ yes: links.yes, maybe: links.maybe, no: links.no }), actions, tag: `${tid}-${date}` })) sent++;
         }
         logWrites[`pushLog/${tid}/${date}/${kind}/${uid}`] = Date.now();
       }
@@ -154,5 +188,5 @@ if (MODE !== "requests" && !EMU) {
 // Only counts in the log (the repository is public): no names, teams or tokens.
 const would = DRY ? "would be " : "";
 console.log(`${today}: ${reqSent} access-request notifications ${would}sent to admins` + (MODE === "requests" ? "." :
-  `, ${sent} reminders ${would}sent, ${skipped} players without notifications, ${removed} old devices removed.`));
+  `, ${sent} reminders ${would}sent, ${skipped} players without notifications, ${removed} old devices removed, ${madeKeys} personal links ${would}made.`));
 process.exit(0);
