@@ -95,6 +95,8 @@
   .fieldsform label > span:first-child, .brandform label > span:first-child, .field-label { font-size: .88rem; font-weight: 600; color: var(--text); }
   #f-settings { margin-top: 4px; }
   .ff input[name=min] { max-width: 120px; }
+  .ff.check.push-set { padding-top: 0; align-items: flex-start; }
+  .ff.check.push-set input { margin-top: 4px; }
 
   /* Branding */
   .brandform { display: grid; gap: 14px; max-width: 640px; }
@@ -198,6 +200,7 @@
             <input name="min" type="number" min="1" max="50" inputmode="numeric">
             <span class="ff-err" hidden></span><span class="ff-help" data-i18n="setup.minSub"></span></label>
         </div>
+        <label class="ff check push-set"><input type="checkbox" name="autoRemind"> <span><b data-i18n="set.autoRemind">Automatic reminders</b><br><small class="ff-help" data-i18n="set.autoRemindHelp"></small></span></label>
         <label class="ff"><span class="ff-label"><span data-i18n="wa.setting">WhatsApp group link</span> <em data-i18n="start.optional"></em></span>
           <input name="wa" type="url" placeholder="https://chat.whatsapp.com/…" autocomplete="off">
           <span class="ff-err" hidden></span><span class="ff-help" data-i18n="set.waHelp"></span></label>
@@ -538,6 +541,7 @@ function renderSettings() {
     sf.season.value = seasonName();
     sf.min.value = s.minPlayers || TEAM.minPlayers || 3;
     sf.wa.value = s.waGroup || "";
+    sf.autoRemind.checked = s.autoRemind !== false; // on unless switched off
   }
   sf.querySelector("[type=submit]").disabled = !settingsDirty;
   const msg = document.getElementById("settings-msg");
@@ -601,7 +605,7 @@ sf.addEventListener("submit", async ev => {
   if (!fieldErr(sf.season, season ? "" : t("set.seasonNeeded"))) return;
   if (!fieldErr(sf.min, n >= 1 && n <= 50 ? "" : t("set.minRange"))) return;
   if (!fieldErr(sf.wa, !link || WA_LINK.test(link) ? "" : t("wa.invalid"))) return;
-  const ok = await update({ "settings/seasonName": season, "settings/minPlayers": n, "settings/waGroup": link || null });
+  const ok = await update({ "settings/seasonName": season, "settings/minPlayers": n, "settings/waGroup": link || null, "settings/autoRemind": sf.autoRemind.checked ? null : false });
   const msg = document.getElementById("settings-msg");
   if (!ok) { msg.textContent = t("status.saveFailed"); msg.className = "msg err"; return; }
   settingsDirty = false;

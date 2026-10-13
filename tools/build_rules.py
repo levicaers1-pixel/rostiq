@@ -93,6 +93,7 @@ def settings_rules():
         "fedOff": {".validate": "newData.isBoolean()"},
         "fedLabel": s(40, 1),
         "fields": {"$c": {".validate": "$c.matches(/^c[1-4]$/) && newData.isString() && newData.val().length >= 1 && newData.val().length <= 30"}},
+        "autoRemind": {".validate": "newData.isBoolean()"},  # false = no automatic push reminders for this team
         "$other": NO,
     }
 
@@ -309,9 +310,23 @@ errors_last = {"$uid": {
     ".validate": "newData.isNumber() && newData.val() === now && (!data.exists() || now - data.val() >= 60000)",
 }}
 
+# ---- Push notifications: each device of a person registers its messaging token here (only they can see it).
+# The daily reminder job (GitHub Actions, Firebase Admin SDK) reads them; pushLog remembers what was sent.
+push_tokens = {"$uid": {
+    ".read": "auth != null && auth.uid === $uid",
+    ".write": "auth != null && auth.uid === $uid",
+    "$device": {
+        ".validate": "$device.matches(/^[a-f0-9]{20}$/) && newData.hasChildren(['token', 'at'])",
+        "token": s(400, 20), "at": {".validate": "newData.isNumber()"},
+        "lang": {".validate": "newData.val() === 'nl' || newData.val() === 'fr' || newData.val() === 'en'"},
+        "device": s(120), "$other": NO,
+    },
+}}
+push_log = {".read": PA, ".write": PA}
+
 final = {"rules": {"teams": {".read": PA, "$tid": team}, "users": users, "signup": signup, "signupCodes": signup_codes,
                    "feedback": feedback, "feedbackLast": feedback_last, "lastSeen": last_seen,
-                   "errors": errors, "errorsLast": errors_last, "$other": NO}}
+                   "errors": errors, "errorsLast": errors_last, "pushTokens": push_tokens, "pushLog": push_log, "$other": NO}}
 
 # ---- Transition: also allow the old single-team structure at the root (Pampas, pre-migration) ----
 L_OWNER = "(auth != null && root.child('players').child($pid).child('uid').val() === auth.uid)"

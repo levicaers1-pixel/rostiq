@@ -205,7 +205,7 @@ const AUTH_ON = !!window.FIREBASE_CONFIG;
 const SDK = "https://www.gstatic.com/firebasejs/12.12.0/";
 const session = { user: null, platformAdmin: !AUTH_ON, admin: !AUTH_ON, pid: null, ready: !AUTH_ON,
   pending: false, request: null, picking: false, teams: null, noTeam: false };
-let fbAuth = null, A = null;
+let fbAuth = null, A = null, fbApp = null;
 
 // Only the admin and a row's own player may change it (the database rules enforce the same).
 const canEdit = pid => session.admin || (!!pid && pid === session.pid);
@@ -659,6 +659,7 @@ function syncSession() {
   applyBranding();
   applyProfile();
   stampLastSeen();
+  refreshPush();
   fillLoginEmail();
   refreshEvents();
   renderCountdown();
@@ -951,7 +952,8 @@ async function initAuth() {
   try {
     const [appMod, authMod] = await Promise.all([import(SDK + "firebase-app.js"), import(SDK + "firebase-auth.js")]);
     A = authMod;
-    fbAuth = A.getAuth(appMod.initializeApp(window.FIREBASE_CONFIG));
+    fbApp = appMod.initializeApp(window.FIREBASE_CONFIG);
+    fbAuth = A.getAuth(fbApp);
   } catch (e) {
     gateMessage(t("auth.loadFailed"), true);
     return;
@@ -1075,6 +1077,7 @@ function injectAuthUI() {
   // Account menu: open/close, and close on a click elsewhere or Escape.
   document.addEventListener("click", ev => {
     if (ev.target.closest("[data-install]")) { acctOpen = false; renderAccount(); installApp(); return; }
+    if (ev.target.closest("[data-push]")) { acctOpen = false; renderAccount(); pushOn() ? disablePush() : enablePush(); return; }
     if (ev.target.closest("#acct-menu [data-feedback]")) { ev.preventDefault(); acctOpen = false; renderAccount(); openFeedback(); return; }
     const btn = ev.target.closest("#acct-btn");
     if (btn) { acctOpen = !acctOpen; renderAccount(); return; }
@@ -1100,7 +1103,7 @@ function gateMessage(text, err) { gateMsg = { text, err }; renderAuth(); }
 const appUrl = file => location.href.split(/[?#]/)[0].replace(/[^/]*$/, file);
 
 // ---- Feedback to RostiQ (account menu, footer): only the RostiQ admin reads it ----
-const APP_VERSION = "2026.10.16";
+const APP_VERSION = "2026.10.17";
 function deviceText() {
   const ua = navigator.userAgent;
   const os = /iPhone/.test(ua) ? "iPhone" : /iPad/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1) ? "iPad"
@@ -1187,6 +1190,70 @@ window.addEventListener("beforeinstallprompt", ev => { ev.preventDefault(); inst
 window.addEventListener("appinstalled", () => { installPrompt = null; renderAccount(); toast(t("install.done")); });
 const isIOS = () => /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
 const canInstall = () => !standalone() && (!!installPrompt || isIOS());
+// ---- Push notifications (reminders on the phone) ----
+// This device registers its Firebase Cloud Messaging token in pushTokens/<uid>/<device id>; a daily job
+// (tools/push, GitHub Actions) sends reminders to players who haven't answered. iPhone: only from the home-screen app.
+const PUSH_SUPPORTED = "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
+const pushAvailable = () => AUTH_ON && !DEMO && !!session.user && !!window.FIREBASE_VAPID_KEY && (PUSH_SUPPORTED || isIOS());
+const pushOn = () => PUSH_SUPPORTED && Notification.permission === "granted" && !!session.user && pref.get("push:" + session.user.uid, "") !== "";
+async function deviceId(token) {
+  const h = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(token));
+  return [...new Uint8Array(h)].slice(0, 10).map(b => b.toString(16).padStart(2, "0")).join("");
+}
+async function pushToken() {
+  const M = await import(SDK + "firebase-messaging.js");
+  const reg = await navigator.serviceWorker.register("sw.js");
+  await navigator.serviceWorker.ready;
+  return M.getToken(M.getMessaging(fbApp), { vapidKey: window.FIREBASE_VAPID_KEY, serviceWorkerRegistration: reg });
+}
+async function savePushToken(token) {
+  const uid = session.user.uid, id = await deviceId(token);
+  const ok = await send("PUT", `pushTokens/${uid}/${id}`, { token, at: { ".sv": "timestamp" }, lang: LANG, device: deviceText() }, true, true);
+  if (ok === true) pref.set("push:" + uid, id + "|" + Date.now());
+  return ok === true;
+}
+async function enablePush() {
+  // iPhone/iPad only allow notifications for the app on the home screen.
+  if (!PUSH_SUPPORTED || (isIOS() && !standalone())) return pushIosHelp();
+  try {
+    const perm = await Notification.requestPermission();
+    if (perm !== "granted") return toast(t("push.denied"), "err");
+    if (!(await savePushToken(await pushToken()))) throw new Error("save");
+    toast(t("push.enabled"));
+  } catch { toast(t("push.failed"), "err"); }
+  renderAccount(); render();
+}
+async function disablePush() {
+  const uid = session.user.uid, [id] = pref.get("push:" + uid, "").split("|");
+  pref.set("push:" + uid, "");
+  if (id) send("DELETE", `pushTokens/${uid}/${id}`, undefined, true, true);
+  try { const M = await import(SDK + "firebase-messaging.js"); await M.deleteToken(M.getMessaging(fbApp)); } catch {}
+  toast(t("push.disabled"));
+  renderAccount(); render();
+}
+// Tokens can change: refresh this device's entry once a day while notifications are on.
+async function refreshPush() {
+  if (!pushOn() || !fbApp) return;
+  const [, at] = pref.get("push:" + session.user.uid, "").split("|");
+  if (Date.now() - Number(at || 0) < 864e5) return;
+  try {
+    const token = await pushToken(), uid = session.user.uid, [old] = pref.get("push:" + uid, "").split("|"), id = await deviceId(token);
+    if (old && old !== id) send("DELETE", `pushTokens/${uid}/${old}`, undefined, true, true);
+    await savePushToken(token);
+  } catch {}
+}
+function pushIosHelp() {
+  let dlg = document.getElementById("push-ios-dlg");
+  if (!dlg) {
+    document.body.insertAdjacentHTML("beforeend", `<dialog id="push-ios-dlg" class="install-dlg"><h3>${t("push.iosTitle")}</h3>
+      <p>${t("push.iosText")}</p><ol><li>${t("install.ios1")}</li><li>${t("install.ios2")}</li><li>${t("push.ios3")}</li></ol>
+      <div class="row"><button class="primary" data-close>${t("install.ok")}</button></div></dialog>`);
+    dlg = document.getElementById("push-ios-dlg");
+    dlg.addEventListener("click", ev => { if (ev.target.closest("[data-close]") || ev.target === dlg) dlg.close(); });
+  }
+  dlg.showModal();
+}
+
 async function installApp() {
   if (installPrompt) { installPrompt.prompt(); await installPrompt.userChoice.catch(() => {}); installPrompt = null; renderAccount(); return; }
   let dlg = document.getElementById("install-dlg");
@@ -1226,6 +1293,8 @@ function renderAccount() {
       ${DEMO ? "" : `<button class="menu-item" role="menuitem" data-feedback>${ic("message")} ${t("fb.menu")}</button>`}
       <a class="menu-item" role="menuitem" href="${appUrl("privacy.html")}">${ic("shield")} ${t("priv.menu")}</a>
       ${canInstall() ? `<button class="menu-item" role="menuitem" data-install>${ic("download")} ${t("menu.install")}</button>` : ""}
+      ${pushAvailable() ? `<button class="menu-item" role="menuitem" data-push>${ic("bell")} ${t(pushOn() ? "push.off" : "push.on")}${
+        pushOn() ? ` <span class="pill yes">${t("push.isOn")}</span>` : ""}</button>` : ""}
       <div class="menu-lang"><span>${t("menu.language")}</span><div class="lang">${langButtons()}</div></div>
       <button class="menu-item danger" role="menuitem" data-signout>${ic("x")} ${t(DEMO ? "demo.exit" : "auth.signOut")}</button>
     </div>`;

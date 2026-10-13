@@ -1,0 +1,7 @@
+{
+  "name": "rostiq-push",
+  "private": true,
+  "type": "module",
+  "description": "Daily push reminders for RostiQ (run by GitHub Actions)",
+  "dependencies": { "firebase-admin": "^13.0.0" }
+}

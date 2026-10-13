@@ -322,6 +322,7 @@ function deletionPlan({ uid, me, teams, feedback }) {
   for (const f of feedback) ch[`feedback/${f.id}`] = null;
   ch[`feedbackLast/${uid}`] = null;
   ch[`errorsLast/${uid}`] = null;
+  ch[`pushTokens/${uid}`] = null; // this person's devices for notifications
   return { ch, names, blockers };
 }
 

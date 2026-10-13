@@ -4,7 +4,7 @@
 // - Fonts and the Firebase login library: the stored copy right away, refreshed in the background.
 // - Team data (Firebase database), maps, weather and place search are never stored here; common.js keeps
 //   the last-known team data itself.
-const CACHE = "rostiq-v2";
+const CACHE = "rostiq-v3";
 const SHELL = [
   "./", "index.html", "carpool.html", "ploeg.html", "admin.html", "rostiq.html", "start.html", "privacy.html", "demo.js",
   "common.css", "common.js", "i18n.js", "icons.js", "boot.js", "team.js", "config.js", "manifest.webmanifest",
@@ -32,6 +32,25 @@ self.addEventListener("fetch", e => {
   } else if (SHARED.includes(url.hostname)) {
     e.respondWith(staleWhileRevalidate(req));
   }
+});
+
+// ---- Push notifications (reminders sent by tools/push): data messages, shown here ----
+self.addEventListener("push", e => {
+  let msg = {};
+  try { msg = e.data ? e.data.json() : {}; } catch {}
+  const d = msg.data || msg;
+  e.waitUntil(self.registration.showNotification(d.title || "RostiQ", {
+    body: d.body || "", icon: "assets/icon-192.png", badge: "assets/icon-192.png", tag: d.tag || undefined, data: { link: d.link || "./" },
+  }));
+});
+self.addEventListener("notificationclick", e => {
+  e.notification.close();
+  const link = (e.notification.data && e.notification.data.link) || "./";
+  e.waitUntil(self.clients.matchAll({ type: "window", includeUncontrolled: true }).then(list => {
+    const open = list.find(c => new URL(c.url).origin === location.origin && "focus" in c);
+    if (open) return open.navigate(link).then(c => (c || open).focus());
+    return self.clients.openWindow(link);
+  }));
 });
 
 // Pages are stored without their ?t=team part: one copy per file is enough.

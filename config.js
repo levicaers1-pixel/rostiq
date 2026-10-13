@@ -4,6 +4,10 @@ window.FIREBASE_DB_URL = "https://wintermidam-default-rtdb.europe-west1.firebase
 
 // Login: paste the web-app config from Firebase (Project settings → Your apps) here
 // to require sign-in. Leave it out to run without accounts.
+// Push notifications: the public "Web Push certificate" key from Firebase (Project settings → Cloud Messaging).
+// Empty = the "notifications" option doesn't appear.
+window.FIREBASE_VAPID_KEY = "";
+
 window.FIREBASE_CONFIG = {
   apiKey: "AIzaSyCUyqCemJncGy0tWRUi6JXfrclAGWePzto",
   // Sign-in helper is self-hosted on this site (/__/auth, copied from wintermidam.firebaseapp.com),

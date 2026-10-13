@@ -152,6 +152,9 @@
           ".validate": "$c.matches(/^c[1-4]$/) && newData.isString() && newData.val().length >= 1 && newData.val().length <= 30"
         }
       },
+      "autoRemind": {
+        ".validate": "newData.isBoolean()"
+      },
       "$other": {
         ".validate": false
       }
@@ -469,6 +472,9 @@
             "$c": {
               ".validate": "$c.matches(/^c[1-4]$/) && newData.isString() && newData.val().length >= 1 && newData.val().length <= 30"
             }
+          },
+          "autoRemind": {
+            ".validate": "newData.isBoolean()"
           },
           "$other": {
             ".validate": false
@@ -794,6 +800,34 @@
         ".write": "auth != null && auth.uid === $uid",
         ".validate": "newData.isNumber() && newData.val() === now && (!data.exists() || now - data.val() >= 60000)"
       }
+    },
+    "pushTokens": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid",
+        "$device": {
+          ".validate": "$device.matches(/^[a-f0-9]{20}$/) && newData.hasChildren(['token', 'at'])",
+          "token": {
+            ".validate": "newData.isString() && newData.val().length >= 20 && newData.val().length <= 400"
+          },
+          "at": {
+            ".validate": "newData.isNumber()"
+          },
+          "lang": {
+            ".validate": "newData.val() === 'nl' || newData.val() === 'fr' || newData.val() === 'en'"
+          },
+          "device": {
+            ".validate": "newData.isString() && newData.val().length <= 120"
+          },
+          "$other": {
+            ".validate": false
+          }
+        }
+      }
+    },
+    "pushLog": {
+      ".read": "(auth != null && auth.token.email_verified === true && (auth.token.email === 'levicaers1@gmail.com'))",
+      ".write": "(auth != null && auth.token.email_verified === true && (auth.token.email === 'levicaers1@gmail.com'))"
     },
     "$other": {
       ".validate": false

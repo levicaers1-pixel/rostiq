@@ -1,0 +1,33 @@
+# Daily push reminders: players who haven't answered for a match in the next 3 days (see tools/push/send.mjs).
+name: Push reminders
+on:
+  schedule:
+    - cron: "30 16 * * *"   # 18:30 Belgian summer time, 17:30 winter time
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Only count, send nothing"
+        type: boolean
+        default: false
+permissions:
+  contents: read
+concurrency:
+  group: push-reminders
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: tools/push
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --no-audit --no-fund
+        working-directory: tools/push
+      - run: node send.mjs
+        working-directory: tools/push
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          DRY_RUN: ${{ inputs.dry_run && '1' || '' }}

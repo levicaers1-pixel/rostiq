@@ -478,6 +478,8 @@ function renderWelcome(players) {
       action: `<a class="btn-like action" data-onb="wa" href="${esc(wa)}" target="_blank" rel="noopener">${t("onb.open")}</a>` }] : []),
     ...(EVENTS.length ? [{ icon: "calendar-plus", done: !!pref.get(flagKey("onbCal"), ""), title: t("onb.calendar"), sub: t("onb.calendarSub"),
       action: `<button data-onb="cal">${t("onb.download")}</button>` }] : []), // nothing to put in a calendar yet
+    ...(pushAvailable() ? [{ icon: "bell", done: pushOn(), title: t("onb.push"), sub: t("onb.pushSub"),
+      action: `<button class="btn-like action" data-push>${t("onb.pushDo")}</button>` }] : []),
     { icon: "user", done: !!photoOf(me), title: t("onb.photo"), sub: t("onb.photoSub"),
       action: `<a class="btn-like action" href="${pageUrl("ploeg.html")}#me">${t("onb.add")}</a>` },
   ];
