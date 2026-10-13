@@ -352,6 +352,19 @@ function fieldErr(input, msg) {
 document.addEventListener("input", ev => { if (ev.target.classList && ev.target.classList.contains("bad")) fieldErr(ev.target, ""); });
 
 // ---- Rendering ----
+// Answer history of matches that have been played: removed (the daily job does this too; this keeps it tidy sooner).
+let historyCleaned = false;
+async function cleanHistory() {
+  if (historyCleaned || DEMO || !AUTH_ON || !dataLoaded || isOffline()) return;
+  historyCleaned = true;
+  try {
+    const url = await dbUrlAbs(`history/${TEAM_ID}`);
+    const res = await fetch(url + (url.includes("?") ? "&" : "?") + "shallow=true");
+    const dates = res.ok ? Object.keys((await res.json()) || {}) : [];
+    const old = dates.filter(d => d < TODAY);
+    if (old.length) send("PATCH", `history/${TEAM_ID}`, Object.fromEntries(old.map(d => [d, null])), true, true, true);
+  } catch {}
+}
 function render() {
   document.getElementById("no-access").hidden = session.admin || !session.ready;
   document.getElementById("admin").hidden = !session.admin;
@@ -359,6 +372,7 @@ function render() {
   addSectionIcons();
   renderFields();
   loadLastSeen();
+  cleanHistory();
   renderTiles();
   renderRequests();
   renderPlayers();

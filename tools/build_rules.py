@@ -389,6 +389,35 @@ final["rules"]["quickSessions"] = {"$uid": {
     "t": {".validate": "newData.isString()"}, "p": {".validate": "newData.isString()"},
     "$other": NO,
 }}
+# ---- Answer history: history/<team>/<date>/<id> = {p, f (was), a (now), by, at} ----
+# Outside the team (members can read the whole team), only the team's admins read it. An entry can only be added in the
+# same write as the answer it describes: "f" must be the answer before, "a" the answer after, and the answer must really
+# change. Written by the player themself, an admin, or the player's personal link; "by" is the writer, "at" the server
+# time. Entries can't be edited; admins (and the daily job) remove a match's history once it has been played.
+H_P = "newData.child('p').val()"
+H_NEW = f"newData.parent().parent().parent().parent().child('teams').child($tid).child('players').child({H_P}).child('avail').child($date)"
+H_OLD = f"root.child('teams').child($tid).child('players').child({H_P}).child('avail').child($date)"
+H_LINK = (f"(auth != null && {QS}.child('k').isString() && {QK}.child('t').val() === $tid && {QK}.child('p').val() === {H_P}"
+          " && root.child('teams').child($tid).child('settings').child('quickLinks').val() !== false)")
+ANSWER = "newData.val() === 'yes' || newData.val() === 'maybe' || newData.val() === 'no'"
+final["rules"]["history"] = {"$tid": {
+    ".read": f"{PA} || ({VERIFIED} && {TA_OF('$tid')})",
+    "$date": {
+        ".write": f"{PA} || ({VERIFIED} && {TA_OF('$tid')} && !newData.exists())",  # clean up one match at once
+        ".validate": "$date.matches(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/)",
+        "$id": {
+            ".write": f"!data.exists() && newData.exists() && ({PA} || ({VERIFIED} && ({TA_OF('$tid')}"
+                      f" || root.child('teams').child($tid).child('members').child(auth.uid).val() === {H_P})) || {H_LINK})",
+            ".validate": "$id.matches(/^[0-9a-z]{10,24}$/) && newData.hasChildren(['p', 'by', 'at'])"
+                         " && newData.child('by').val() === auth.uid && newData.child('at').val() === now"
+                         f" && {H_NEW}.val() === newData.child('a').val() && {H_OLD}.val() === newData.child('f').val()"
+                         f" && {H_OLD}.val() !== {H_NEW}.val()",
+            "p": s(40, 1), "a": {".validate": ANSWER}, "f": {".validate": ANSWER},
+            "by": {".validate": "newData.isString()"}, "at": {".validate": "newData.isNumber()"},
+            "$other": NO,
+        },
+    },
+}}
 final["rules"]["$other"] = final["rules"].pop("$other")  # keep the catch-all last
 
 # ---- Transition: also allow the old single-team structure at the root (Pampas, pre-migration) ----

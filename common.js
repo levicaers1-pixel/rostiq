@@ -233,7 +233,7 @@ async function getAbs(path) {
 }
 
 // Returns true (saved), "queued" (no network: kept in the outbox, sent later) or false (refused).
-async function send(method, path, value, abs, noQueue) {
+async function send(method, path, value, abs, noQueue, quiet) {
   if (DEMO) { saveDemo(); return true; } // a demo saves nothing online
   if (!DB) return false;
   const full = abs ? path : `teams/${TEAM_ID}${path ? "/" + path : ""}`;
@@ -249,7 +249,7 @@ async function send(method, path, value, abs, noQueue) {
     return "queued";
   }
   netDown = false;
-  if (!res.ok) { setStatus("err", t(AUTH_ON ? "status.notSavedOwnRow" : "status.saveFailed")); return false; }
+  if (!res.ok) { if (!quiet) setStatus("err", t(AUTH_ON ? "status.notSavedOwnRow" : "status.saveFailed")); return false; }
   return true;
 }
 
@@ -347,11 +347,37 @@ setInterval(async () => {
 
 // Writes inside the current team (applied locally first, so the page reacts immediately).
 async function write(path, value) {
+  // An answer: saved together with a line in the match's history (admins only see that), see writeAnswer().
+  const ans = /^players\/([^/]+)\/avail\/(\d{4}-\d{2}-\d{2})$/.exec(path);
+  if (ans && AUTH_ON && !DEMO && session.user && !isOffline()) {
+    const old = ((root.players && root.players[ans[1]] || {}).avail || {})[ans[2]] || null;
+    if (old !== (value || null)) return writeAnswer(path, ans[1], ans[2], old, value);
+  }
+  if (ans && DEMO) { // the demo keeps its history on this device only, like the rest of its data
+    const old = ((root.players && root.players[ans[1]] || {}).avail || {})[ans[2]] || null, k = `history/${TEAM_ID}/${ans[2]}`;
+    if (old !== (value || null)) demoAbs[k] = { ...(demoAbs[k] || {}), [historyId()]: { p: ans[1], by: (session.user && session.user.uid) || "demo",
+      at: Date.now(), ...(value ? { a: value } : {}), ...(old ? { f: old } : {}) } };
+  }
   apply(path, value, false);
   refreshEvents();
   render();
   shareProfile({ [path]: value });
   return saved(send(value === null ? "DELETE" : "PUT", path, value === null ? undefined : value));
+}
+// Answer history: history/<team>/<date>/<id> = { p, f: before, a: after, by: uid, at }. One atomic write with the
+// answer (the rules check that both match). If that fails (offline halfway, or rules without history yet), the answer is
+// still saved on its own: a missing history line is better than a lost answer. Played matches are cleaned up daily.
+const historyId = () => (Date.now().toString(36) + Math.random().toString(36).slice(2, 10)).slice(0, 18);
+async function writeAnswer(path, pid, date, old, value) {
+  apply(path, value, false);
+  refreshEvents();
+  render();
+  shareProfile({ [path]: value });
+  const entry = { p: pid, by: session.user.uid, at: { ".sv": "timestamp" }, ...(value ? { a: value } : {}), ...(old ? { f: old } : {}) };
+  return saved((async () => {
+    const both = await send("PATCH", "", { [`teams/${TEAM_ID}/${path}`]: value || null, [`history/${TEAM_ID}/${date}/${historyId()}`]: entry }, true, true, true);
+    return both === true ? true : send(value === null ? "DELETE" : "PUT", path, value === null ? undefined : value);
+  })());
 }
 // Several paths in one atomic update, e.g. { "players/p01/uid": "...", "members/<uid>": "p01" }.
 async function update(changes) {
@@ -1183,7 +1209,7 @@ function gateMessage(text, err) { gateMsg = { text, err }; renderAuth(); }
 const appUrl = file => location.href.split(/[?#]/)[0].replace(/[^/]*$/, file);
 
 // ---- Feedback to RostiQ (account menu, footer): only the RostiQ admin reads it ----
-const APP_VERSION = "2026.10.28";
+const APP_VERSION = "2026.10.29";
 function deviceText() {
   const ua = navigator.userAgent;
   const os = /iPhone/.test(ua) ? "iPhone" : /iPad/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1) ? "iPad"

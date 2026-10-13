@@ -69,7 +69,7 @@ const R = SHORT ? ({ y: "yes", m: "maybe", n: "no" }[SHORT[2]] || "") : Q.get("r
 const TODAY = new Date().toLocaleDateString("sv-SE");
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 const $ = id => document.getElementById(id);
-let token = "", TID = "", PID = "", schedule = {}, matches = {}, answers = {}, min = 3, name = "";
+let token = "", UID = "", TID = "", PID = "", schedule = {}, matches = {}, answers = {}, min = 3, name = "";
 
 async function api(path, method = "GET", body) {
   const res = await fetch(`${DB}/${path}.json?auth=${encodeURIComponent(token)}`, { method, body: body === undefined ? undefined : JSON.stringify(body) });
@@ -93,6 +93,7 @@ async function start() {
     if (!auth.currentUser) await A.signInAnonymously(auth);
     token = await auth.currentUser.getIdToken();
     const uid = auth.currentUser.uid;
+    UID = uid;
     const link = await api(`quickKeys/${KEY}`);
     if (!link) return fail("qa.invalid");
     TID = link.t; PID = link.p;
@@ -129,8 +130,15 @@ function brand(info) {
   $("q-more").innerHTML = `${t("qa.more")} <a href="/?t=${encodeURIComponent(TID)}">${t("qa.moreLink")}</a><br><small>${t("qa.notYou")}</small>`;
 }
 
+// The answer and a line in the match's history (who changed what, for the team's admins) in one write;
+// if the history part is refused, the answer alone.
 async function save(date, r) {
-  await api(`teams/${TID}/players/${PID}/avail/${date}`, "PUT", r);
+  const old = (answers[PID] || {})[date] || null;
+  if (old === r) return;
+  const id = (Date.now().toString(36) + Math.random().toString(36).slice(2, 10)).slice(0, 18);
+  const entry = { p: PID, by: UID, at: { ".sv": "timestamp" }, a: r, ...(old ? { f: old } : {}) };
+  try { await api("", "PATCH", { [`teams/${TID}/players/${PID}/avail/${date}`]: r, [`history/${TID}/${date}/${id}`]: entry }); }
+  catch { await api(`teams/${TID}/players/${PID}/avail/${date}`, "PUT", r); }
   answers[PID] = { ...answers[PID], [date]: r };
 }
 function showDone(date, r) {

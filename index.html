@@ -169,6 +169,19 @@
     .show-table { display: inline-flex; }
     #overview-head:not(.open) .head-actions, #overview-head:not(.open) ~ #table-view, #overview-head:not(.open) ~ #table-note { display: none !important; }
   }
+  /* Answer history (admins) */
+  .history-dlg { width: min(520px, calc(100vw - 32px)); }
+  .history-sub { margin: -6px 0 12px; color: var(--muted); font-size: .85rem; }
+  .history-list { list-style: none; margin: 0; padding: 0; max-height: 55vh; overflow: auto; }
+  .history-list li { display: grid; grid-template-columns: auto 1fr; gap: 2px 12px; padding: 9px 0; border-top: 1px solid var(--border); font-size: .9rem; }
+  .history-list li:first-child { border-top: none; }
+  .history-list .h-time { grid-row: span 2; color: var(--muted); font-size: .78rem; font-variant-numeric: tabular-nums; padding-top: 2px; min-width: 7.5em; }
+  .history-list .h-change { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .history-list .h-change .pill { font-size: .72rem; }
+  .history-list .h-arrow { color: var(--muted); }
+  .history-list small { color: var(--muted); font-size: .78rem; }
+  .history-list .h-empty { display: block; color: var(--muted); padding: 8px 0; border: none; }
+  .history-note { margin: 12px 0 0; color: var(--muted); font-size: .78rem; }
   /* Enough players: a short celebration */
   .match.complete, .hero.complete { animation: complete-glow 1.2s ease-out both; }
   @keyframes complete-glow { from { box-shadow: 0 0 0 0 color-mix(in srgb, var(--yes) 55%, transparent); } to { box-shadow: 0 0 0 16px transparent; } }
@@ -365,6 +378,13 @@
 
 
 <!-- Admin: time, venue and meeting point for one match -->
+<dialog id="history" class="history-dlg">
+  <h3 id="history-title"></h3>
+  <p class="history-sub" id="history-sub"></p>
+  <ul class="history-list" id="history-list"></ul>
+  <p class="history-note" data-i18n="hist.note"></p>
+  <div class="row"><button type="button" id="history-close" data-i18n="hist.close">Close</button></div>
+</dialog>
 <dialog id="details" class="details-dlg">
   <form method="dialog" id="details-form">
     <h3 id="details-title"></h3>
@@ -495,6 +515,7 @@ function renderMatches(players, events) {
           <button data-ics="${e.date}" title="${t("ics.oneTitle")}" aria-label="${t("ics.oneTitle")}">${ic("calendar-plus")}</button>
           ${isPast(e) ? "" : `<button class="remind" data-date="${e.date}" title="${t("remind.title", { n: c.missing.length })}" aria-label="${t("remind.short")}"
             ${c.missing.length ? "" : "disabled"}>${ic("bell")}${c.missing.length ? `<span class="count">${c.missing.length}</span>` : ""}</button>`}
+          ${session.admin && !isPast(e) ? `<button data-history="${e.date}" title="${t("hist.button")}" aria-label="${t("hist.button")}">${ic("clock")}</button>` : ""}
           ${session.admin ? `<button data-edit="${e.date}" title="${t("details.edit")}" aria-label="${t("details.edit")}">${ic("pencil")}</button>` : ""}
         </div>
       </div>
@@ -632,7 +653,7 @@ function renderHero(players) {
   const more = detailsHtml(e);
   el.innerHTML = `
     <div class="hero-top"><span class="hero-kicker">${ic("flag")} ${t("hero.next")}</span>
-      <span class="hero-top-r">${session.admin ? `<button class="hero-icon" data-edit="${e.date}" title="${t("details.edit")}" aria-label="${t("details.edit")}">${ic("pencil")}</button>` : ""}<span class="hero-when">${when}</span></span></div>
+      <span class="hero-top-r">${session.admin ? `<button class="hero-icon" data-history="${e.date}" title="${t("hist.button")}" aria-label="${t("hist.button")}">${ic("clock")}</button><button class="hero-icon" data-edit="${e.date}" title="${t("details.edit")}" aria-label="${t("details.edit")}">${ic("pencil")}</button>` : ""}<span class="hero-when">${when}</span></span></div>
     <div class="hero-main">
       <div class="hero-head"><h2 class="hero-title">${esc(e.opp)}${homePill(e)}${e.final ? `<span class="pill violet">${ic("trophy")} ${t("final")}</span>` : ""}</h2>
         <div class="hero-date">${esc(fmt(e.date, { weekday: "long", day: "numeric", month: "long" }))}${summaryLine(e) ? ` · ${summaryLine(e)}` : ""}</div>
@@ -669,6 +690,8 @@ function onMatchClick(ev) {
   if (share) { const e = find(share); openShare(`${t("share.match")}: ${e.opp}`, matchMessage(e)); }
   const edit = ev.target.closest("[data-edit]");
   if (edit) openDetails(find(edit));
+  const hist = ev.target.closest("[data-history]");
+  if (hist) openHistory(EVENTS.find(x => x.date === hist.dataset.history));
   // My own answer: tap again to clear it.
   const ans = ev.target.closest("[data-answer]");
   if (ans && session.pid && root.players[session.pid]) {
@@ -954,6 +977,32 @@ document.addEventListener("click", async ev => {
   }));
   openShare(t("reminder.heading", { n: c.missing.length, opp: e.opp, when }), text, people);
 });
+
+// ---- Admin: who changed which answer, when (history/<team>/<date>, cleaned up once the match is played) ----
+const historyDlg = document.getElementById("history");
+document.getElementById("history-close").onclick = () => historyDlg.close();
+async function openHistory(e) {
+  if (!e) return;
+  const list = document.getElementById("history-list");
+  document.getElementById("history-title").textContent = t("hist.title", { opp: e.opp });
+  document.getElementById("history-sub").textContent = fmt(e.date, { weekday: "long", day: "numeric", month: "long" });
+  list.innerHTML = `<li class="h-empty">${t("hist.loading")}</li>`;
+  historyDlg.showModal();
+  const data = await getAbs(`history/${TEAM_ID}/${e.date}`);
+  const players = root.players || {}, admins = root.admins || {};
+  const nameOfPid = pid => players[pid] && players[pid].name ? players[pid].name : "?";
+  const byUid = uid => Object.entries(players).find(([, p]) => p && p.uid === uid);
+  const pill = a => a ? `<span class="pill ${a}">${esc(t("answer." + a))}</span>` : `<span class="pill gray">${esc(t("hist.none"))}</span>`;
+  const rows = Object.values(data || {}).filter(x => x && x.p).sort((a, b) => b.at - a.at).map(x => {
+    const who = byUid(x.by);
+    const how = who ? (who[0] === x.p ? "" : t("hist.by", { name: who[1].name || "?" }))
+      : x.by === "demo" ? "" : admins[x.by] ? t("hist.byAdmin") : t("hist.byLink");
+    const when = new Date(x.at).toLocaleString(LOCALE, { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+    return `<li><span class="h-time">${esc(when)}</span><b>${esc(nameOfPid(x.p))}</b>
+      <span class="h-change">${x.f ? `${pill(x.f)}<span class="h-arrow">→</span>` : ""}${pill(x.a)}${how ? ` <small>${esc(how)}</small>` : ""}</span></li>`;
+  });
+  list.innerHTML = rows.length ? rows.join("") : `<li class="h-empty">${t(data === null && isOffline() ? "hist.offline" : "hist.empty")}</li>`;
+}
 
 // ---- Admin: match details (time, venue via place search, meeting point) ----
 const detailsDlg = document.getElementById("details");

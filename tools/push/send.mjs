@@ -78,7 +78,7 @@ const teams = teamsSnap.val() || {}, tokens = tokensSnap.val() || {}, log = logS
 
 // MODE=requests (every 10 minutes): only new access requests. Otherwise (daily run, manual run): everything.
 const MODE = process.env.MODE || "all";
-let sent = 0, skipped = 0, removed = 0, reqSent = 0, madeKeys = 0;
+let sent = 0, skipped = 0, removed = 0, reqSent = 0, madeKeys = 0, histCleaned = 0;
 const logWrites = {}, deadTokens = {};
 
 // One notification to one device; devices that no longer exist are removed.
@@ -160,6 +160,10 @@ if (MODE !== "requests") {
   }
   // Forget logs of matches that are over.
   for (const [tid, dates] of Object.entries(log)) if (tid !== "_req") for (const date of Object.keys(dates || {})) if (date < today) logWrites[`pushLog/${tid}/${date}`] = null;
+  // Answer history: only kept until the match has been played (it stays small: only upcoming matches remain).
+  const history = (await db.ref("history").once("value")).val() || {};
+  for (const [tid, dates] of Object.entries(history))
+    for (const date of Object.keys(dates || {})) if (date < today) { logWrites[`history/${tid}/${date}`] = null; histCleaned++; }
 }
 
 if (process.env.VERBOSE) console.log(JSON.stringify(Object.keys(logWrites).sort()));
@@ -188,5 +192,5 @@ if (MODE !== "requests" && !EMU) {
 // Only counts in the log (the repository is public): no names, teams or tokens.
 const would = DRY ? "would be " : "";
 console.log(`${today}: ${reqSent} access-request notifications ${would}sent to admins` + (MODE === "requests" ? "." :
-  `, ${sent} reminders ${would}sent, ${skipped} players without notifications, ${removed} old devices removed, ${madeKeys} personal links ${would}made.`));
+  `, ${sent} reminders ${would}sent, ${skipped} players without notifications, ${removed} old devices removed, ${madeKeys} personal links ${would}made, ${histCleaned} played matches' answer history ${would}cleaned up.`));
 process.exit(0);
