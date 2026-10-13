@@ -85,7 +85,14 @@
   .car { border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; margin-bottom: 8px; }
   .car .note { font-size: .85rem; margin-top: 4px; }
   .place { color: var(--muted); font-size: .85rem; font-weight: 400; }
-  .km { font-size: .75rem; color: var(--accent); white-space: nowrap; }
+  .km { font-size: .75rem; color: var(--accent); }
+  /* "Me" set up: one line */
+  .me-sum { display: none; align-items: center; gap: 12px; }
+  #me-panel.done > :not(.me-sum) { display: none; }
+  #me-panel.done .me-sum { display: flex; }
+  .me-sum-text { display: grid; line-height: 1.3; margin-right: auto; min-width: 0; }
+  .me-sum-text small { color: var(--muted); font-size: .82rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .me-sum button { display: inline-flex; align-items: center; gap: 6px; }
   .riders { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
   .rider { font-size: .8rem; background: var(--bg); border-radius: 999px; padding: 3px 10px; }
   .list { list-style: none; margin: 0; padding: 0; font-size: .9rem; }
@@ -98,8 +105,8 @@
   .panel { padding: 16px; }
   .field select, .field input { border-radius: var(--radius-sm); padding: 8px 10px; }
   .matches { display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(min(380px, 100%), 1fr)); align-items: start; }
-  .match { display: grid; gap: 14px; }
-  .m-head { display: grid; grid-template-columns: 58px 1fr auto; gap: 14px; align-items: start; }
+  .match { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
+  .m-head { display: grid; grid-template-columns: 58px minmax(0, 1fr) auto; gap: 14px; align-items: start; }
   .m-head .details { display: grid; gap: 3px; margin-top: 6px; }
   .ghost { border-color: transparent; background: transparent; color: var(--muted); padding: 7px; }
   .ghost:hover:not(:disabled) { color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, var(--surface)); border-color: transparent; }
@@ -149,7 +156,8 @@
   <p class="sub"><span data-i18n="carpool.sub">Offer seats or ask for a ride per match</span> · <span class="status" id="status" data-i18n="status.connecting">Connecting…</span></p>
   <p class="banner" id="banner" hidden data-i18n-html="banner.noDb"></p>
 
-  <section class="panel">
+  <section class="panel" id="me-panel">
+    <div class="me-sum" id="me-sum"></div>
     <div class="row">
       <label class="field"><span data-i18n="carpool.iam">I am</span>
         <select id="me"></select></label>
@@ -327,6 +335,10 @@ const take = (e, riderId) => write(`carpool/${e.date}/${riderId}/with`, me);
 const drop = (e, riderId) => write(`carpool/${e.date}/${riderId}/with`, null);
 
 // ---- Rendering ----
+let meEditing = false;
+document.getElementById("me-panel").addEventListener("click", ev => {
+  if (ev.target.closest("[data-me-edit]")) { meEditing = true; renderMe(); document.getElementById("gemeente").focus(); }
+});
 function renderMe() {
   const sel = document.getElementById("me");
   sel.innerHTML = `<option value="">${t("carpool.choose")}</option>` +
@@ -348,6 +360,14 @@ function renderMe() {
     search.status === "error" ? `<div class="hint warn">${t("carpool.searchFailed")}</div>` :
     search.status === "results" ? `<div class="hint">${t("carpool.whichOne")}</div>` + search.results.map((r, i) =>
       `<button data-pick="${i}">📍 ${esc(r.label)}${r.country ? ` <span class="country">${esc(r.country)}</span>` : ""}</button>`).join("") : "";
+
+  // All set (who, where, number): one quiet line instead of the form, until "Change" is tapped.
+  const panel = document.getElementById("me-panel");
+  const done = !!(me && geoOf(me) && phoneOf(me)) && search.status === "idle" && !meEditing && !panel.contains(document.activeElement);
+  panel.classList.toggle("done", done);
+  document.getElementById("me-sum").innerHTML = done ? `<span class="av" style="${avatarBg(player(me), nameOf(me))}">${photoOf(player(me)) ? "" : esc(initials(nameOf(me)))}</span>
+    <span class="me-sum-text"><b>${esc(nameOf(me))}</b><small>${esc(placeText(me))} · +${esc(phoneOf(me))}</small></span>
+    <button class="small" data-me-edit>${ic("pencil")} ${t("cp.change")}</button>` : "";
 
   const name = esc(nameOf(me));
   document.getElementById("me-hint").innerHTML = !me
@@ -391,7 +411,7 @@ function renderMatch(e) {
       <div class="m-date"><span>${fmt(e.date, { weekday: "short" }).replace(".", "")}</span><b>${parse(e.date).getDate()}</b><span>${fmt(e.date, { month: "short" }).replace(".", "")}</span></div>
       <div class="m-body">
         <div class="m-title">${esc(e.opp)}${homePill(e)}${e.final ? `<span class="pill violet">${ic("trophy")} ${t("final")}</span>` : ""}</div>
-        ${detailsHtml(e, venueExtra(e, toVenue))}
+        ${carpoolDetails(e, toVenue)}
       </div>
       <button class="ghost" data-act="share" title="${t("share.carpool")}" aria-label="${t("share.carpool")}">${ic("share")}</button>
     </div>
@@ -493,6 +513,15 @@ function renderMatch(e) {
 const noteTimers = {};
 
 // Driving time from my place to the venue (and when to leave); straight-line distance until the route is known.
+// What matters for driving: time and place, how long the drive is and when to leave, where to meet.
+// (Weather and notes are on the availability page.)
+function carpoolDetails(e, toVenue) {
+  const m = matchInfo(e), v = m.venue;
+  const first = [timeText(e) && esc(timeText(e)), v && `${esc(venueShort(v))} <a href="${mapsUrl(v)}" target="_blank" rel="noopener">${t("maps")} ↗</a>`].filter(Boolean).join(" · ");
+  const drive = venueExtra(e, toVenue).trim();
+  const lines = [first, drive, m.meet && `🚩 ${t("meet")}: ${esc(m.meet)}`].filter(Boolean);
+  return lines.length ? `<div class="details">${lines.map(x => `<div>${x}</div>`).join("")}</div>` : "";
+}
 function venueExtra(e, toVenue) {
   const route = me ? routeBetween(geoOf(me), matchInfo(e).venue) : null;
   if (route) {
@@ -677,6 +706,7 @@ document.getElementById("me").addEventListener("change", ev => {
   me = ev.target.value; pref.set("me:" + TEAM_ID, me); search = { status: "idle", results: [] }; render();
 });
 document.getElementById("phone-form").addEventListener("submit", ev => {
+  meEditing = false; if (document.activeElement) document.activeElement.blur();
   ev.preventDefault();
   const raw = document.getElementById("my-phone").value.trim();
   const n = raw ? normPhone(raw) : null;
@@ -698,7 +728,7 @@ gemInput.addEventListener("keydown", ev => {
 document.getElementById("geo-find").onclick = () => { clearTimeout(gemTimer); findPlace(gemInput.value); };
 document.getElementById("geo-results").addEventListener("click", ev => {
   const b = ev.target.closest("[data-pick]");
-  if (b) pickPlace(Number(b.dataset.pick));
+  if (b) { meEditing = false; pickPlace(Number(b.dataset.pick)); }
 });
 
 start();

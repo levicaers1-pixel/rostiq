@@ -78,7 +78,7 @@ body {
 }
 main { max-width: 1200px; margin: 0 auto; padding: 32px 16px 56px; }
 h1, h2 { font-family: var(--font-head); font-weight: var(--head-weight); letter-spacing: var(--head-spacing); }
-h1 { font-size: clamp(1.9rem, 1.4rem + 2vw, 2.6rem); line-height: 1.08; margin: 0 0 6px; }
+h1 { font-size: clamp(1.6rem, 1.1rem + 2.4vw, 2.6rem); line-height: 1.08; margin: 0 0 6px; }
 h2 { font-size: 1.35rem; margin: 44px 0 14px; }
 html.font-serif h2 { font-size: 1.6rem; }
 .sub { color: var(--muted); margin: 0; }

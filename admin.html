@@ -42,7 +42,24 @@
   .seen::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--muted); opacity: .5; }
   .seen.fresh::before { background: var(--yes); opacity: 1; }
   .seen.stale::before { background: var(--maybe); opacity: 1; }
-  .plist .acts { display: flex; gap: 12px; align-items: center; grid-row: span 2; flex-wrap: wrap; justify-content: flex-end; }
+  /* One row per player: avatar, name, what's missing; the actions behind a small menu */
+  #players li { grid-template-columns: auto 1fr auto; gap: 4px 12px; }
+  .plist .who { min-width: 0; }
+  .plist .tag { font-size: .68rem; font-weight: 700; padding: 1px 7px; border-radius: 999px; background: color-mix(in srgb, var(--muted) 12%, var(--surface)); color: var(--muted); vertical-align: 1px; }
+  .plist .tag.adm { background: var(--pampas); color: var(--brand); }
+  .plist .flags { gap: 4px 12px; }
+  .plist .flags .miss { color: var(--muted); font-style: italic; }
+  .row-menu { position: relative; }
+  .row-menu summary { list-style: none; cursor: pointer; display: grid; place-items: center; width: 34px; height: 34px; border-radius: 9px; color: var(--muted);
+    border: 1px solid transparent; }
+  .row-menu summary::-webkit-details-marker { display: none; }
+  .row-menu summary:hover, .row-menu[open] summary { border-color: var(--border); background: var(--surface); color: var(--text); }
+  .row-menu .menu { position: absolute; right: 0; top: calc(100% + 4px); z-index: 20; min-width: 210px; display: grid; padding: 6px; border-radius: 12px;
+    background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow); animation: menu-in .14s var(--ease); }
+  .row-menu .menu button { display: flex; align-items: center; gap: 9px; justify-content: flex-start; width: 100%; border: none; background: none; padding: 8px 10px;
+    border-radius: 8px; font-size: .88rem; font-weight: 500; color: var(--text); text-align: left; }
+  .row-menu .menu button:hover { background: color-mix(in srgb, var(--accent) 8%, var(--surface)); }
+  .row-menu .menu button.err { color: var(--no); }
   .invite { margin-top: 14px; border-top: 1px solid var(--border); padding-top: 12px; }
   .invite label { display: grid; gap: 6px; font-size: .9rem; }
   .invite input { flex: 1 1 260px; min-width: 0; }
@@ -546,25 +563,31 @@ document.getElementById("requests").addEventListener("click", ev => {
 
 function renderPlayers() {
   const me = session.user && session.user.uid;
-  document.getElementById("players").innerHTML = sortedPlayers().map((p, i) => `
+  const word = key => t(key).replace(/^\S+\s/, ""); // "📱 number" → "number"
+  document.getElementById("players").innerHTML = sortedPlayers().map((p, i) => {
+    const isAdm = !!(p.uid && root.admins && root.admins[p.uid]);
+    // What's missing, in one muted line (the normal state – linked, number, place – needs no mention).
+    const miss = [AUTH_ON && !p.uid && t("accounts.notLinked"), !p.phone && word("admin.hasPhone"), !(p.geo || p.gemeente) && word("admin.hasPlace")].filter(Boolean);
+    const acts = [
+      AUTH_ON && p.uid && (session.platformAdmin || !isAdm) && `<button data-admin="${p.id}">${ic("shield")} ${t(isAdm ? "admin.removeAdmin" : "admin.makeAdmin")}</button>`,
+      quickOn() && p.name && `<button data-qlink="${p.id}">${ic("link")} ${t("ql.button")}</button>`,
+      AUTH_ON && !p.uid && p.name && !session.pid && `<button data-mine="${p.id}">${ic("user")} ${t("accounts.mine")}</button>`,
+      AUTH_ON && p.uid && `<button data-reset="${p.id}">${ic("switch")} ${t("accounts.reset")}</button>`,
+      `<button class="err" data-remove="${p.id}">${ic("trash")} ${t("admin.remove")}</button>`,
+    ].filter(Boolean);
+    return `
     <li>
-      <div><span class="name">${esc(displayName(p, i))}</span>
+      <span class="av" style="${avatarBg(p)}">${photoOf(p) ? "" : esc(initials0(displayName(p, i)) || "?")}</span>
+      <div class="who"><span class="name">${esc(displayName(p, i))}</span>${p.uid === me && me ? ` <span class="tag">${t("accounts.you").replace(/[()]/g, "")}</span>` : ""}${isAdm ? ` <span class="tag adm">${t("admin.isAdmin").replace(/^\S+\s/, "")}</span>` : ""}
         <div class="flags">
-          ${AUTH_ON ? (p.uid ? `<span>🔗 ${t("accounts.linked")}${p.uid === me ? " " + t("accounts.you") : ""}</span>` : flag(false, "🔗 " + t("accounts.notLinked"))) : ""}
-          ${p.uid && root.admins && root.admins[p.uid] ? `<span>${t("admin.isAdmin")}</span>` : ""}
-          ${p.email ? `<span>✉️ ${esc(p.email)}</span>` : ""}
-          ${flag(!!p.phone, t("admin.hasPhone"))}
-          ${flag(!!(p.geo || p.gemeente), t("admin.hasPlace"))}
+          ${p.email ? `<span>${esc(p.email)}</span>` : ""}
           ${seenHtml(p.uid)}
+          ${miss.length ? `<span class="miss">${t("admin.missing")}: ${esc(miss.join(", "))}</span>` : ""}
         </div></div>
-      <div class="acts">
-        ${AUTH_ON && p.uid && (session.platformAdmin || !(root.admins && root.admins[p.uid])) ? `<button class="link" data-admin="${p.id}">${t(root.admins && root.admins[p.uid] ? "admin.removeAdmin" : "admin.makeAdmin")}</button>` : ""}
-        ${AUTH_ON && p.uid ? `<button class="link" data-reset="${p.id}">${t("accounts.reset")}</button>` : ""}
-        ${AUTH_ON && !p.uid && p.name && !session.pid ? `<button class="link" data-mine="${p.id}">${t("accounts.mine")}</button>` : ""}
-        ${quickOn() && p.name ? `<button class="link" data-qlink="${p.id}">${t("ql.button")}</button>` : ""}
-        <button class="link err" data-remove="${p.id}">${t("admin.remove")}</button>
-      </div>
-    </li>`).join("");
+      <details class="row-menu"><summary title="${t("admin.actions")}" aria-label="${t("admin.actions")}">${ic("settings")}</summary>
+        <div class="menu">${acts.join("")}</div></details>
+    </li>`;
+  }).join("");
 }
 
 // Settings: one form; the save button wakes up once something changed.
@@ -599,6 +622,12 @@ function renderMatches() {
 }
 
 // ---- Players ----
+document.getElementById("players").addEventListener("toggle", ev => {
+  if (ev.target.open) document.querySelectorAll(".row-menu[open]").forEach(d => { if (d !== ev.target) d.open = false; });
+}, true);
+document.addEventListener("click", ev => {
+  if (!ev.target.closest(".row-menu summary")) document.querySelectorAll(".row-menu[open]").forEach(d => { d.open = false; });
+});
 document.getElementById("players").addEventListener("click", ev => {
   const mine = ev.target.closest("[data-mine]");
   if (mine) return linkAccount(session.user.uid, mine.dataset.mine).then(syncSession);

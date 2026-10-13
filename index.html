@@ -163,6 +163,12 @@
   .av { font-size: .62rem; letter-spacing: -.02em; }
   .m-foot .answer button { white-space: nowrap; }
   @media (max-width: 440px) { .m-foot .answer { width: 100%; } .m-foot .answer .i { display: none; } .m-foot .m-actions { margin-left: auto; } .m-sub { white-space: normal; } }
+  /* Phone: the big table is folded away (the cards above already say who's coming) */
+  .show-table { display: none; }
+  @media (max-width: 640px) {
+    .show-table { display: inline-flex; }
+    #overview-head:not(.open) .head-actions, #overview-head:not(.open) ~ #table-view, #overview-head:not(.open) ~ #table-note { display: none !important; }
+  }
   /* Enough players: a short celebration */
   .match.complete, .hero.complete { animation: complete-glow 1.2s ease-out both; }
   @keyframes complete-glow { from { box-shadow: 0 0 0 0 color-mix(in srgb, var(--yes) 55%, transparent); } to { box-shadow: 0 0 0 16px transparent; } }
@@ -335,6 +341,7 @@
 
   <div class="section-head" id="overview-head">
     <h2 data-i18n="overview">Overview</h2>
+    <button id="show-table" class="show-table" aria-expanded="false"><span data-i18n="view.showTable">Show table</span></button>
     <div class="head-actions">
       <div class="legend">
         <span class="pill yes" data-i18n="legend.yes">✓ Available</span>
@@ -915,6 +922,11 @@ function overviewMessage() {
   });
   return lines([`*${t("msg.overviewHead", { season: seasonName() })}*`, BLANK, rows.join("\n\n"), BLANK, t("msg.fill", { url: pageUrl("") })]);
 }
+document.getElementById("show-table").onclick = ev => {
+  const head = document.getElementById("overview-head"), open = head.classList.toggle("open");
+  ev.currentTarget.setAttribute("aria-expanded", open);
+  ev.currentTarget.firstElementChild.textContent = t(open ? "view.hideTable" : "view.showTable");
+};
 document.getElementById("share-overview").onclick = () => openShare(t("share.overviewTitle"), overviewMessage());
 
 // Reminder for players who haven't answered a match.
