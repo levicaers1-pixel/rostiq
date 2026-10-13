@@ -60,7 +60,11 @@
 const SDK = "https://www.gstatic.com/firebasejs/12.12.0/";
 const DB = (window.FIREBASE_DB_URL || "").replace(/\/+$/, "");
 const Q = new URLSearchParams(location.search);
-const KEY = Q.get("k") || "", D = Q.get("d") || "", R = Q.get("r") || "";
+// Short form ?<key>[<y|m|n><yymmdd>] (what the messages use), or the long ?k=<key>&d=<date>&r=<answer>.
+const SHORT = /^([A-Za-z0-9_-]{22})(?:([ymn])(\d{2})(\d{2})(\d{2}))?$/.exec(location.search.slice(1));
+const KEY = SHORT ? SHORT[1] : Q.get("k") || "";
+const D = SHORT ? (SHORT[2] ? `20${SHORT[3]}-${SHORT[4]}-${SHORT[5]}` : "") : Q.get("d") || "";
+const R = SHORT ? ({ y: "yes", m: "maybe", n: "no" }[SHORT[2]] || "") : Q.get("r") || "";
 const TODAY = new Date().toLocaleDateString("sv-SE");
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 const $ = id => document.getElementById(id);
