@@ -55,50 +55,85 @@ const whenText = (date, lang) => new Date(date + "T12:00:00Z").toLocaleDateStrin
 const [teamsSnap, tokensSnap, logSnap] = await Promise.all(["teams", "pushTokens", "pushLog"].map(p => db.ref(p).once("value")));
 const teams = teamsSnap.val() || {}, tokens = tokensSnap.val() || {}, log = logSnap.val() || {};
 
-let sent = 0, skipped = 0, removed = 0;
+// MODE=requests (every 10 minutes): only new access requests. Otherwise (daily run, manual run): everything.
+const MODE = process.env.MODE || "all";
+let sent = 0, skipped = 0, removed = 0, reqSent = 0;
 const logWrites = {}, deadTokens = {};
-for (const [tid, team] of Object.entries(teams)) {
-  if (!team || (team.settings || {}).autoRemind === false) continue;
-  const brand = (team.info || {}).brand || "RostiQ";
-  for (const [date, m] of Object.entries(team.schedule || {})) {
-    const d = daysUntil(date);
-    const kind = d === 1 ? "r1" : d >= 2 && d <= 3 ? "r3" : null;
-    if (!kind) continue;
-    for (const [uid, pid] of Object.entries(team.members || {})) {
-      const player = (team.players || {})[pid];
-      if (!player || (player.avail || {})[date]) continue; // answered already
-      if ((((log[tid] || {})[date] || {})[kind] || {})[uid]) continue; // sent already
-      const devices = Object.entries(tokens[uid] || {});
-      if (!devices.length) { skipped++; continue; }
-      for (const [dev, info] of devices) {
-        const lang = TEXT[info.lang] ? info.lang : "nl";
-        const body = kind === "r1" ? TEXT[lang].r1(m.opp) : TEXT[lang].r3(m.opp, whenText(date, lang));
-        const message = {
-          token: info.token,
-          data: { title: brand, body, link: `${APP}/?t=${encodeURIComponent(tid)}`, tag: `${tid}-${date}` },
-          webpush: { headers: { Urgency: "normal", TTL: String(20 * 3600) } },
-        };
-        if (DRY) { sent++; continue; }
-        try { await admin.messaging().send(message); sent++; }
-        catch (e) {
-          const code = (e && (e.code || e.errorInfo && e.errorInfo.code)) || "";
-          if (/registration-token-not-registered|invalid-registration-token|invalid-argument/.test(code)) { deadTokens[`pushTokens/${uid}/${dev}`] = null; removed++; }
-          else console.warn("send failed:", code);
-        }
-      }
-      logWrites[`pushLog/${tid}/${date}/${kind}/${uid}`] = Date.now();
-    }
+
+// One notification to one device; devices that no longer exist are removed.
+async function push(uid, dev, info, data) {
+  if (DRY) return true;
+  try { await admin.messaging().send({ token: info.token, data, webpush: { headers: { Urgency: "normal", TTL: String(20 * 3600) } } }); return true; }
+  catch (e) {
+    const code = (e && (e.code || e.errorInfo && e.errorInfo.code)) || "";
+    if (/registration-token-not-registered|invalid-registration-token|invalid-argument/.test(code)) { deadTokens[`pushTokens/${uid}/${dev}`] = null; removed++; }
+    else console.warn("send failed:", code);
+    return false;
   }
 }
-// Forget logs of matches that are over.
-for (const [tid, dates] of Object.entries(log)) for (const date of Object.keys(dates || {})) if (date < today) logWrites[`pushLog/${tid}/${date}`] = null;
+
+// ---- New access requests -> the team's admins (pushLog/_req/<team>/<uid> = notified) ----
+const REQ_TEXT = {
+  nl: name => `Nieuwe toegangsaanvraag: ${name}. Tik om te bekijken.`,
+  fr: name => `Nouvelle demande d'accès : ${name}. Touche pour voir.`,
+  en: name => `New access request: ${name}. Tap to review.`,
+};
+const reqLog = log._req || {};
+for (const [tid, team] of Object.entries(teams)) {
+  if (!team) continue;
+  const reqs = team.requests || {}, brand = (team.info || {}).brand || "RostiQ";
+  for (const [uid, rq] of Object.entries(reqs)) {
+    if ((reqLog[tid] || {})[uid]) continue; // notified already
+    // Only recent requests: ones that were already waiting when this started are just marked as known.
+    if (rq && typeof rq.at === "number" && Date.now() - rq.at < 24 * 3600e3) {
+      for (const adminUid of Object.keys(team.admins || {})) {
+        for (const [dev, info] of Object.entries(tokens[adminUid] || {})) {
+          const lang = REQ_TEXT[info.lang] ? info.lang : "nl";
+          const body = REQ_TEXT[lang](String(rq.name || "?").slice(0, 60));
+          if (await push(adminUid, dev, info, { title: brand, body, link: `${APP}/admin.html?t=${encodeURIComponent(tid)}#requests-panel`, tag: `req-${tid}-${uid}` })) reqSent++;
+        }
+      }
+    }
+    logWrites[`pushLog/_req/${tid}/${uid}`] = Date.now();
+  }
+  // Approved or rejected: forget it.
+  for (const uid of Object.keys(reqLog[tid] || {})) if (!reqs[uid]) logWrites[`pushLog/_req/${tid}/${uid}`] = null;
+}
+
+if (MODE !== "requests") {
+  // ---- Match reminders: players who haven't answered, 3 days and 1 day before ----
+  for (const [tid, team] of Object.entries(teams)) {
+    if (!team || (team.settings || {}).autoRemind === false) continue;
+    const brand = (team.info || {}).brand || "RostiQ";
+    for (const [date, m] of Object.entries(team.schedule || {})) {
+      const d = daysUntil(date);
+      const kind = d === 1 ? "r1" : d >= 2 && d <= 3 ? "r3" : null;
+      if (!kind) continue;
+      for (const [uid, pid] of Object.entries(team.members || {})) {
+        const player = (team.players || {})[pid];
+        if (!player || (player.avail || {})[date]) continue; // answered already
+        if ((((log[tid] || {})[date] || {})[kind] || {})[uid]) continue; // sent already
+        const devices = Object.entries(tokens[uid] || {});
+        if (!devices.length) { skipped++; continue; }
+        for (const [dev, info] of devices) {
+          const lang = TEXT[info.lang] ? info.lang : "nl";
+          const body = kind === "r1" ? TEXT[lang].r1(m.opp) : TEXT[lang].r3(m.opp, whenText(date, lang));
+          if (await push(uid, dev, info, { title: brand, body, link: `${APP}/?t=${encodeURIComponent(tid)}`, tag: `${tid}-${date}` })) sent++;
+        }
+        logWrites[`pushLog/${tid}/${date}/${kind}/${uid}`] = Date.now();
+      }
+    }
+  }
+  // Forget logs of matches that are over.
+  for (const [tid, dates] of Object.entries(log)) if (tid !== "_req") for (const date of Object.keys(dates || {})) if (date < today) logWrites[`pushLog/${tid}/${date}`] = null;
+}
 
 if (process.env.VERBOSE) console.log(JSON.stringify(Object.keys(logWrites).sort()));
 if (!DRY && Object.keys({ ...logWrites, ...deadTokens }).length) await db.ref().update({ ...logWrites, ...deadTokens });
+
 // Anonymous accounts (made by personal answer links) unused for 60 days: removed with their link session.
-// Someone who taps their link later simply gets a new one. Not available in the emulator test.
-let cleaned = 0;
-if (!EMU) {
+// Someone who taps their link later simply gets a new one. Daily only; not available in the emulator test.
+if (MODE !== "requests" && !EMU) {
   const cutoff = Date.now() - 60 * 864e5, old = [];
   let page;
   do {
@@ -109,14 +144,15 @@ if (!EMU) {
       if (anonymous && last < cutoff) old.push(u.uid);
     }
   } while (page.pageToken);
-  cleaned = old.length;
   if (!DRY && old.length) {
     for (let i = 0; i < old.length; i += 1000) await admin.auth().deleteUsers(old.slice(i, i + 1000));
     await db.ref().update(Object.fromEntries(old.map(uid => [`quickSessions/${uid}`, null])));
   }
+  console.log(`${old.length} unused anonymous accounts ${DRY ? "would be " : ""}cleaned up (older than 60 days).`);
 }
-console.log(`${cleaned} unused anonymous accounts ${DRY ? "would be " : ""}cleaned up (older than 60 days).`);
 
 // Only counts in the log (the repository is public): no names, teams or tokens.
-console.log(`${today}: ${sent} notifications ${DRY ? "would be " : ""}sent, ${skipped} players without notifications, ${removed} old devices removed.`);
+const would = DRY ? "would be " : "";
+console.log(`${today}: ${reqSent} access-request notifications ${would}sent to admins` + (MODE === "requests" ? "." :
+  `, ${sent} reminders ${would}sent, ${skipped} players without notifications, ${removed} old devices removed.`));
 process.exit(0);

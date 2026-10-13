@@ -80,7 +80,7 @@ Messaging token in `pushTokens/<uid>/<device>` (only readable by that person); t
 On iPhone/iPad this only works from the home-screen app. `config.js` holds the public Web Push key (`FIREBASE_VAPID_KEY`);
 empty = the option doesn't appear.
 
-Sending: `.github/workflows/push-reminders.yml` runs `tools/push/send.mjs` every day around 18:30 (and on demand, with a
+Sending: `.github/workflows/push-reminders.yml` runs `tools/push/send.mjs` every 10 minutes for new access requests (the team's admins get a notification) and every day around 18:30 (and on demand, with a
 dry-run option). Players who haven't answered a match in the next 3 days get a reminder (3 days and 1 day before); team
 admins can switch this off per team (Admin → Settings). It needs the repository secret `FIREBASE_SERVICE_ACCOUNT`.
 The log only shows counts.

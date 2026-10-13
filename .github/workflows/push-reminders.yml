@@ -1,8 +1,11 @@
-# Daily push reminders: players who haven't answered for a match in the next 3 days (see tools/push/send.mjs).
+# Push notifications (see tools/push/send.mjs):
+# - every 10 minutes: new access requests -> the team's admins
+# - daily: match reminders for players who haven't answered, plus cleanup
 name: Push reminders
 on:
   schedule:
-    - cron: "30 16 * * *"   # 18:30 Belgian summer time, 17:30 winter time
+    - cron: "30 16 * * *"   # daily run: 18:30 Belgian summer time, 17:30 winter time
+    - cron: "*/10 * * * *"  # access requests only
   workflow_dispatch:
     inputs:
       dry_run:
@@ -20,7 +23,7 @@ concurrency:
 jobs:
   send:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 8
     steps:
       - uses: actions/checkout@v4
         with:
@@ -28,7 +31,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - run: npm install --no-audit --no-fund
+          cache: npm
+          cache-dependency-path: tools/push/package-lock.json
+      - run: npm ci --no-audit --no-fund
         working-directory: tools/push
       - run: node send.mjs
         working-directory: tools/push
@@ -36,3 +41,4 @@ jobs:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
           DRY_RUN: ${{ inputs.dry_run && '1' || '' }}
           TEST_EMAIL: ${{ inputs.test_email }}
+          MODE: ${{ github.event.schedule == '*/10 * * * *' && 'requests' || 'all' }}
