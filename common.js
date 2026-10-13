@@ -944,7 +944,31 @@ function chooseTeam(id) {
 }
 
 // Kick off: with login, wait for the user; otherwise connect straight away.
+// ---- Updates: a tab that stays open for days would keep running old code. When the page comes back into view
+// (at most every 10 minutes), compare common.js with the server; if it changed, offer a reload. ----
+let loadedTag = null, lastUpdateCheck = Date.now();
+const fileTag = async () => {
+  const r = await fetch(new URL("common.js", location.href), { method: "HEAD", cache: "no-cache" });
+  return r.ok ? (r.headers.get("etag") || r.headers.get("last-modified")) : null;
+};
+async function checkForUpdate() {
+  if (document.hidden || Date.now() - lastUpdateCheck < 10 * 60e3 || isOffline()) return;
+  lastUpdateCheck = Date.now();
+  try {
+    const tag = await fileTag();
+    if (loadedTag && tag && tag !== loadedTag) showUpdateBar();
+  } catch {}
+}
+function showUpdateBar() {
+  if (document.getElementById("update-bar")) return;
+  document.body.insertAdjacentHTML("beforeend", `<div class="update-bar" id="update-bar" role="status">${ic("download")}
+    <span>${t("update.text")}</span><button class="primary" onclick="location.reload()">${t("update.reload")}</button></div>`);
+}
+document.addEventListener("visibilitychange", checkForUpdate);
+window.addEventListener("focus", checkForUpdate);
+
 function start() {
+  fileTag().then(tag => { loadedTag = tag; }).catch(() => {});
   setTimeout(flushErrors, 10e3); setInterval(flushErrors, 70e3); // error reports, see noteError()
   if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost"))
     navigator.serviceWorker.register("sw.js").catch(() => {});
@@ -1153,7 +1177,7 @@ function gateMessage(text, err) { gateMsg = { text, err }; renderAuth(); }
 const appUrl = file => location.href.split(/[?#]/)[0].replace(/[^/]*$/, file);
 
 // ---- Feedback to RostiQ (account menu, footer): only the RostiQ admin reads it ----
-const APP_VERSION = "2026.10.20";
+const APP_VERSION = "2026.10.21";
 function deviceText() {
   const ua = navigator.userAgent;
   const os = /iPhone/.test(ua) ? "iPhone" : /iPad/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1) ? "iPad"

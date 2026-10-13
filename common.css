@@ -183,6 +183,13 @@ dialog a.btn { font-size: .85rem; text-decoration: none; background: #25d366; co
 .countdown.soon { background: var(--pampas); color: var(--brand); }
 
 /* Phone number prompt under the subtitle */
+/* "RostiQ was updated" bar */
+.update-bar { position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 60;
+  display: flex; align-items: center; gap: 10px; padding: 10px 12px 10px 16px; border-radius: 999px; font-size: .9rem; font-weight: 600;
+  background: var(--brand); color: var(--brand-text); box-shadow: var(--shadow); width: max-content; max-width: calc(100% - 24px); }
+.update-bar button { border-radius: 999px; padding: 6px 14px; }
+body.has-bottom-nav .update-bar { bottom: calc(78px + env(safe-area-inset-bottom)); }
+
 /* Notifications banner (team pages) */
 .push-ask { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-top: 12px; padding: 12px 14px; max-width: 760px;
   border-radius: var(--radius); background: color-mix(in srgb, var(--pampas) 12%, var(--surface)); border: 1px solid color-mix(in srgb, var(--pampas) 35%, var(--border)); }
