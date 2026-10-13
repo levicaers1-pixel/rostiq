@@ -21,8 +21,8 @@
   --no-bg: #f5ddd4;
   --final: #7c5cf0;
   /* Fonts: RostiQ's geometric sans; teams can pick the classic serif headings ("font-serif"). */
-  --font-body: Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  --font-head: Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-body: "Noto Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-head: "Noto Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --head-weight: 700;
   --head-spacing: -.01em;
   /* Shape & depth */
