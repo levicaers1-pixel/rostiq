@@ -566,7 +566,7 @@ function renderPlayers() {
   const word = key => t(key).replace(/^\S+\s/, ""); // "📱 number" → "number"
   document.getElementById("players").innerHTML = sortedPlayers().map((p, i) => {
     const isAdm = !!(p.uid && root.admins && root.admins[p.uid]);
-    // What's missing, in one muted line (the normal state – linked, number, place – needs no mention).
+    // What's missing, in one muted line (the normal state, linked with a number and a place, needs no mention).
     const miss = [AUTH_ON && !p.uid && t("accounts.notLinked"), !p.phone && word("admin.hasPhone"), !(p.geo || p.gemeente) && word("admin.hasPlace")].filter(Boolean);
     const acts = [
       AUTH_ON && p.uid && (session.platformAdmin || !isAdm) && `<button data-admin="${p.id}">${ic("shield")} ${t(isAdm ? "admin.removeAdmin" : "admin.makeAdmin")}</button>`,

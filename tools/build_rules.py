@@ -181,7 +181,7 @@ team = {
     "schedule": {".write": TA, **schedule_rules()},
     "matches": {".write": TA, **matches_rules()},
     "carpool": carpool_rules(f"{TA} || {OWNER}", MYPID),
-    # Who started the team (self-service) – written once, at creation.
+    # Who started the team (self-service): written once, at creation.
     "meta": {
         "createdBy": {".validate": "newData.isString()"},
         "createdAt": {".validate": "newData.isNumber()"},
@@ -221,7 +221,7 @@ signup = {
 signup_codes = {
     ".read": PA,  # the list is yours; a single code can be read by whoever knows it
     "$code": {
-        # Whoever knows a code may read how many uses it has left – only that, not the note.
+        # Whoever knows a code may read how many uses it has left, only that, not the note.
         ".write": f"{PA} || (auth != null && data.exists() && newData.exists())",
         ".validate": f"$code.matches(/^[A-Z0-9-]{{3,30}}$/) && newData.hasChildren(['uses'])"
                      f" && ({PA} || (newData.child('uses').val() === data.child('uses').val() - 1"

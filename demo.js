@@ -1,4 +1,4 @@
-// RostiQ – demo teams (app.rostiq.be/?demo=football | padel | hockey).
+// RostiQ: demo teams (app.rostiq.be/?demo=football | padel | hockey).
 // buildDemo() makes a complete, fictional team with match dates relative to today, so a demo never looks
 // outdated. Nothing here touches the database: common.js keeps the visitor's changes in this tab only.
 (function () {

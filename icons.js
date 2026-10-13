@@ -1,4 +1,4 @@
-// RostiQ – line icons (Lucide style: 24×24, 2px round strokes, currentColor).
+// RostiQ: line icons (Lucide style: 24×24, 2px round strokes, currentColor).
 // ic("car") gives an inline <svg>. Emoji in the page's own texts (tabs, buttons, labels) are swapped for the
 // matching icon automatically; chat messages, form fields and tooltips keep their emoji.
 const ICONS = {

@@ -1,4 +1,4 @@
-// RostiQ – shared by all pages: teams, database connection, login and helpers.
+// RostiQ: shared by all pages: teams, database connection, login and helpers.
 // Each page defines a global render() that is called whenever the data changes.
 // Everything of one team lives under teams/{TEAM_ID}/ in the database; `root` mirrors that subtree.
 
@@ -748,7 +748,7 @@ function renderSeasonTitle() {
 
 // ---- Share window: an editable message to send to the team group ----
 // WhatsApp has no link that posts straight into a group, so the quickest routes are:
-//  - "Copy & open group": copies the text and opens the team group (invite link) – just paste;
+//  - "Copy & open group": copies the text and opens the team group (invite link), then just paste;
 //  - "Share…": the phone's own share sheet, where the group shows among recent chats.
 function injectShareDialog() {
   document.body.insertAdjacentHTML("beforeend", `
@@ -1183,7 +1183,7 @@ function gateMessage(text, err) { gateMsg = { text, err }; renderAuth(); }
 const appUrl = file => location.href.split(/[?#]/)[0].replace(/[^/]*$/, file);
 
 // ---- Feedback to RostiQ (account menu, footer): only the RostiQ admin reads it ----
-const APP_VERSION = "2026.10.26";
+const APP_VERSION = "2026.10.27";
 function deviceText() {
   const ua = navigator.userAgent;
   const os = /iPhone/.test(ua) ? "iPhone" : /iPad/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1) ? "iPad"

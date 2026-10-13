@@ -200,7 +200,7 @@ function renderFeedback() {
       <div class="text">${esc(x.text)}</div>
       <div class="ctx">${[x.team && `${t("fb.team")}: ${esc(x.team)}`, x.page && `${t("fb.page")}: ${esc(x.page)}`, x.device && esc(x.device), x.version && `v${esc(x.version)}`, x.lang && esc(x.lang.toUpperCase())].filter(Boolean).join(" · ")}</div>
       <div class="acts">
-        ${x.contact && x.email ? `<a href="mailto:${esc(x.email)}?subject=${encodeURIComponent("RostiQ – " + t("fb.type." + x.type))}&body=${encodeURIComponent("\n\n> " + x.text.slice(0, 400))}">${t("fb.reply")}</a>` : ""}
+        ${x.contact && x.email ? `<a href="mailto:${esc(x.email)}?subject=${encodeURIComponent("RostiQ: " + t("fb.type." + x.type))}&body=${encodeURIComponent("\n\n> " + x.text.slice(0, 400))}">${t("fb.reply")}</a>` : ""}
         ${x.status !== "seen" && x.status !== "done" ? `<button class="link" data-fbs="${id}" data-to="seen">${t("fb.markSeen")}</button>` : ""}
         ${x.status !== "done" ? `<button class="link" data-fbs="${id}" data-to="done">${t("fb.markDone")}</button>` : `<button class="link" data-fbs="${id}" data-to="seen">${t("fb.reopen")}</button>`}
         <button class="link del" data-fbdel="${id}">${t("rostiq.delete")}</button>

@@ -1,4 +1,4 @@
-// RostiQ – runs in <head>, before the page is drawn: shows the team's last-known branding (saved on
+// RostiQ: runs in <head>, before the page is drawn: shows the team's last-known branding (saved on
 // this device by common.js) straight away, so switching tabs doesn't flash the default RostiQ look.
 // common.js takes over once the team's data arrives.
 (function () {

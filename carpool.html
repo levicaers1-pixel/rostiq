@@ -7,16 +7,16 @@
 <title data-i18n-doc="carpool.pageTitle">RostiQ · Carpool</title>
 <meta name="theme-color" content="#1e1b4b">
 <!-- Link preview (WhatsApp, iMessage, Facebook, …) -->
-<meta name="description" content="RostiQ – teamplanner voor sportploegen: beschikbaarheid, kalender, carpool en WhatsApp.">
+<meta name="description" content="RostiQ, de teamplanner voor sportploegen: beschikbaarheid, kalender, carpool en WhatsApp.">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="RostiQ">
 <meta property="og:title" content="Carpool · RostiQ">
-<meta property="og:description" content="RostiQ – teamplanner voor sportploegen: beschikbaarheid, kalender, carpool en WhatsApp.">
+<meta property="og:description" content="RostiQ, de teamplanner voor sportploegen: beschikbaarheid, kalender, carpool en WhatsApp.">
 <meta property="og:url" content="https://app.rostiq.be/carpool.html">
 <meta property="og:image" content="https://app.rostiq.be/assets/og-image.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="RostiQ – teamplanner">
+<meta property="og:image:alt" content="RostiQ teamplanner">
 <meta property="og:locale" content="nl_BE">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="icon" type="image/png" href="assets/favicon.png">
@@ -421,7 +421,7 @@ function renderMatch(e) {
       ${st.waiting.length ? `<span class="pill maybe">${t("cp.waiting", { n: st.waiting.length })}</span>` : ""}
     </div>`}`;
 
-  // Home match: usually no carpool needed – unless someone asks for it (or already arranged something).
+  // Home match: usually no carpool needed, unless someone asks for it (or already arranged something).
   if (e.home === true && !showHomeCarpool.has(e.date) && !Object.keys(st.all).length) {
     el.innerHTML = html + `<div class="home-note">${ic("home")} <span>${t("cp.homeNote")}</span>
       <button class="small" data-act="home-carpool">${t("cp.homeAnyway")}</button></div>`;
@@ -582,7 +582,7 @@ function loadLeaflet() {
 function renderMapSelect() {
   const sel = document.getElementById("map-match");
   sel.innerHTML = `<option value="">${t("map.none")}</option>` + EVENTS.filter(e => !isPast(e)).map(e =>
-    `<option value="${e.date}" ${e.date === mapMatch ? "selected" : ""}>${esc(fmt(e.date, { weekday: "short", day: "numeric", month: "short" }))} – ${esc(e.opp)}</option>`).join("");
+    `<option value="${e.date}" ${e.date === mapMatch ? "selected" : ""}>${esc(fmt(e.date, { weekday: "short", day: "numeric", month: "short" }))} · ${esc(e.opp)}</option>`).join("");
 }
 document.getElementById("map-match").addEventListener("change", ev => { mapMatch = ev.target.value; drawMap(false); });
 
@@ -612,7 +612,7 @@ function drawMap(fit) {
   for (const { v, evs } of Object.values(venues)) {
     pts.push([v.lat, v.lon]);
     L.marker([v.lat, v.lon], { icon: L.divIcon({ className: "pin venue", html: sportInfo().venue, iconSize: [30, 30] }) })
-      .bindPopup(`<b>${esc(v.name)}</b><br>${evs.map(e => `${esc(fmt(e.date, { day: "numeric", month: "short" }))} – ${esc(e.opp)}`).join("<br>")}`)
+      .bindPopup(`<b>${esc(v.name)}</b><br>${evs.map(e => `${esc(fmt(e.date, { day: "numeric", month: "short" }))} · ${esc(e.opp)}`).join("<br>")}`)
       .addTo(mapLayer);
   }
   // Where players live: one marker per gemeente (initials, or the number of players there).
@@ -650,13 +650,13 @@ function carpoolMessage(e) {
   const cars = st.cars.map(c => {
     const free = c.seats - c.riders.length;
     return lines([
-      `🚗 *${nameOf(c.id)}*${where(c.id)} – ${free > 0 ? t("msg.seatsFree", { n: free }) : t("msg.full")}`,
+      `🚗 *${nameOf(c.id)}*${where(c.id)}: ${free > 0 ? t("msg.seatsFree", { n: free }) : t("msg.full")}`,
       c.note && `   🕘 ${c.note}`,
       c.riders.length && `   👥 ${c.riders.map(r => nameOf(r) + where(r)).join(", ")}`,
     ]);
   });
   return lines([
-    `*🚗 Carpool – ${e.opp}${e.final ? " " + t("ics.final") : ""}*`,
+    `*🚗 Carpool: ${e.opp}${e.final ? " " + t("ics.final") : ""}*`,
     `📅 ${fmt(e.date, { weekday: "long", day: "numeric", month: "long" })}${timeText(e) ? " · 🕘 " + timeText(e) : ""}`,
     v && `📍 ${venueText(v)}`,
     v && `🗺️ ${chatMapsUrl(v)}`,

@@ -15,16 +15,16 @@
 <title data-i18n-doc="page.title">RostiQ · Availability</title>
 <meta name="theme-color" content="#1e1b4b">
 <!-- Link preview (WhatsApp, iMessage, Facebook, …) -->
-<meta name="description" content="RostiQ – teamplanner voor sportploegen: beschikbaarheid, kalender, carpool en WhatsApp.">
+<meta name="description" content="RostiQ, de teamplanner voor sportploegen: beschikbaarheid, kalender, carpool en WhatsApp.">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="RostiQ">
 <meta property="og:title" content="RostiQ">
-<meta property="og:description" content="RostiQ – teamplanner voor sportploegen: beschikbaarheid, kalender, carpool en WhatsApp.">
+<meta property="og:description" content="RostiQ, de teamplanner voor sportploegen: beschikbaarheid, kalender, carpool en WhatsApp.">
 <meta property="og:url" content="https://app.rostiq.be/">
 <meta property="og:image" content="https://app.rostiq.be/assets/og-image.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="RostiQ – teamplanner">
+<meta property="og:image:alt" content="RostiQ teamplanner">
 <meta property="og:locale" content="nl_BE">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="icon" type="image/png" href="assets/favicon.png">
@@ -412,7 +412,7 @@ let showPast = pref.get("showPast", "0") === "1";
 const initials = n => initials0(n) || "?";
 const avatar = (p, i, popStyle) => `<span class="av${popStyle ? " pop" : ""}" style="${avatarBg(p)}${popStyle || ""}" title="${esc(displayName(p, i))}">${photoOf(p) ? "" : esc(initials(displayName(p, i)))}</span>`;
 const LEVEL_PILL = { ok: "yes", low: "maybe", short: "no" };
-// One line under a match's name: time and place (the rest – weather, meeting point, notes – is behind "More info").
+// One line under a match's name: time and place (the rest, like weather, meeting point and notes, is behind "More info").
 const summaryLine = e => { const v = matchInfo(e).venue; return [timeText(e), v && venueShort(v)].filter(Boolean).map(esc).join(" · "); };
 let heroMoreOpen = false;
 // Admins: the players who haven't answered this match yet, and one button that prepares a reminder for exactly them.
@@ -666,7 +666,7 @@ function onMatchClick(ev) {
   const ics = ev.target.closest("[data-ics]");
   if (ics) { const e = find(ics); downloadIcs([e], `${e.date}-${slug(e.opp)}.ics`); }
   const share = ev.target.closest("[data-share]");
-  if (share) { const e = find(share); openShare(`${t("share.match")} – ${e.opp}`, matchMessage(e)); }
+  if (share) { const e = find(share); openShare(`${t("share.match")}: ${e.opp}`, matchMessage(e)); }
   const edit = ev.target.closest("[data-edit]");
   if (edit) openDetails(find(edit));
   // My own answer: tap again to clear it.
@@ -890,7 +890,7 @@ function matchMessage(e) {
   const m = matchInfo(e), v = m.venue;
   const yes = namesWith(e, "yes"), maybe = namesWith(e, "maybe"), no = namesWith(e, "no"), none = namesWith(e, "");
   return lines([
-    `*${sportInfo().icon} ${TEAM.shortName || TEAM.brand} – ${e.opp}${e.home === true ? ` (${t("match.home").toLowerCase()})` : e.home === false ? ` (${t("match.away").toLowerCase()})` : ""}${e.final ? " " + t("ics.final") : ""}*`,
+    `*${sportInfo().icon} ${TEAM.shortName || TEAM.brand} vs ${e.opp}${e.home === true ? ` (${t("match.home").toLowerCase()})` : e.home === false ? ` (${t("match.away").toLowerCase()})` : ""}${e.final ? " " + t("ics.final") : ""}*`,
     `📅 ${longDate(e)}`,
     timeText(e) && `🕘 ${timeText(e)}`,
     v && `📍 ${venueText(v)}`,
@@ -915,7 +915,7 @@ function overviewMessage() {
     const c = tally(e, players), v = matchInfo(e).venue;
     const where = [timeText(e) && `🕘 ${timeText(e)}`, v && `📍 ${venueShort(v)}`].filter(Boolean).join(" · ");
     return lines([
-      `*${fmt(e.date, { weekday: "short", day: "numeric", month: "short" })} – ${e.opp}*${e.final ? " 🏆" : ""}`,
+      `*${fmt(e.date, { weekday: "short", day: "numeric", month: "short" })} · ${e.opp}*${e.final ? " 🏆" : ""}`,
       where ? `   ${where}` : null,
       `   ${t("msg.counts", { y: c.yes, min: minPlayers(), m: c.maybe, none: c.missing.length })}`,
     ]);

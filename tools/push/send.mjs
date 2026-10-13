@@ -1,4 +1,4 @@
-// RostiQ – daily push reminders (run by .github/workflows/push-reminders.yml).
+// RostiQ: daily push reminders (run by .github/workflows/push-reminders.yml).
 //
 // For every team with automatic reminders on (settings.autoRemind !== false) and every match in the next 3 days,
 // linked players who haven't answered yet get a notification on their devices with notifications on:

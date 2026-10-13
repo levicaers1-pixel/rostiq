@@ -41,7 +41,7 @@ self.addEventListener("push", e => {
   try { msg = e.data ? e.data.json() : {}; } catch {}
   const d = msg.data || msg;
   // Match reminders carry answer buttons: actions = [{ action: "yes", title: "Ja" }, …], links = { yes: url, … }.
-  // Browsers show as many as they can (Chrome and Edge: 2, iPhone: none – there a tap opens the answer page).
+  // Browsers show as many as they can (Chrome and Edge: 2, iPhone: none, there a tap opens the answer page).
   const json = s => { try { return JSON.parse(s || "null"); } catch { return null; } };
   const actions = (json(d.actions) || []).filter(a => a && a.action && a.title).slice(0, 3);
   e.waitUntil(self.registration.showNotification(d.title || "RostiQ", {
