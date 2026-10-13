@@ -3,3 +3,4 @@ dist/
 tools/push/node_modules/
 functions/node_modules/
 *-debug.log
+.firebase/
