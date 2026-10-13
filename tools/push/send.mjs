@@ -22,6 +22,21 @@ admin.initializeApp(EMU ? { projectId: "demo-rostiq", databaseURL: `http://${EMU
   : { credential: admin.credential.cert(sa), databaseURL: DB_URL });
 const db = admin.database();
 
+// Test: send one notification to the devices of one account (workflow input "test_email"), then stop.
+if (process.env.TEST_EMAIL) {
+  const user = await admin.auth().getUserByEmail(process.env.TEST_EMAIL).catch(() => null);
+  const devices = user ? Object.values((await db.ref(`pushTokens/${user.uid}`).once("value")).val() || {}) : [];
+  let ok = 0;
+  for (const d of devices) {
+    const body = { nl: "Testmelding: meldingen werken op dit toestel ✅", fr: "Notification test : les notifications fonctionnent sur cet appareil ✅",
+                   en: "Test notification: notifications work on this device ✅" }[d.lang] || "Test ✅";
+    try { await admin.messaging().send({ token: d.token, data: { title: "RostiQ", body, link: `${APP}/`, tag: "test" } }); ok++; }
+    catch (e) { console.warn("test send failed:", (e && e.code) || e); }
+  }
+  console.log(`Test: ${user ? "account found" : "no account with that email"}, ${devices.length} device(s), ${ok} sent.`);
+  process.exit(0);
+}
+
 // Today in Belgium, and whole days until a match date (YYYY-MM-DD).
 const today = new Date().toLocaleDateString("sv-SE", { timeZone: TZ });
 const daysUntil = date => Math.round((Date.parse(date + "T12:00:00Z") - Date.parse(today + "T12:00:00Z")) / 864e5);

@@ -9,6 +9,10 @@ on:
         description: "Only count, send nothing"
         type: boolean
         default: false
+      test_email:
+        description: "Only send a test notification to this account's devices"
+        type: string
+        default: ""
 permissions:
   contents: read
 concurrency:
@@ -31,3 +35,4 @@ jobs:
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
           DRY_RUN: ${{ inputs.dry_run && '1' || '' }}
+          TEST_EMAIL: ${{ inputs.test_email }}
