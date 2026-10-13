@@ -114,7 +114,7 @@
 <script>
 const FED = /^[A-Za-z0-9 .\/-]{1,20}$/;
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const initials = name => String(name || "?").trim().split(/\s+/).slice(0, 2).map(w => w[0] || "").join("").toUpperCase();
+const initials = name => initials0(name) || "?";
 let filterText = "";
 
 // Season numbers for one player: answers, and carpool rides as driver / passenger.

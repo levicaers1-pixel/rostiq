@@ -533,7 +533,7 @@ function renderStats() {
 // ---- Season map: golf courses, where players live, and who rides with whom (Leaflet, loaded on demand) ----
 let map = null, mapLayer = null;
 let mapMatch = (EVENTS.find(e => !isPast(e)) || {}).date || "";
-const initials = name => String(name).split(/\s+/).slice(0, 2).map(w => w[0] || "").join("").toUpperCase();
+const initials = name => initials0(name) || "?";
 
 function loadLeaflet() {
   if (window.L) return Promise.resolve();

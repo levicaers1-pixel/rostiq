@@ -378,7 +378,11 @@ function emptyState(icon, title, text = "", action = "", small = false) {
     action ? `<div class="empty-act">${action}</div>` : ""}</div>`;
 }
 
-function toast(text, kind = "") {
+// hold (ms): keep this one up that long; a plain "Saved ✓" in the meantime doesn't replace it (errors still do).
+let toastHold = 0;
+function toast(text, kind = "", hold = 0) {
+  if (kind !== "err" && !hold && Date.now() < toastHold) return;
+  toastHold = hold ? Date.now() + hold : 0;
   let el = document.getElementById("toast");
   if (!el) {
     el = document.createElement("div");
@@ -389,7 +393,7 @@ function toast(text, kind = "") {
   el.classList.toggle("err", kind === "err");
   requestAnimationFrame(() => el.classList.add("show"));
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => el.classList.remove("show"), kind === "err" ? 4000 : 1600);
+  toastTimer = setTimeout(() => el.classList.remove("show"), hold || (kind === "err" ? 4000 : 1600));
 }
 // Outside the current team (e.g. the "my teams" index users/<uid>/teams/<id>).
 const writeAbs = (path, value) => send(value === null ? "DELETE" : "PUT", path, value === null ? undefined : value, true);
@@ -1177,7 +1181,7 @@ function gateMessage(text, err) { gateMsg = { text, err }; renderAuth(); }
 const appUrl = file => location.href.split(/[?#]/)[0].replace(/[^/]*$/, file);
 
 // ---- Feedback to RostiQ (account menu, footer): only the RostiQ admin reads it ----
-const APP_VERSION = "2026.10.21";
+const APP_VERSION = "2026.10.22";
 function deviceText() {
   const ua = navigator.userAgent;
   const os = /iPhone/.test(ua) ? "iPhone" : /iPad/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1) ? "iPad"
@@ -1385,7 +1389,7 @@ function renderAccount() {
   const label = name || u.email || "";
   const switchable = (session.teams || []).length > 1 || session.platformAdmin;
   const role = session.platformAdmin ? t("menu.rolePlatform") : session.admin ? t("menu.roleAdmin") : t("menu.rolePlayer");
-  const initialsOf = s => String(s).replace(/@.*/, "").split(/[\s._-]+/).filter(Boolean).slice(0, 2).map(w => w[0]).join("").toUpperCase() || "?";
+  const initialsOf = s => initials0(s) || "?";
   acct.innerHTML = `<button class="acct-btn" id="acct-btn" aria-haspopup="menu" aria-expanded="${acctOpen}" aria-label="${esc(t("menu.open"))}">
       <span class="avatar-sm" style="${avatarBg(session.pid && root.players && root.players[session.pid], name || u.email || "")}">${photoOf(session.pid && root.players && root.players[session.pid]) ? "" : esc(initialsOf(label))}</span>
       <span class="nm">${esc(name || t("menu.account"))}</span>${ic("chevron-down")}</button>
@@ -1493,7 +1497,8 @@ function renderAuth() {
     </div>`;
   }
 }
-const initials0 = s => String(s).split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]).join("").toUpperCase();
+// Initials of a name: the first letter or digit of the first two words ("Jij (demo)" → "JD", not "J(").
+const initials0 = s => String(s || "").replace(/@.*/, "").split(/[\s._-]+/).map(w => (w.match(/[\p{L}\p{N}]/u) || [""])[0]).filter(Boolean).slice(0, 2).join("").toUpperCase();
 
 async function onGateClick(ev) {
   if (ev.target.closest("[data-google]")) {
