@@ -15,5 +15,6 @@ window.FIREBASE_CONFIG = {
   authDomain: "app.rostiq.be",
   databaseURL: "https://wintermidam-default-rtdb.europe-west1.firebasedatabase.app",
   projectId: "wintermidam",
+  messagingSenderId: "354856091940", // needed for push notifications
   appId: "1:354856091940:web:25d894cffb78f312feb3b1",
 };
