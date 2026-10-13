@@ -75,8 +75,6 @@
   .hero { position: relative; overflow: hidden; margin-top: 28px; padding: 22px; border-radius: 20px; display: grid; gap: 16px;
     color: var(--brand-text); box-shadow: var(--shadow);
     background: radial-gradient(130% 150% at 100% 0%, color-mix(in srgb, var(--pampas) 32%, var(--brand)) 0%, var(--brand) 58%); }
-  .hero::after { content: ""; position: absolute; right: -70px; top: -70px; width: 230px; height: 230px; border-radius: 50%; pointer-events: none;
-    border: 30px solid color-mix(in srgb, var(--pampas) 18%, transparent); }
   .hero > * { position: relative; z-index: 1; }
   .hero-top { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
   .hero-kicker { display: inline-flex; align-items: center; gap: 6px; font-size: .74rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; opacity: .82; }
@@ -123,7 +121,7 @@
   .m-actions button:hover:not(:disabled) { color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, var(--surface)); border-color: transparent; }
   .m-actions .count { position: absolute; top: 1px; right: 0; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 999px;
     background: var(--no); color: #fff; font-size: .62rem; font-weight: 700; line-height: 16px; }
-  .m-progress, .m-people, .m-mine, .m-team, .m-missing { grid-column: 1 / -1; }
+  .m-progress, .m-people, .m-mine, .m-team, .m-missing, .m-foot { grid-column: 1 / -1; }
   /* Admins: who still has to answer, with one button to remind exactly them */
   .m-missing { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 10px 12px; border-radius: 12px;
     background: color-mix(in srgb, var(--maybe) 10%, var(--surface)); border: 1px solid color-mix(in srgb, var(--maybe) 28%, var(--surface)); }
@@ -136,6 +134,35 @@
   .hero .m-missing-text small { color: color-mix(in srgb, var(--brand-text) 75%, transparent); }
   .hero .m-missing-btn { background: var(--pampas); color: var(--brand); border-color: transparent; }
   @media (max-width: 440px) { .m-missing-btn { width: 100%; justify-content: center; } }
+  /* Tidy: one summary line, the rest behind "More info"; one quiet button style */
+  .hero-top-r { display: inline-flex; align-items: center; gap: 8px; }
+  .hero-icon { padding: 6px; border-radius: 9px; color: var(--brand-text); background: color-mix(in srgb, var(--brand-text) 12%, transparent); border: 1px solid color-mix(in srgb, var(--brand-text) 22%, transparent); }
+  .hero-head { min-width: 0; flex: 1; }
+  .hero-date { font-size: .95rem; }
+  .hero-more { margin-top: 8px; font-size: .85rem; }
+  .hero-more summary { cursor: pointer; list-style: none; display: inline-flex; align-items: center; gap: 4px; font-weight: 600; opacity: .85; }
+  .hero-more summary::-webkit-details-marker { display: none; }
+  .hero-more summary .i { transition: transform .2s var(--ease); }
+  .hero-more[open] summary .i { transform: rotate(180deg); }
+  .hero-more .details { margin-top: 6px; }
+  .hero .m-missing-btn { background: color-mix(in srgb, var(--brand-text) 14%, transparent) !important; color: var(--brand-text) !important;
+    border: 1px solid color-mix(in srgb, var(--brand-text) 28%, transparent) !important; }
+  .m-sub { margin-top: 3px; font-size: .84rem; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .m-score { align-self: start; padding: 4px 10px; border-radius: 999px; font-size: .8rem; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums;
+    background: color-mix(in srgb, var(--muted) 10%, var(--surface)); }
+  .m-score b { font-size: 1rem; color: var(--text); }
+  .m-score.yes { background: var(--yes-bg); color: var(--yes); } .m-score.yes b { color: var(--yes); }
+  .m-score.maybe { background: var(--maybe-bg); color: var(--maybe); } .m-score.maybe b { color: var(--maybe); }
+  .m-score.no { background: var(--no-bg); color: var(--no); } .m-score.no b { color: var(--no); }
+  .m-foot { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+  .m-foot .answer button { padding: 6px 10px; font-size: .85rem; }
+  .m-coming { font-size: .82rem; color: var(--muted); }
+  .m-team .details { display: grid; gap: 3px; margin-top: 10px; font-size: .84rem; color: var(--muted); }
+  .avatars .av { margin-left: -5px !important; }
+  .avatars .av:first-child { margin-left: 0 !important; }
+  .av { font-size: .62rem; letter-spacing: -.02em; }
+  .m-foot .answer button { white-space: nowrap; }
+  @media (max-width: 440px) { .m-foot .answer { width: 100%; } .m-foot .answer .i { display: none; } .m-foot .m-actions { margin-left: auto; } .m-sub { white-space: normal; } }
   /* Enough players: a short celebration */
   .match.complete, .hero.complete { animation: complete-glow 1.2s ease-out both; }
   @keyframes complete-glow { from { box-shadow: 0 0 0 0 color-mix(in srgb, var(--yes) 55%, transparent); } to { box-shadow: 0 0 0 16px transparent; } }
@@ -173,8 +200,7 @@
   .m-team[open] summary .i:last-child { transform: rotate(180deg); }
   .m-team .chips { margin-top: 12px; }
   @media (max-width: 440px) {
-    .match { grid-template-columns: 50px 1fr; }
-    .m-actions { grid-column: 2; margin-top: -6px; }
+    .match { grid-template-columns: 50px 1fr auto; gap: 12px; }
     .m-mine > span { width: 100%; }
     .answer { width: 100%; } .answer button { flex: 1; padding: 9px 6px; }
   }
@@ -379,6 +405,9 @@ let showPast = pref.get("showPast", "0") === "1";
 const initials = n => initials0(n) || "?";
 const avatar = (p, i, popStyle) => `<span class="av${popStyle ? " pop" : ""}" style="${avatarBg(p)}${popStyle || ""}" title="${esc(displayName(p, i))}">${photoOf(p) ? "" : esc(initials(displayName(p, i)))}</span>`;
 const LEVEL_PILL = { ok: "yes", low: "maybe", short: "no" };
+// One line under a match's name: time and place (the rest – weather, meeting point, notes – is behind "More info").
+const summaryLine = e => { const v = matchInfo(e).venue; return [timeText(e), v && venueShort(v)].filter(Boolean).map(esc).join(" · "); };
+let heroMoreOpen = false;
 // Admins: the players who haven't answered this match yet, and one button that prepares a reminder for exactly them.
 const missingHtml = (e, players) => {
   const miss = players.filter(p => p.name && !p.avail[e.date]);
@@ -419,7 +448,11 @@ function renderMatches(players, events) {
   const pct = n => Math.min(100, n / total * 100);
   const me = AUTH_ON ? players.find(p => p.id === session.pid) : null;
   const order = { yes: 0, maybe: 1, no: 2, "": 3 };
-  box.innerHTML = events.map(e => {
+  // The next match is the big card at the top: the list continues after it (unless past matches are shown too).
+  const heroDate = !showPast && (EVENTS.find(x => !isPast(x)) || {}).date;
+  const listed = events.filter(e => e.date !== heroDate);
+  if (!listed.length) { box.innerHTML = ""; return; }
+  box.innerHTML = listed.map(e => {
     const c = tally(e, players);
     const coming = players.filter(p => p.avail[e.date] === "yes");
     const mine = me ? me.avail[e.date] || "" : null;
@@ -439,30 +472,28 @@ function renderMatches(players, events) {
       <div class="m-date"><span>${fmt(e.date, { weekday: "short" }).replace(".", "")}</span><b>${parse(e.date).getDate()}</b><span>${fmt(e.date, { month: "short" }).replace(".", "")}</span></div>
       <div class="m-body">
         <div class="m-title">${esc(e.opp)}${homePill(e)}${e.final ? `<span class="pill violet">${ic("trophy")} ${t("final")}</span>` : ""}</div>
-        <div class="m-meta">${detailsHtml(e, "", true)}</div>
+        ${summaryLine(e) ? `<div class="m-sub">${summaryLine(e)}</div>` : ""}
       </div>
-      <div class="m-actions">
-        <button data-share="${e.date}" title="${t("share.match")}" aria-label="${t("share.match")}">${ic("share")}</button>
-        <button data-ics="${e.date}" title="${t("ics.oneTitle")}" aria-label="${t("ics.oneTitle")}">${ic("calendar-plus")}</button>
-        <button class="remind" data-date="${e.date}" title="${t("remind.title", { n: c.missing.length })}" aria-label="${t("remind.short")}"
-          ${c.missing.length ? "" : "disabled"}>${ic("bell")}${c.missing.length ? `<span class="count">${c.missing.length}</span>` : ""}</button>
-        ${session.admin ? `<button data-edit="${e.date}" title="${t("details.edit")}" aria-label="${t("details.edit")}">${ic("pencil")}</button>` : ""}
-      </div>
+      <div class="m-score ${LEVEL_PILL[c.level]}" title="${esc(t("level." + c.level))}"><b>${c.yes}</b>/${min}</div>
       <div class="m-progress">
         <div class="bar" data-date="${e.date}"><div class="fill"><span class="yes" style="${barStyle(0)}"></span><span class="maybe" style="${barStyle(1)}"></span></div>
           <i class="min" style="left:${pct(min)}%" title="min. ${min}"></i></div>
-        <div class="m-count"><span>${t("match.avail", { y: c.yes, min })}</span>${c.maybe ? `<span>· ${t("match.maybe", { n: c.maybe })}</span>` : ""}
-          <span class="pill ${LEVEL_PILL[c.level]}">${t("level." + c.level)}</span></div>
       </div>
-      <div class="m-people">${coming.length
-        ? `<span class="avatars">${coming.slice(0, 8).map(p => avatar(p, players.indexOf(p), animStyle(`pop:${e.date}:${p.id}`, 350))).join("")}${coming.length > 8 ? `<span class="av more">+${coming.length - 8}</span>` : ""}</span>`
-        : `<span>${t("match.nobody")}</span>`}</div>
-      ${missingHtml(e, players)}
-      ${mine !== null && !isPast(e) ? `<div class="m-mine"><span>${t("match.mine")}</span><div class="answer" role="group" aria-label="${t("match.mine")}">${
-        ["yes", "maybe", "no"].map(a => `<button data-answer="${a}" data-date="${e.date}" data-a="${a}" aria-pressed="${mine === a}"${mine === a && animStyle("just:" + e.date, 300) ? ` class="just" style="${animStyle("just:" + e.date, 300)}"` : ""}>${ic({ yes: "check", maybe: "help", no: "x" }[a])} ${t("answer." + a)}</button>`).join("")
-      }</div></div>` : ""}
+      <div class="m-foot">
+        ${mine !== null && !isPast(e) ? `<div class="answer" role="group" aria-label="${t("match.mine")}">${
+          ["yes", "maybe", "no"].map(a => `<button data-answer="${a}" data-date="${e.date}" data-a="${a}" aria-pressed="${mine === a}"${mine === a && animStyle("just:" + e.date, 300) ? ` class="just" style="${animStyle("just:" + e.date, 300)}"` : ""}>${ic({ yes: "check", maybe: "help", no: "x" }[a])} ${t("answer." + a)}</button>`).join("")
+        }</div>` : `<span class="m-coming">${coming.length ? `<span class="avatars">${coming.slice(0, 6).map(p => avatar(p, players.indexOf(p), animStyle(`pop:${e.date}:${p.id}`, 350))).join("")}${coming.length > 6 ? `<span class="av more">+${coming.length - 6}</span>` : ""}</span>` : t("match.nobody")}</span>`}
+        <div class="m-actions">
+          <button data-share="${e.date}" title="${t("share.match")}" aria-label="${t("share.match")}">${ic("share")}</button>
+          <button data-ics="${e.date}" title="${t("ics.oneTitle")}" aria-label="${t("ics.oneTitle")}">${ic("calendar-plus")}</button>
+          ${isPast(e) ? "" : `<button class="remind" data-date="${e.date}" title="${t("remind.title", { n: c.missing.length })}" aria-label="${t("remind.short")}"
+            ${c.missing.length ? "" : "disabled"}>${ic("bell")}${c.missing.length ? `<span class="count">${c.missing.length}</span>` : ""}</button>`}
+          ${session.admin ? `<button data-edit="${e.date}" title="${t("details.edit")}" aria-label="${t("details.edit")}">${ic("pencil")}</button>` : ""}
+        </div>
+      </div>
       <details class="m-team" data-date="${e.date}"${openTeams.has(e.date) ? " open" : ""}>
-        <summary>${ic("users")} ${t("match.everyone", { n: named.length })}${c.missing.length ? ` · ${t("match.noAnswer", { n: c.missing.length })}` : ""}${ic("chevron-down")}</summary>
+        <summary>${ic("users")} ${t("match.everyone", { n: named.length })}${c.missing.length && !isPast(e) ? ` · ${t("match.noAnswer", { n: c.missing.length })}` : ""}${ic("chevron-down")}</summary>
+        ${detailsHtml(e, "", true)}
         <div class="chips">${team.map(({ p, i, s }) => `<button class="chip${me && p.id === me.id ? " me" : ""}" data-s="${s}" data-pid="${p.id}" data-date="${e.date}"
           ${canEdit(p.id) ? "" : "disabled"}>${SYMBOL[s]} ${esc(displayName(p, i))}</button>`).join("")}</div>
       </details>
@@ -561,7 +592,7 @@ for (const id of ["welcome", "setup"]) document.getElementById(id).addEventListe
   const act = b.dataset.onb;
   if (act === "answer") {
     const me = root.players[session.pid] || {}, e = EVENTS.find(x => !isPast(x) && !(me.avail || {})[x.date]);
-    const target = e && document.querySelector(`.m-mine [data-date="${e.date}"]`) || document.getElementById("hero");
+    const target = e && document.querySelector(`.match [data-answer][data-date="${e.date}"]`) || document.getElementById("hero");
     target.scrollIntoView({ behavior: "smooth", block: "center" });
   }
   if (act === "find") findOnbPlace();
@@ -591,12 +622,14 @@ function renderHero(players) {
   const me = AUTH_ON ? players.find(p => p.id === session.pid) : null;
   const mine = me ? me.avail[e.date] || "" : null;
   const coming = players.filter(p => p.avail[e.date] === "yes");
+  const more = detailsHtml(e);
   el.innerHTML = `
-    <div class="hero-top"><span class="hero-kicker">${ic("flag")} ${t("hero.next")}</span><span class="hero-when">${when}</span></div>
+    <div class="hero-top"><span class="hero-kicker">${ic("flag")} ${t("hero.next")}</span>
+      <span class="hero-top-r">${session.admin ? `<button class="hero-icon" data-edit="${e.date}" title="${t("details.edit")}" aria-label="${t("details.edit")}">${ic("pencil")}</button>` : ""}<span class="hero-when">${when}</span></span></div>
     <div class="hero-main">
-      <div><h2 class="hero-title">${esc(e.opp)}${homePill(e)}${e.final ? `<span class="pill violet">${ic("trophy")} ${t("final")}</span>` : ""}</h2>
-        <div class="hero-date">${esc(fmt(e.date, { weekday: "long", day: "numeric", month: "long" }))}</div>
-        ${detailsHtml(e)}</div>
+      <div class="hero-head"><h2 class="hero-title">${esc(e.opp)}${homePill(e)}${e.final ? `<span class="pill violet">${ic("trophy")} ${t("final")}</span>` : ""}</h2>
+        <div class="hero-date">${esc(fmt(e.date, { weekday: "long", day: "numeric", month: "long" }))}${summaryLine(e) ? ` · ${summaryLine(e)}` : ""}</div>
+        ${more ? `<details class="hero-more"${heroMoreOpen ? " open" : ""}><summary>${t("hero.more")} ${ic("chevron-down")}</summary>${more}</details>` : ""}</div>
       <div class="hero-stat"><b>${c.yes}</b><span>/ ${min}</span><small>${t("label.yes")}</small></div>
     </div>
     <div class="bar hero-bar"><div class="fill"><span class="yes" style="width:${pct(c.yes)}%"></span><span class="maybe" style="width:${pct(c.maybe)}%"></span></div>
@@ -643,6 +676,7 @@ function onMatchClick(ev) {
 }
 matchesEl.addEventListener("click", onMatchClick);
 document.getElementById("hero").addEventListener("click", onMatchClick);
+document.getElementById("hero").addEventListener("toggle", ev => { if (ev.target.classList && ev.target.classList.contains("hero-more")) heroMoreOpen = ev.target.open; }, true);
 
 const minPlayers = () => (root.settings && root.settings.minPlayers) || TEAM.minPlayers || 3;
 const shownEvents = () => EVENTS.filter(e => showPast || !isPast(e));
