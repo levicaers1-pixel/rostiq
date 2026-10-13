@@ -97,6 +97,10 @@
   .ff input[name=min] { max-width: 120px; }
   .ff.check.push-set { padding-top: 0; align-items: flex-start; }
   .ff.check.push-set input { margin-top: 4px; }
+  .ql-dlg h3 { display: flex; gap: 8px; align-items: center; }
+  .ql-url { width: 100%; font: inherit; font-size: .85rem; padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--bg); color: var(--text); margin: 10px 0 4px; }
+  .ql-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 12px; }
+  .ql-row .primary { margin-left: auto; }
 
   /* Branding */
   .brandform { display: grid; gap: 14px; max-width: 640px; }
@@ -200,6 +204,7 @@
             <input name="min" type="number" min="1" max="50" inputmode="numeric">
             <span class="ff-err" hidden></span><span class="ff-help" data-i18n="setup.minSub"></span></label>
         </div>
+        <label class="ff check push-set"><input type="checkbox" name="quickLinks"> <span><b data-i18n="set.quickLinks">Answer via personal link</b><br><small class="ff-help" data-i18n="set.quickLinksHelp"></small></span></label>
         <label class="ff check push-set"><input type="checkbox" name="autoRemind"> <span><b data-i18n="set.autoRemind">Automatic reminders</b><br><small class="ff-help" data-i18n="set.autoRemindHelp"></small></span></label>
         <label class="ff"><span class="ff-label"><span data-i18n="wa.setting">WhatsApp group link</span> <em data-i18n="start.optional"></em></span>
           <input name="wa" type="url" placeholder="https://chat.whatsapp.com/…" autocomplete="off">
@@ -347,6 +352,35 @@ function render() {
 
 // ---- Last seen (lastSeen/<team>/<uid>: only admins can read it; each player's app stamps it with the server's clock) ----
 let lastSeen = null, lastSeenLoaded = 0;
+// Personal link dialog: copy, send via WhatsApp, or reset (the old link stops working at once).
+async function openQuickLink(pid, fresh) {
+  const p = root.players[pid];
+  const key = fresh || (await ensureQuickKeys([pid]))[pid];
+  if (!key) return toast(t("status.saveFailed"), "err");
+  let dlg = document.getElementById("ql-dlg");
+  if (!dlg) {
+    document.body.insertAdjacentHTML("beforeend", `<dialog id="ql-dlg" class="install-dlg ql-dlg"></dialog>`);
+    dlg = document.getElementById("ql-dlg");
+    dlg.addEventListener("click", ev => { if (ev.target.closest("[data-close]") || ev.target === dlg) dlg.close(); });
+  }
+  const url = quickUrl(key), msg = t("msg.quickLink", { first: firstName(p.name), team: TEAM.brand, url });
+  dlg.innerHTML = `<h3>${ic("link")} ${t("ql.title", { name: esc(p.name) })}</h3>
+    <p class="hint">${t("ql.help")}</p>
+    <input class="ql-url" readonly value="${esc(url)}">
+    <div class="row ql-row">
+      <button data-ql-copy>${ic("clipboard")} ${t("copy")}</button>
+      ${p.phone ? `<a class="btn" href="${waChat(p.phone, msg)}" target="_blank" rel="noopener">${ic("message")} WhatsApp</a>` : ""}
+      <button class="link err" data-ql-reset>${t("ql.reset")}</button>
+      <button class="primary" data-close>${t("close")}</button></div>`;
+  dlg.querySelector("[data-ql-copy]").onclick = ev => { navigator.clipboard && navigator.clipboard.writeText(url); ev.currentTarget.textContent = t("copied"); };
+  dlg.querySelector("[data-ql-reset]").onclick = async () => {
+    if (!confirm(t("ql.resetConfirm", { name: p.name }))) return;
+    const k = await resetQuickKey(pid);
+    if (k) { toast(t("ql.resetDone")); openQuickLink(pid, k); } else toast(t("status.saveFailed"), "err");
+  };
+  if (!dlg.open) dlg.showModal();
+}
+
 function loadLastSeen() {
   if (!AUTH_ON || !dataLoaded || Date.now() - lastSeenLoaded < 5 * 60e3) return;
   lastSeenLoaded = Date.now();
@@ -527,6 +561,7 @@ function renderPlayers() {
         ${AUTH_ON && p.uid && (session.platformAdmin || !(root.admins && root.admins[p.uid])) ? `<button class="link" data-admin="${p.id}">${t(root.admins && root.admins[p.uid] ? "admin.removeAdmin" : "admin.makeAdmin")}</button>` : ""}
         ${AUTH_ON && p.uid ? `<button class="link" data-reset="${p.id}">${t("accounts.reset")}</button>` : ""}
         ${AUTH_ON && !p.uid && p.name && !session.pid ? `<button class="link" data-mine="${p.id}">${t("accounts.mine")}</button>` : ""}
+        ${quickOn() && p.name ? `<button class="link" data-qlink="${p.id}">${t("ql.button")}</button>` : ""}
         <button class="link err" data-remove="${p.id}">${t("admin.remove")}</button>
       </div>
     </li>`).join("");
@@ -542,6 +577,7 @@ function renderSettings() {
     sf.min.value = s.minPlayers || TEAM.minPlayers || 3;
     sf.wa.value = s.waGroup || "";
     sf.autoRemind.checked = s.autoRemind !== false; // on unless switched off
+    sf.quickLinks.checked = s.quickLinks !== false;
   }
   sf.querySelector("[type=submit]").disabled = !settingsDirty;
   const msg = document.getElementById("settings-msg");
@@ -585,7 +621,10 @@ document.getElementById("players").addEventListener("click", ev => {
     for (const [date, entries] of Object.entries(root.carpool || {}))
       if (entries[rm.dataset.remove]) changes[`carpool/${date}/${rm.dataset.remove}`] = null;
     if (p.uid) unlinkAccount(p.uid, null, changes); else update(changes);
+    dropQuickKey(rm.dataset.remove); // the personal link stops working too
   }
+  const ql = ev.target.closest("[data-qlink]");
+  if (ql) openQuickLink(ql.dataset.qlink);
 });
 document.getElementById("add-player").addEventListener("submit", ev => {
   ev.preventDefault();
@@ -605,7 +644,7 @@ sf.addEventListener("submit", async ev => {
   if (!fieldErr(sf.season, season ? "" : t("set.seasonNeeded"))) return;
   if (!fieldErr(sf.min, n >= 1 && n <= 50 ? "" : t("set.minRange"))) return;
   if (!fieldErr(sf.wa, !link || WA_LINK.test(link) ? "" : t("wa.invalid"))) return;
-  const ok = await update({ "settings/seasonName": season, "settings/minPlayers": n, "settings/waGroup": link || null, "settings/autoRemind": sf.autoRemind.checked ? null : false });
+  const ok = await update({ "settings/seasonName": season, "settings/minPlayers": n, "settings/waGroup": link || null, "settings/autoRemind": sf.autoRemind.checked ? null : false, "settings/quickLinks": sf.quickLinks.checked ? null : false });
   const msg = document.getElementById("settings-msg");
   if (!ok) { msg.textContent = t("status.saveFailed"); msg.className = "msg err"; return; }
   settingsDirty = false;

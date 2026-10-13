@@ -509,6 +509,52 @@ function normPhone(raw) {
 const phoneOf = pid => (root.players && root.players[pid] && root.players[pid].phone) || "";
 const firstName = name => String(name || "").trim().split(/\s+/)[0];
 const waChat = (phone, text) => `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
+
+// ---- Personal answer links (app.rostiq.be/a/?k=…): answer without an account. Admins create them per player;
+// quickKeys/<key> = {t, p} and quickIndex/<team>/<player> = key (only the team's admins can see those). ----
+const quickOn = () => AUTH_ON && !DEMO && session.admin && (root.settings || {}).quickLinks !== false;
+let quickIdx = null;
+async function loadQuickIndex() {
+  if (!quickOn()) return {};
+  if (!quickIdx) quickIdx = (await getAbs(`quickIndex/${TEAM_ID}`)) || {};
+  return quickIdx;
+}
+function newQuickKey() {
+  const b = crypto.getRandomValues(new Uint8Array(16)); // 128 bits: impossible to guess
+  return btoa(String.fromCharCode(...b)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+// Keys for these players (created where missing, in one write). Returns { pid: key }.
+async function ensureQuickKeys(pids) {
+  const idx = await loadQuickIndex();
+  if (!quickOn()) return {};
+  const changes = {}, TS = { ".sv": "timestamp" };
+  for (const pid of pids) if (!idx[pid] && root.players && root.players[pid] && root.players[pid].name) {
+    const k = newQuickKey();
+    changes[`quickKeys/${k}`] = { t: TEAM_ID, p: pid, at: TS };
+    changes[`quickIndex/${TEAM_ID}/${pid}`] = k;
+  }
+  if (Object.keys(changes).length) {
+    if (await send("PATCH", "", changes, true, true) !== true) return {};
+    for (const [path, v] of Object.entries(changes)) if (path.startsWith("quickIndex/")) idx[path.split("/")[2]] = v;
+  }
+  return Object.fromEntries(pids.filter(p => idx[p]).map(p => [p, idx[p]]));
+}
+async function resetQuickKey(pid) {
+  const idx = await loadQuickIndex(), old = idx[pid], k = newQuickKey();
+  const ok = await send("PATCH", "", { ...(old ? { [`quickKeys/${old}`]: null } : {}),
+    [`quickKeys/${k}`]: { t: TEAM_ID, p: pid, at: { ".sv": "timestamp" } }, [`quickIndex/${TEAM_ID}/${pid}`]: k }, true, true);
+  if (ok === true) idx[pid] = k;
+  return ok === true ? k : null;
+}
+async function dropQuickKey(pid) {
+  const idx = await loadQuickIndex(), old = idx[pid];
+  if (!old) return;
+  delete idx[pid];
+  send("PATCH", "", { [`quickKeys/${old}`]: null, [`quickIndex/${TEAM_ID}/${pid}`]: null }, true, true);
+}
+const quickUrl = (key, date, r) => `${location.origin}/a/?k=${key}` + (date ? `&d=${date}&r=${r}` : "");
+// "✅ Yes: …  ❓ Maybe: …  ❌ No: …" lines for a personal message about one match.
+const quickLines = (key, date) => ["yes", "maybe", "no"].map(r => `${{ yes: "✅", maybe: "❓", no: "❌" }[r]} ${t("answer." + r)}: ${quickUrl(key, date, r)}`).join("\n");
 const shortDate = d => fmt(d, { weekday: "short", day: "numeric", month: "numeric" });
 
 // Ask the signed-in player for their number once (until they fill it in or tap "Later").
@@ -1105,7 +1151,7 @@ function gateMessage(text, err) { gateMsg = { text, err }; renderAuth(); }
 const appUrl = file => location.href.split(/[?#]/)[0].replace(/[^/]*$/, file);
 
 // ---- Feedback to RostiQ (account menu, footer): only the RostiQ admin reads it ----
-const APP_VERSION = "2026.10.18";
+const APP_VERSION = "2026.10.19";
 function deviceText() {
   const ua = navigator.userAgent;
   const os = /iPhone/.test(ua) ? "iPhone" : /iPad/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1) ? "iPad"

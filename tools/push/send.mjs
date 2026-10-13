@@ -95,6 +95,28 @@ for (const [tid, dates] of Object.entries(log)) for (const date of Object.keys(d
 
 if (process.env.VERBOSE) console.log(JSON.stringify(Object.keys(logWrites).sort()));
 if (!DRY && Object.keys({ ...logWrites, ...deadTokens }).length) await db.ref().update({ ...logWrites, ...deadTokens });
+// Anonymous accounts (made by personal answer links) unused for 60 days: removed with their link session.
+// Someone who taps their link later simply gets a new one. Not available in the emulator test.
+let cleaned = 0;
+if (!EMU) {
+  const cutoff = Date.now() - 60 * 864e5, old = [];
+  let page;
+  do {
+    page = await admin.auth().listUsers(1000, page && page.pageToken);
+    for (const u of page.users) {
+      const anonymous = !u.email && !u.phoneNumber && u.providerData.length === 0;
+      const last = Date.parse(u.metadata.lastRefreshTime || u.metadata.lastSignInTime || u.metadata.creationTime);
+      if (anonymous && last < cutoff) old.push(u.uid);
+    }
+  } while (page.pageToken);
+  cleaned = old.length;
+  if (!DRY && old.length) {
+    for (let i = 0; i < old.length; i += 1000) await admin.auth().deleteUsers(old.slice(i, i + 1000));
+    await db.ref().update(Object.fromEntries(old.map(uid => [`quickSessions/${uid}`, null])));
+  }
+}
+console.log(`${cleaned} unused anonymous accounts ${DRY ? "would be " : ""}cleaned up (older than 60 days).`);
+
 // Only counts in the log (the repository is public): no names, teams or tokens.
 console.log(`${today}: ${sent} notifications ${DRY ? "would be " : ""}sent, ${skipped} players without notifications, ${removed} old devices removed.`);
 process.exit(0);

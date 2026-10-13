@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<meta name="referrer" content="no-referrer">
+<title>RostiQ</title>
+<meta name="theme-color" content="#1e1b4b">
+<link rel="icon" type="image/png" href="/assets/favicon.png">
+<link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+<link rel="stylesheet" href="/common.css">
+<style>
+  main.answer { max-width: 560px; }
+  .who { margin: 4px 0 18px; color: var(--muted); font-size: .92rem; }
+  .who b { color: var(--text); }
+  .done { display: flex; gap: 12px; align-items: center; padding: 14px 16px; border-radius: var(--radius); margin-bottom: 16px; font-weight: 600;
+    background: var(--yes-bg); color: var(--yes); }
+  .done.maybe { background: var(--maybe-bg); color: var(--maybe); }
+  .done.no { background: var(--no-bg); color: var(--no); }
+  .done svg.i { width: 22px; height: 22px; flex-shrink: 0; }
+  .q-list { display: grid; gap: 12px; }
+  .q-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-sm); padding: 14px 16px; }
+  .q-card.first { border-color: color-mix(in srgb, var(--accent) 45%, var(--border)); }
+  .q-head { display: flex; gap: 12px; align-items: center; }
+  .q-date { width: 48px; text-align: center; border-radius: 12px; padding: 6px 0; line-height: 1.05; background: color-mix(in srgb, var(--accent) 9%, var(--surface)); }
+  .q-date small { display: block; font-size: .62rem; font-weight: 800; text-transform: uppercase; color: var(--accent); }
+  .q-date b { font-size: 1.25rem; }
+  .q-opp { font-weight: 800; font-size: 1.05rem; }
+  .q-sub { font-size: .8rem; color: var(--muted); }
+  .q-count { margin-left: auto; font-size: .78rem; font-weight: 700; padding: 3px 9px; border-radius: 999px; background: var(--yes-bg); color: var(--yes); white-space: nowrap; }
+  .q-count.low { background: var(--maybe-bg); color: var(--maybe); }
+  .q-ans { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 12px; }
+  .q-ans button { padding: 11px 0; font-weight: 700; border-radius: 12px; border: 1.5px solid var(--border); background: var(--surface); color: var(--text); font-size: .95rem; }
+  .q-ans button[aria-pressed=true][data-r=yes] { background: var(--yes); border-color: var(--yes); color: #fff; }
+  .q-ans button[aria-pressed=true][data-r=maybe] { background: var(--maybe); border-color: var(--maybe); color: #fff; }
+  .q-ans button[aria-pressed=true][data-r=no] { background: var(--no); border-color: var(--no); color: #fff; }
+  .q-more { margin-top: 22px; font-size: .88rem; color: var(--muted); text-align: center; line-height: 1.6; }
+  .q-more a { color: var(--accent); font-weight: 700; }
+  .q-msg { text-align: center; padding: 40px 16px; }
+</style>
+</head>
+<body>
+<header class="brand"><div class="brand-inner"><span class="logo-text" id="q-brand">&nbsp;</span></div></header>
+<main class="answer">
+  <h1 id="q-title" data-i18n="qa.title">Je beschikbaarheid</h1>
+  <p class="who" id="q-who"></p>
+  <div id="q-done"></div>
+  <div class="q-list" id="q-list"><div class="skel-card"><div class="skel skel-block"></div><div class="skel-lines"><div class="skel" style="width:60%"></div><div class="skel" style="width:35%"></div></div></div></div>
+  <p class="q-more" id="q-more"></p>
+</main>
+<script src="/config.js"></script>
+<script src="/i18n.js"></script>
+<script src="/icons.js"></script>
+<script>
+// Answer page for a personal link (app.rostiq.be/a/?k=<key>[&d=<date>&r=yes|maybe|no]): no account needed.
+// It signs in anonymously in its own Firebase instance ("quick"), so a normal RostiQ login in the same browser is
+// never touched, and binds that session to the key. The database rules allow such a session only this screen.
+const SDK = "https://www.gstatic.com/firebasejs/12.12.0/";
+const DB = (window.FIREBASE_DB_URL || "").replace(/\/+$/, "");
+const Q = new URLSearchParams(location.search);
+const KEY = Q.get("k") || "", D = Q.get("d") || "", R = Q.get("r") || "";
+const TODAY = new Date().toLocaleDateString("sv-SE");
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+const $ = id => document.getElementById(id);
+let token = "", TID = "", PID = "", schedule = {}, matches = {}, answers = {}, min = 3, name = "";
+
+async function api(path, method = "GET", body) {
+  const res = await fetch(`${DB}/${path}.json?auth=${encodeURIComponent(token)}`, { method, body: body === undefined ? undefined : JSON.stringify(body) });
+  if (!res.ok) throw Object.assign(new Error(path), { status: res.status });
+  return res.json();
+}
+function fail(key) {
+  $("q-list").innerHTML = `<div class="q-msg">${emptyIcon("x")}<p><b>${t(key)}</b></p><p class="hint">${t("qa.askCaptain")}</p></div>`;
+  $("q-who").textContent = "";
+}
+const emptyIcon = n => `<span style="display:inline-flex;width:48px;height:48px;border-radius:14px;align-items:center;justify-content:center;background:var(--no-bg);color:var(--no)">${ic(n)}</span>`;
+
+async function start() {
+  document.querySelectorAll("[data-i18n]").forEach(el => { el.textContent = t(el.dataset.i18n); });
+  document.title = t("qa.title") + " · RostiQ";
+  if (!/^[A-Za-z0-9_-]{22}$/.test(KEY)) return fail("qa.invalid");
+  try {
+    const [appMod, A] = await Promise.all([import(SDK + "firebase-app.js"), import(SDK + "firebase-auth.js")]);
+    const auth = A.getAuth(appMod.initializeApp(window.FIREBASE_CONFIG, "quick"));
+    await auth.authStateReady();
+    if (!auth.currentUser) await A.signInAnonymously(auth);
+    token = await auth.currentUser.getIdToken();
+    const uid = auth.currentUser.uid;
+    const link = await api(`quickKeys/${KEY}`);
+    if (!link) return fail("qa.invalid");
+    TID = link.t; PID = link.p;
+    const sess = await api(`quickSessions/${uid}`).catch(() => null);
+    if (!sess || sess.k !== KEY) await api(`quickSessions/${uid}`, "PUT", { k: KEY, t: TID, p: PID });
+    const base = `teams/${TID}`;
+    let info, members;
+    try {
+      [info, schedule, matches, min, name, members] = await Promise.all([
+        api(`${base}/info`), api(`${base}/schedule`), api(`${base}/matches`), api(`${base}/settings/minPlayers`), api(`${base}/players/${PID}/name`), api(`${base}/members`)]);
+    } catch { return fail("qa.off"); }
+    schedule = schedule || {}; matches = matches || {}; min = min || 3; info = info || {};
+    if (!name) return fail("qa.invalid");
+    brand(info);
+    // Answers of everyone with an account (and this player) for the "9/11" count.
+    const pids = [...new Set([...Object.values(members || {}), PID])];
+    const lists = await Promise.all(pids.map(p => api(`${base}/players/${p}/avail`).catch(() => null)));
+    pids.forEach((p, i) => { answers[p] = lists[i] || {}; });
+    // Tapped ✅/❓/❌ in the message: save it straight away.
+    if (D && ["yes", "maybe", "no"].includes(R) && schedule[D] && D >= TODAY) { await save(D, R); showDone(D, R); }
+    render();
+  } catch (e) { console.error(e); fail("qa.error"); }
+}
+
+function brand(info) {
+  const logo = info.logo && (info.logo.startsWith("assets/") ? "/" + info.logo : info.logo); // a file of the site, or an inline image
+  $("q-brand").innerHTML = logo ? `<img class="logo" src="${esc(logo)}" alt="${esc(info.brand)}">` : esc(info.brand || "RostiQ");
+  const vars = o => Object.entries(o || {}).filter(([k, v]) => /^--[a-z-]{2,20}$/.test(k) && /^#[0-9a-f]{6}$/i.test(v)).map(([k, v]) => `${k}: ${v};`).join(" ");
+  const c = info.colors;
+  if (c) document.head.insertAdjacentHTML("beforeend", `<style>:root { ${vars(c.light)} } @media (prefers-color-scheme: dark) { :root { ${vars(c.dark)} } }</style>`);
+  const theme = c && c.light && c.light["--brand"];
+  if (theme) document.querySelector('meta[name="theme-color"]').content = theme;
+  $("q-who").innerHTML = t("qa.as", { name: `<b>${esc(name)}</b>` });
+  $("q-more").innerHTML = `${t("qa.more")} <a href="/?t=${encodeURIComponent(TID)}">${t("qa.moreLink")}</a><br><small>${t("qa.notYou")}</small>`;
+}
+
+async function save(date, r) {
+  await api(`teams/${TID}/players/${PID}/avail/${date}`, "PUT", r);
+  answers[PID] = { ...answers[PID], [date]: r };
+}
+function showDone(date, r) {
+  const e = schedule[date] || {};
+  $("q-done").innerHTML = `<div class="done ${r === "yes" ? "" : r}">${ic(r === "yes" ? "check" : r === "no" ? "x" : "help")}<span>${
+    t("qa.done." + r, { opp: esc(e.opp), when: esc(when(date)) })}</span></div>`;
+}
+const when = d => new Date(d + "T12:00:00").toLocaleDateString(LOCALE, { weekday: "long", day: "numeric", month: "long" });
+const yesCount = d => Object.values(answers).filter(a => a[d] === "yes").length;
+
+function render() {
+  const upcoming = Object.keys(schedule).filter(d => d >= TODAY).sort();
+  if (!upcoming.length) { $("q-list").innerHTML = `<p class="hint">${t("qa.none")}</p>`; return; }
+  $("q-list").innerHTML = upcoming.map((d, i) => {
+    const e = schedule[d], m = matches[d] || {}, mine = (answers[PID] || {})[d] || "", y = yesCount(d);
+    const dt = new Date(d + "T12:00:00");
+    const sub = [m.start, e.home === true ? t("match.home") : e.home === false ? t("match.away") : "", m.venue && m.venue.name].filter(Boolean).map(esc).join(" · ");
+    return `<div class="q-card${i === 0 ? " first" : ""}">
+      <div class="q-head"><div class="q-date"><small>${esc(dt.toLocaleDateString(LOCALE, { weekday: "short" }))}</small><b>${dt.getDate()}</b></div>
+        <div><div class="q-opp">${esc(e.opp)}${e.final ? " 🏆" : ""}</div><div class="q-sub">${esc(dt.toLocaleDateString(LOCALE, { month: "long" }))}${sub ? " · " + sub : ""}</div></div>
+        <span class="q-count${y < min ? " low" : ""}">${y}/${min}</span></div>
+      <div class="q-ans" role="group">${["yes", "maybe", "no"].map(r =>
+        `<button data-d="${d}" data-r="${r}" aria-pressed="${mine === r}">${t("answer." + r)}</button>`).join("")}</div></div>`;
+  }).join("");
+}
+document.addEventListener("click", async ev => {
+  const b = ev.target.closest("[data-r][data-d]");
+  if (!b) return;
+  const d = b.dataset.d, r = b.dataset.r;
+  b.closest(".q-ans").querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", x === b));
+  try { await save(d, r); showDone(d, r); render(); scrollTo({ top: 0, behavior: "smooth" }); }
+  catch { fail("qa.error"); }
+});
+start();
+</script>
+</body>
+</html>

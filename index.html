@@ -791,7 +791,7 @@ function overviewMessage() {
 document.getElementById("share-overview").onclick = () => openShare(t("share.overviewTitle"), overviewMessage());
 
 // Reminder for players who haven't answered a match.
-document.addEventListener("click", ev => {
+document.addEventListener("click", async ev => {
   const b = ev.target.closest(".remind");
   if (!b) return;
   const e = EVENTS.find(x => x.date === b.dataset.date);
@@ -805,9 +805,13 @@ document.addEventListener("click", ev => {
     url: pageUrl(""), names: c.missing.join(", "),
   });
   const url = pageUrl("");
-  const people = sortedPlayers().filter(p => p.name && !p.avail[e.date]).map(p => ({
+  const missing = sortedPlayers().filter(p => p.name && !p.avail[e.date]);
+  // With personal links (admins): one tap in the message answers, no login needed.
+  const keys = await ensureQuickKeys(missing.map(p => p.id)).catch(() => ({}));
+  const people = missing.map(p => ({
     name: p.name, phone: p.phone || "",
-    text: t("msg.personalReminder", { first: firstName(p.name), opp: e.opp, when: shortDate(e.date), url }),
+    text: keys[p.id] ? t("msg.quickReminder", { first: firstName(p.name), opp: e.opp, when: shortDate(e.date), links: quickLines(keys[p.id], e.date) })
+      : t("msg.personalReminder", { first: firstName(p.name), opp: e.opp, when: shortDate(e.date), url }),
   }));
   openShare(t("reminder.heading", { n: c.missing.length, opp: e.opp, when }), text, people);
 });

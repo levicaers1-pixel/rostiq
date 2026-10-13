@@ -14,6 +14,7 @@ Roles
   member          teams/{t}/members/{uid} = playerId: reads the team, edits own row/carpool
 """
 import json
+import re
 import os
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -93,7 +94,8 @@ def settings_rules():
         "fedOff": {".validate": "newData.isBoolean()"},
         "fedLabel": s(40, 1),
         "fields": {"$c": {".validate": "$c.matches(/^c[1-4]$/) && newData.isString() && newData.val().length >= 1 && newData.val().length <= 30"}},
-        "autoRemind": {".validate": "newData.isBoolean()"},  # false = no automatic push reminders for this team
+        "autoRemind": {".validate": "newData.isBoolean()"},
+        "quickLinks": {".validate": "newData.isBoolean()"},  # false = personal answer links don't work for this team  # false = no automatic push reminders for this team
         "$other": NO,
     }
 
@@ -327,6 +329,67 @@ push_log = {".read": PA, ".write": PA}
 final = {"rules": {"teams": {".read": PA, "$tid": team}, "users": users, "signup": signup, "signupCodes": signup_codes,
                    "feedback": feedback, "feedbackLast": feedback_last, "lastSeen": last_seen,
                    "errors": errors, "errorsLast": errors_last, "pushTokens": push_tokens, "pushLog": push_log, "$other": NO}}
+
+
+def verified_only(node):
+    """Every 'signed in' check becomes 'signed in with a verified email' (Google or the email link). Anonymous
+    sessions exist only for personal answer links and get nothing but the narrow rules added below."""
+    txt = re.sub(r"auth != null(?! && auth\.token\.email_verified === true)", "auth != null && auth.token.email_verified === true", json.dumps(node))
+    return json.loads(txt)
+
+
+final = verified_only(final)
+
+# ---- Personal answer links (app.rostiq.be/a/?k=…): answer without an account ----
+# A team admin creates a random key per player: quickKeys/<key> = {t: team, p: player}. The answer page signs in
+# anonymously and binds that session to the key (quickSessions/<uid>). Such a session may only read the team's
+# name, matches, minimum and answers, its own player's name, and set that player's answer for a scheduled match.
+# Resetting or removing the key ends it at once; a team can switch links off (settings.quickLinks = false).
+QS = "root.child('quickSessions').child(auth.uid)"
+QK = f"root.child('quickKeys').child({QS}.child('k').val())"
+QUICK_TEAM = (f"(auth != null && {QS}.child('k').isString() && {QK}.child('t').val() === $tid"
+              " && root.child('teams').child($tid).child('settings').child('quickLinks').val() !== false)")
+QUICK_PLAYER = (f"({QUICK_TEAM} && {QK}.child('p').val() === $pid"
+                " && root.child('teams').child($tid).child('players').child($pid).child('name').exists())")
+TA_OF = lambda tid: f"root.child('teams').child({tid}).child('admins').child(auth.uid).val() === true"
+
+t = final["rules"]["teams"]["$tid"]
+t["info"][".read"] = f"({t['info']['.read']}) || {QUICK_TEAM}"
+t["schedule"][".read"] = QUICK_TEAM
+t["matches"][".read"] = QUICK_TEAM
+t["members"][".read"] = QUICK_TEAM  # which players have an account (ids only): for the "9/11" count
+for k in ("minPlayers", "seasonName"):
+    t["settings"][k][".read"] = QUICK_TEAM
+pl = t["players"]["$pid"]
+pl["name"][".read"] = QUICK_PLAYER
+pl["avail"][".read"] = QUICK_TEAM
+pl["avail"]["$date"][".write"] = f"{QUICK_PLAYER} && root.child('teams').child($tid).child('schedule').child($date).exists()"
+
+final["rules"]["quickKeys"] = {"$key": {
+    ".read": "auth != null",  # knowing the key is the permission; the list itself can't be read
+    ".write": f"{PA} || ({VERIFIED} && ((data.exists() && data.child('t').isString() && {TA_OF("data.child('t').val()")}"
+              " && (!newData.exists() || newData.child('t').val() === data.child('t').val()))"
+              f" || (!data.exists() && newData.child('t').isString() && {TA_OF("newData.child('t').val()")})))",
+    ".validate": "$key.matches(/^[A-Za-z0-9_-]{22}$/) && newData.hasChildren(['t', 'p', 'at'])",
+    "t": {".validate": "newData.isString()"}, "p": {".validate": "newData.isString()"}, "at": {".validate": "newData.isNumber()"},
+    "$other": NO,
+}}
+final["rules"]["quickIndex"] = {"$tid": {  # per team: player -> key, for the admin's "personal link" buttons
+    ".read": f"{PA} || ({VERIFIED} && {TA_OF('$tid')})",
+    ".write": f"{PA} || ({VERIFIED} && {TA_OF('$tid')})",
+    "$pid": {".validate": "newData.isString() && newData.val().length === 22"},
+}}
+final["rules"]["quickSessions"] = {"$uid": {
+    ".read": "auth != null && auth.uid === $uid",
+    ".write": "auth != null && auth.uid === $uid",
+    ".validate": "newData.hasChildren(['k', 't', 'p']) && newData.child('k').isString()"
+                 " && root.child('quickKeys').child(newData.child('k').val()).child('t').val() === newData.child('t').val()"
+                 " && root.child('quickKeys').child(newData.child('k').val()).child('p').val() === newData.child('p').val()",
+    "k": {".validate": "newData.isString() && newData.val().length === 22"},
+    "t": {".validate": "newData.isString()"}, "p": {".validate": "newData.isString()"},
+    "$other": NO,
+}}
+final["rules"]["$other"] = final["rules"].pop("$other")  # keep the catch-all last
 
 # ---- Transition: also allow the old single-team structure at the root (Pampas, pre-migration) ----
 L_OWNER = "(auth != null && root.child('players').child($pid).child('uid').val() === auth.uid)"
