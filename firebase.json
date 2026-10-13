@@ -1,0 +1,39 @@
+{
+  "functions": [
+    {
+      "source": "functions",
+      "codebase": "default",
+      "runtime": "nodejs22",
+      "ignore": [
+        "node_modules",
+        "*.test.mjs"
+      ]
+    }
+  ],
+  "hosting": {
+    "public": "hosting",
+    "rewrites": [
+      {
+        "source": "/cal/**",
+        "function": {
+          "functionId": "calendar",
+          "region": "europe-west1"
+        }
+      }
+    ]
+  },
+  "emulators": {
+    "database": {
+      "port": 9000
+    },
+    "functions": {
+      "port": 5001
+    },
+    "hosting": {
+      "port": 5000
+    },
+    "ui": {
+      "enabled": false
+    }
+  }
+}

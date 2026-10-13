@@ -8,6 +8,10 @@ window.FIREBASE_DB_URL = "https://wintermidam-default-rtdb.europe-west1.firebase
 // Empty = the "notifications" option doesn't appear.
 window.FIREBASE_VAPID_KEY = "BKoBDqp8uzkXXea-Z4AeND7wgXJgkQY44XfPiMAiy59CBZUjv7TjikM0n_6JX7MxWcT2cgcBH8TGdZeZ6JvlAJ8";
 
+// Calendar subscriptions: where the personal calendar feeds are served (functions/, deployed with Firebase).
+// Empty = the subscribe dialog doesn't appear and "Add to calendar" downloads a one-off .ics file.
+window.CAL_BASE = "";
+
 window.FIREBASE_CONFIG = {
   apiKey: "AIzaSyCUyqCemJncGy0tWRUi6JXfrclAGWePzto",
   // Sign-in helper is self-hosted on this site (/__/auth, copied from wintermidam.firebaseapp.com),

@@ -389,6 +389,33 @@ final["rules"]["quickSessions"] = {"$uid": {
     "t": {".validate": "newData.isString()"}, "p": {".validate": "newData.isString()"},
     "$other": NO,
 }}
+# ---- Calendar links: calKeys/<key> = {t: team, p: player, at, l: language, h: hide "no"}, calIndex/<team>/<player> = key ----
+# A read-only, personal calendar feed (functions/: GET /cal/<key>.ics, read with the Admin SDK). The player makes,
+# changes and resets their own link; a team admin may do it for any player of the team. Nobody can list the keys.
+def owns_cal(node):  # node: "data" (existing link) or "newData" (new link)
+    t, p = f"{node}.child('t').val()", f"{node}.child('p').val()"
+    return f"({TA_OF(t)} || root.child('teams').child({t}).child('members').child(auth.uid).val() === {p})"
+final["rules"]["calKeys"] = {"$key": {
+    ".read": f"{PA} || ({VERIFIED} && data.child('t').isString() && {owns_cal('data')})",
+    ".write": f"{PA} || ({VERIFIED} && ((!data.exists() && newData.child('t').isString() && {owns_cal('newData')})"
+              f" || (data.exists() && data.child('t').isString() && {owns_cal('data')}"
+              " && (!newData.exists() || (newData.child('t').val() === data.child('t').val() && newData.child('p').val() === data.child('p').val())))))",
+    ".validate": "$key.matches(/^[A-Za-z0-9_-]{22}$/) && newData.hasChildren(['t', 'p', 'at'])"
+                 " && newData.parent().parent().child('teams').child(newData.child('t').val()).child('players').child(newData.child('p').val()).child('name').exists()",
+    "t": {".validate": "newData.isString()"}, "p": {".validate": "newData.isString()"}, "at": {".validate": "newData.isNumber()"},
+    "l": {".validate": "newData.val() === 'nl' || newData.val() === 'fr' || newData.val() === 'en'"},
+    "h": {".validate": "newData.isBoolean()"},
+    "$other": NO,
+}}
+CAL_MINE = f"({TA_OF('$tid')} || root.child('teams').child($tid).child('members').child(auth.uid).val() === $pid)"
+final["rules"]["calIndex"] = {"$tid": {"$pid": {
+    ".read": f"{PA} || ({VERIFIED} && {CAL_MINE})",
+    ".write": f"{PA} || ({VERIFIED} && {CAL_MINE})",
+    ".validate": "newData.isString() && newData.val().length === 22"
+                 " && newData.parent().parent().parent().child('calKeys').child(newData.val()).child('t').val() === $tid"
+                 " && newData.parent().parent().parent().child('calKeys').child(newData.val()).child('p').val() === $pid",
+}}}
+
 # ---- Answer history: history/<team>/<date>/<id> = {p, f (was), a (now), by, at} ----
 # Outside the team (members can read the whole team), only the team's admins read it. An entry can only be added in the
 # same write as the answer it describes: "f" must be the answer before, "a" the answer after, and the answer must really

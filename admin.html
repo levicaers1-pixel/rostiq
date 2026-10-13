@@ -587,6 +587,7 @@ function renderPlayers() {
       quickOn() && p.name && `<button data-qlink="${p.id}">${ic("link")} ${t("ql.button")}</button>`,
       AUTH_ON && !p.uid && p.name && !session.pid && `<button data-mine="${p.id}">${ic("user")} ${t("accounts.mine")}</button>`,
       AUTH_ON && p.uid && `<button data-reset="${p.id}">${ic("switch")} ${t("accounts.reset")}</button>`,
+      AUTH_ON && window.CAL_BASE && p.uid && `<button data-calstop="${p.id}">${ic("calendar")} ${t("cal.adminStop")}</button>`,
       `<button class="err" data-remove="${p.id}">${ic("trash")} ${t("admin.remove")}</button>`,
     ].filter(Boolean);
     return `
@@ -641,6 +642,17 @@ document.getElementById("players").addEventListener("toggle", ev => {
 }, true);
 document.addEventListener("click", ev => {
   if (!ev.target.closest(".row-menu summary")) document.querySelectorAll(".row-menu[open]").forEach(d => { d.open = false; });
+});
+document.getElementById("players").addEventListener("click", async ev => {
+  const cs = ev.target.closest("[data-calstop]");
+  if (cs) {
+    const pid = cs.dataset.calstop, key = await getAbs(`calIndex/${TEAM_ID}/${pid}`);
+    if (!key) { toast(t("cal.adminNone")); return; }
+    if (!confirm(t("cal.adminStopConfirm", { name: (root.players[pid] || {}).name || "?" }))) return;
+    const ok = await send("PATCH", "", { [`calKeys/${key}`]: null, [`calIndex/${TEAM_ID}/${pid}`]: null }, true, true);
+    toast(t(ok === true ? "cal.adminStopped" : "cal.failed"), ok === true ? "" : "err");
+    return;
+  }
 });
 document.getElementById("players").addEventListener("click", ev => {
   const mine = ev.target.closest("[data-mine]");

@@ -169,6 +169,19 @@
     .show-table { display: inline-flex; }
     #overview-head:not(.open) .head-actions, #overview-head:not(.open) ~ #table-view, #overview-head:not(.open) ~ #table-note { display: none !important; }
   }
+  /* Calendar subscription */
+  .cal-dlg { width: min(480px, calc(100vw - 32px)); }
+  .cal-lead { margin: -4px 0 14px; color: var(--muted); font-size: .9rem; }
+  .cal-btns { display: grid; gap: 8px; }
+  .cal-btns a, .cal-btns button { display: flex; align-items: center; gap: 10px; justify-content: flex-start; padding: 11px 14px; border-radius: 12px;
+    border: 1px solid var(--border); background: var(--surface); color: var(--text); font-weight: 600; font-size: .95rem; text-decoration: none; }
+  .cal-btns a:hover, .cal-btns button:hover { border-color: color-mix(in srgb, var(--accent) 45%, var(--border)); }
+  .cal-btns a.primary-cal { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+  .cal-check { display: flex; gap: 10px; align-items: flex-start; margin: 14px 0 0; font-size: .9rem; cursor: pointer; }
+  .cal-check input { margin-top: 3px; }
+  .cal-small { margin: 10px 0 0; color: var(--muted); font-size: .8rem; }
+  .cal-links { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 12px; font-size: .85rem; }
+  .cal-links button { border: none; background: none; padding: 0; color: var(--accent); text-decoration: underline; font-size: .85rem; }
   /* Answer history (admins) */
   .history-dlg { width: min(520px, calc(100vw - 32px)); }
   .history-sub { margin: -6px 0 12px; color: var(--muted); font-size: .85rem; }
@@ -378,6 +391,12 @@
 
 
 <!-- Admin: time, venue and meeting point for one match -->
+<dialog id="cal" class="cal-dlg">
+  <h3 data-i18n="cal.title">Matches in your calendar</h3>
+  <p class="cal-lead" data-i18n="cal.lead"></p>
+  <div id="cal-body"></div>
+  <div class="row"><button type="button" id="cal-close" data-i18n="cal.close">Close</button></div>
+</dialog>
 <dialog id="history" class="history-dlg">
   <h3 id="history-title"></h3>
   <p class="history-sub" id="history-sub"></p>
@@ -1180,7 +1199,66 @@ function downloadIcs(events, filename, statusOf, player) {
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
-document.getElementById("ics-all").onclick = () => downloadIcs(EVENTS, "team-schedule-2026-2027.ics");
+// "Add all to calendar": a personal calendar subscription when that's set up (config.js CAL_BASE), else a one-off file.
+const calOn = () => !!window.CAL_BASE && AUTH_ON && !DEMO && !!session.pid && !!session.user;
+document.getElementById("ics-all").onclick = () => calOn() ? openCalendar() : downloadIcs(EVENTS, "team-schedule-2026-2027.ics");
+
+// ---- Calendar subscription: one read-only link per player (calKeys/<key>, calIndex/<team>/<player>) ----
+const calDlg = document.getElementById("cal");
+document.getElementById("cal-close").onclick = () => calDlg.close();
+let cal = { key: "", hideNo: false };
+const calRecord = () => ({ t: TEAM_ID, p: session.pid, at: { ".sv": "timestamp" }, l: LANG, ...(cal.hideNo ? { h: true } : {}) });
+async function openCalendar() {
+  const body = document.getElementById("cal-body");
+  body.innerHTML = `<p class="cal-small">${t("cal.loading")}</p>`;
+  calDlg.showModal();
+  let key = await getAbs(`calIndex/${TEAM_ID}/${session.pid}`);
+  let rec = key ? await getAbs(`calKeys/${key}`) : null;
+  if (!rec) { // no link yet (or it was stopped): make one
+    key = newQuickKey(); cal = { key, hideNo: false };
+    const ok = await send("PATCH", "", { [`calKeys/${key}`]: calRecord(), [`calIndex/${TEAM_ID}/${session.pid}`]: key }, true, true);
+    if (ok !== true) { body.innerHTML = `<p class="cal-small">${t("cal.failed")}</p>`; return; }
+  } else {
+    cal = { key, hideNo: rec.h === true };
+    if (rec.l !== LANG) send("PUT", `calKeys/${key}/l`, LANG, true, true, true); // the feed follows the app's language
+  }
+  renderCalendar();
+}
+function renderCalendar() {
+  const https = window.CAL_BASE + cal.key + ".ics", webcal = https.replace(/^https?:/, "webcal:");
+  const name = TEAM.shortName || TEAM.brand || "RostiQ";
+  document.getElementById("cal-body").innerHTML = `
+    <div class="cal-btns">
+      <a class="primary-cal" href="${esc(webcal)}">${ic("calendar-plus")} ${t("cal.apple")}</a>
+      <a href="https://calendar.google.com/calendar/r?cid=${encodeURIComponent(webcal)}" target="_blank" rel="noopener">${ic("calendar")} ${t("cal.google")}</a>
+      <a href="https://outlook.live.com/calendar/0/addfromweb?url=${encodeURIComponent(https)}&name=${encodeURIComponent(name)}" target="_blank" rel="noopener">${ic("calendar")} ${t("cal.outlook")}</a>
+      <button type="button" data-cal="copy">${ic("link")} ${t("cal.copy")}</button>
+    </div>
+    <label class="cal-check"><input type="checkbox" data-cal="hide"${cal.hideNo ? " checked" : ""}> <span>${t("cal.hideNo")}</span></label>
+    <p class="cal-small">${t("cal.refresh")}</p>
+    <p class="cal-small">${t("cal.private")}</p>
+    <div class="cal-links"><button type="button" data-cal="download">${t("cal.download")}</button><button type="button" data-cal="reset">${t("cal.reset")}</button></div>`;
+}
+document.getElementById("cal-body").addEventListener("click", async ev => {
+  const b = ev.target.closest("[data-cal]");
+  if (!b || b.dataset.cal === "hide") return;
+  const act = b.dataset.cal;
+  if (act === "copy") {
+    try { await navigator.clipboard.writeText(window.CAL_BASE + cal.key + ".ics"); toast(t("cal.copied")); } catch { prompt(t("cal.copy"), window.CAL_BASE + cal.key + ".ics"); }
+  }
+  if (act === "download") downloadIcs(EVENTS, "team-schedule-2026-2027.ics", e => (root.players[session.pid] || {}).avail?.[e.date]);
+  if (act === "reset" && confirm(t("cal.resetConfirm"))) {
+    const old = cal.key, key = newQuickKey();
+    const ok = await send("PATCH", "", { [`calKeys/${old}`]: null, [`calKeys/${key}`]: { ...calRecord() }, [`calIndex/${TEAM_ID}/${session.pid}`]: key }, true, true);
+    if (ok === true) { cal.key = key; renderCalendar(); toast(t("cal.resetDone"), "", 3500); } else toast(t("cal.failed"), "err");
+  }
+});
+document.getElementById("cal-body").addEventListener("change", async ev => {
+  if (!ev.target.matches('[data-cal="hide"]')) return;
+  cal.hideNo = ev.target.checked;
+  const ok = await send(cal.hideNo ? "PUT" : "DELETE", `calKeys/${cal.key}/h`, cal.hideNo ? true : undefined, true, true);
+  if (ok === true) toast(t("toast.saved")); else { ev.target.checked = !cal.hideNo; cal.hideNo = !cal.hideNo; toast(t("cal.failed"), "err"); }
+});
 
 start();
 </script>
