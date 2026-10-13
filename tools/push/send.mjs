@@ -17,7 +17,7 @@ const TZ = "Europe/Brussels";
 // Tests: FIREBASE_DATABASE_EMULATOR_HOST=127.0.0.1:9000 DB_NS=<namespace> DRY_RUN=1 node send.mjs
 const EMU = process.env.FIREBASE_DATABASE_EMULATOR_HOST;
 const sa = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT || "null");
-if (!sa && !EMU) { console.error("FIREBASE_SERVICE_ACCOUNT is missing"); process.exit(1); }
+if (!sa && !EMU) { console.log("Not set up yet (repository secret FIREBASE_SERVICE_ACCOUNT is missing): nothing sent."); process.exit(0); }
 admin.initializeApp(EMU ? { projectId: "demo-rostiq", databaseURL: `http://${EMU}?ns=${process.env.DB_NS || "demo-rostiq"}` }
   : { credential: admin.credential.cert(sa), databaseURL: DB_URL });
 const db = admin.database();
