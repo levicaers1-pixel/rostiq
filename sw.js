@@ -4,7 +4,7 @@
 // - Fonts and the Firebase login library: the stored copy right away, refreshed in the background.
 // - Team data (Firebase database), maps, weather and place search are never stored here; common.js keeps
 //   the last-known team data itself.
-const CACHE = "rostiq-v3";
+const CACHE = "rostiq-v4";
 const SHELL = [
   "./", "index.html", "carpool.html", "ploeg.html", "admin.html", "rostiq.html", "start.html", "privacy.html", "demo.js",
   "common.css", "common.js", "i18n.js", "icons.js", "boot.js", "team.js", "config.js", "manifest.webmanifest",
@@ -28,6 +28,7 @@ self.addEventListener("fetch", e => {
   const url = new URL(req.url);
   if (url.origin === location.origin) {
     if (url.pathname.includes("/__/")) return; // the sign-in helper
+    if (url.pathname.endsWith(".json") || (req.headers.get("accept") || "").includes("text/event-stream")) return; // live data, never cached
     e.respondWith(/\.(png|svg|jpe?g|webp|ico)$/.test(url.pathname) ? cacheFirst(req) : networkFirst(req, url));
   } else if (SHARED.includes(url.hostname)) {
     e.respondWith(staleWhileRevalidate(req));

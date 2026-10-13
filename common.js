@@ -660,6 +660,7 @@ function syncSession() {
   applyProfile();
   stampLastSeen();
   refreshPush();
+  renderPushAsk();
   fillLoginEmail();
   refreshEvents();
   renderCountdown();
@@ -908,6 +909,7 @@ function start() {
   if (!NO_TEAM_PAGE) {
     injectCountdown();
     injectPhonePrompt();
+    injectPushAsk();
   }
   document.body.insertAdjacentHTML("beforeend", `<footer class="site-footer">${t("footer")} · <a href="#" data-feedback>${t("fb.footer")}</a> · <a href="${appUrl("privacy.html")}">${t("priv.footer")}</a></footer>`);
   injectShareDialog();
@@ -1103,7 +1105,7 @@ function gateMessage(text, err) { gateMsg = { text, err }; renderAuth(); }
 const appUrl = file => location.href.split(/[?#]/)[0].replace(/[^/]*$/, file);
 
 // ---- Feedback to RostiQ (account menu, footer): only the RostiQ admin reads it ----
-const APP_VERSION = "2026.10.17";
+const APP_VERSION = "2026.10.18";
 function deviceText() {
   const ua = navigator.userAgent;
   const os = /iPhone/.test(ua) ? "iPhone" : /iPad/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1) ? "iPad"
@@ -1221,7 +1223,7 @@ async function enablePush() {
     if (!(await savePushToken(await pushToken()))) throw new Error("save");
     toast(t("push.enabled"));
   } catch { toast(t("push.failed"), "err"); }
-  renderAccount(); render();
+  renderAccount(); render(); renderPushAsk();
 }
 async function disablePush() {
   const uid = session.user.uid, [id] = pref.get("push:" + uid, "").split("|");
@@ -1242,6 +1244,38 @@ async function refreshPush() {
     await savePushToken(token);
   } catch {}
 }
+// Notifications as close to "on by default" as browsers allow: a device that already allowed them is registered
+// by itself; everyone else sees a banner with one button (the browser itself must ask once). "Later" = 14 days quiet.
+function injectPushAsk() {
+  document.querySelector("main .sub").insertAdjacentHTML("afterend", `<div class="push-ask" id="push-ask" hidden>
+    <span class="push-ic">${ic("bell")}</span>
+    <div><b id="push-ask-title"></b><p id="push-ask-text"></p></div>
+    <div class="push-acts"><button class="primary" data-push-yes></button><button class="link" data-push-later>${t("phone.later")}</button></div></div>`);
+  const box = document.getElementById("push-ask");
+  box.querySelector("[data-push-yes]").onclick = () => { box.hidden = true; enablePush(); };
+  box.querySelector("[data-push-later]").onclick = () => { pref.set("pushLater", String(Date.now())); box.hidden = true; };
+}
+let pushAuto = false;
+function renderPushAsk() {
+  const box = document.getElementById("push-ask");
+  if (!box) return;
+  const show = pushAvailable() && session.pid && !pushOn()
+    && !(PUSH_SUPPORTED && Notification.permission === "denied")
+    && Date.now() - Number(pref.get("pushLater", 0)) > 14 * 864e5;
+  // Allowed before on this device (e.g. another team, or after reinstalling): register without asking again.
+  if (show && PUSH_SUPPORTED && Notification.permission === "granted" && !(isIOS() && !standalone())) {
+    if (!pushAuto) { pushAuto = true; pushToken().then(savePushToken).then(ok => { if (ok) { renderAccount(); render(); } }).catch(() => {}); }
+    box.hidden = true;
+    return;
+  }
+  box.hidden = !show;
+  if (!show) return;
+  const iosBrowser = isIOS() && !standalone();
+  document.getElementById("push-ask-title").textContent = t("push.askTitle");
+  document.getElementById("push-ask-text").textContent = t(iosBrowser ? "push.askIos" : "push.askText");
+  box.querySelector("[data-push-yes]").textContent = t(iosBrowser ? "push.askHow" : "onb.pushDo");
+}
+
 function pushIosHelp() {
   let dlg = document.getElementById("push-ios-dlg");
   if (!dlg) {

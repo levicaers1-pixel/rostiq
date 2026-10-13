@@ -183,6 +183,16 @@ dialog a.btn { font-size: .85rem; text-decoration: none; background: #25d366; co
 .countdown.soon { background: var(--pampas); color: var(--brand); }
 
 /* Phone number prompt under the subtitle */
+/* Notifications banner (team pages) */
+.push-ask { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-top: 12px; padding: 12px 14px; max-width: 760px;
+  border-radius: var(--radius); background: color-mix(in srgb, var(--pampas) 12%, var(--surface)); border: 1px solid color-mix(in srgb, var(--pampas) 35%, var(--border)); }
+.push-ask[hidden] { display: none; }
+.push-ask .push-ic { width: 38px; height: 38px; border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  background: var(--accent); color: var(--on-accent); }
+.push-ask > div:nth-child(2) { flex: 1 1 220px; min-width: 0; }
+.push-ask b { font-size: .95rem; }
+.push-ask p { margin: 2px 0 0; font-size: .85rem; color: var(--muted); }
+.push-ask .push-acts { display: flex; gap: 12px; align-items: center; }
 .phone-prompt { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-sm); padding: 10px 14px; margin-top: 12px; font-size: .85rem; max-width: 640px; }
 .phone-prompt p { margin: 0 0 8px; color: var(--muted); }
 .phone-prompt .phone-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
