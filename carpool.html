@@ -134,6 +134,12 @@
   .seat-row .seats-label.full { color: var(--no); font-weight: 600; }
   button.small { font-size: .8rem; padding: 5px 12px; }
   .car .note { font-size: .85rem; color: var(--muted); margin: 0; }
+  .cp-suggest { margin-top: 12px; padding: 10px 12px; border-radius: 12px; background: color-mix(in srgb, var(--accent) 7%, var(--surface));
+    border: 1px solid color-mix(in srgb, var(--accent) 25%, var(--border)); }
+  .cp-suggest h4 { margin: 0 0 6px; display: flex; align-items: center; gap: 6px; }
+  .cp-suggest ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+  .cp-suggest li { display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap; font-size: .9rem; }
+  .cp-suggest li span { flex: 1 1 200px; min-width: 0; }
   .riders { margin: 0; }
   .rider { display: inline-flex; align-items: center; gap: 4px; background: color-mix(in srgb, var(--muted) 10%, var(--surface)); padding: 4px 10px; font-size: .8rem; }
   .list { margin-top: 8px; }
@@ -317,6 +323,34 @@ function matchState(e) {
   return { all, cars, waiting, open };
 }
 
+// Suggestions: two drivers who live close together and fit in one car (one car fewer), and riders still waiting who
+// live close to a car with room. Straight-line distance between homes; only players whose place is known.
+const NEAR_KM = 10;
+function suggestions(st) {
+  const out = [], merged = new Set(), hostOf = new Set();
+  const cars = st.cars.filter(c => geoOf(c.id)).map(c => ({ ...c, free: c.seats - c.riders.length }));
+  const near = (a, b) => { const d = km(a, b); return d !== null && d <= NEAR_KM ? d : null; };
+  // The cars with the most room take the others in, nearest first.
+  for (const a of [...cars].sort((x, y) => y.free - x.free || y.seats - x.seats)) {
+    if (merged.has(a.id)) continue;
+    const guests = cars.filter(b => b.id !== a.id && !merged.has(b.id) && !hostOf.has(b.id))
+      .map(b => ({ b, d: near(a.id, b.id) })).filter(x => x.d !== null).sort((x, y) => x.d - y.d);
+    for (const { b, d } of guests) {
+      if (1 + b.riders.length > a.free) continue;
+      a.free -= 1 + b.riders.length; merged.add(b.id); hostOf.add(a.id);
+      out.push({ kind: "merge", host: a.id, guest: b.id, n: b.riders.length, d });
+    }
+  }
+  for (const r of st.waiting) {
+    const best = cars.filter(c => c.free > 0 && !merged.has(c.id)).map(c => ({ c, d: near(c.id, r) }))
+      .filter(x => x.d !== null).sort((x, y) => x.d - y.d)[0];
+    if (best) { best.c.free--; out.push({ kind: "ride", host: best.c.id, guest: r, d: best.d }); }
+  }
+  return out;
+}
+const kmText = d => d.toLocaleString(LOCALE, { maximumFractionDigits: d < 10 ? 1 : 0 });
+const suggestionText = s => t(s.kind === "merge" ? "cp.sugMerge" : "cp.sugRide", { a: nameOf(s.host), b: nameOf(s.guest), n: s.n, km: kmText(s.d) });
+
 // ---- Actions (all write straight to the shared database) ----
 function setRole(e, role) {
   const path = `carpool/${e.date}/${me}`;
@@ -452,6 +486,14 @@ function renderMatch(e) {
     }
     html += `</div>`;
   }
+
+  // Suggestions, with a button for whoever can act on one (a driver with passengers arranges it with them first).
+  const sug = suggestions(st);
+  if (sug.length) html += `<div class="cp-suggest"><h4>${ic("info")} ${t("cp.suggest")}</h4><ul>` + sug.map(s => {
+    const btn = me === s.guest && !s.n ? `<button class="action small" data-act="join" data-id="${s.host}">${t("cp.sugJoin", { name: esc(firstName(nameOf(s.host))) })}</button>`
+      : me === s.host && s.kind === "ride" ? `<button class="action small" data-act="take" data-id="${s.guest}">${t("carpool.take")}</button>` : "";
+    return `<li><span>${esc(suggestionText(s))}</span>${btn}</li>`;
+  }).join("") + `</ul></div>`;
 
   // Cars: nearest to me first; each seat is a passenger's avatar or an empty circle.
   const cars = [...st.cars].sort((a, b) => (b.id === me) - (a.id === me) || byDistance(a.id, b.id));
@@ -668,6 +710,7 @@ function carpoolMessage(e) {
     cars.length ? cars.join("\n") : t("msg.noCars"),
     st.waiting.length ? BLANK : null,
     st.waiting.length && `${t("msg.waiting")}: ${st.waiting.map(id => nameOf(id) + where(id)).join(", ")}`,
+    ...(() => { const sug = suggestions(st); return sug.length ? [BLANK, `💡 ${t("cp.suggest")}:`, ...sug.map(s => `• ${suggestionText(s)}`)] : []; })(),
     st.open.length ? BLANK : null,
     st.open.length && `${t("msg.open")}: ${st.open.map(id => nameOf(id) + where(id)).join(", ")}`,
     BLANK,
