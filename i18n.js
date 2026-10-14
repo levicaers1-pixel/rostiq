@@ -515,6 +515,33 @@ const T = {
     "details.cancel": "Cancel",
     "details.clear": "Clear all",
     "details.clearConfirm": "Remove time, place and info for this match?",
+    "off.pill": "Called off",
+    "moved.pill": "Moved",
+    "moved.was": ({ when }) => `Moved, was ${when}`,
+    "status.head": "Called off or moved?",
+    "status.sub": "The whole team gets a notification right away; calendars update by themselves.",
+    "status.off": "Call off",
+    "status.on": "Back on after all",
+    "status.move": "Move",
+    "status.offConfirm": ({ opp, when }) => `Call off ${opp} on ${when}? The whole team gets a notification.`,
+    "status.onConfirm": ({ opp }) => `Is ${opp} back on? Answers are kept as they were.`,
+    "move.date": "New date",
+    "move.time": "Start (optional)",
+    "move.note": "Answers and carpools start over: everyone answers again for the new day.",
+    "move.go": "Move and notify",
+    "move.exists": "There's already a match on that day.",
+    "move.same": "Pick a different day.",
+    "status.shareTitle": "Also tell the WhatsApp group",
+    "status.notified": "Done: the team gets a notification",
+    "msg.off": ({ team, opp, when }) => `*❌ Called off: ${team} vs ${opp}*
+📅 ${when}
+
+This match is not going ahead.`,
+    "msg.moved": ({ team, opp, was, when, url }) => `*📅 Moved: ${team} vs ${opp}*
+Was: ${was}
+Now: *${when}*
+
+👉 Let us know again whether you can make it: ${url}`,
     "meet": "Meeting",
 
     // carpool page
@@ -1257,6 +1284,33 @@ const T = {
     "details.cancel": "Annuleren",
     "details.clear": "Alles wissen",
     "details.clearConfirm": "Uur, plaats en info van deze wedstrijd wissen?",
+    "off.pill": "Afgelast",
+    "moved.pill": "Verplaatst",
+    "moved.was": ({ when }) => `Verplaatst, was ${when}`,
+    "status.head": "Afgelast of verplaatst?",
+    "status.sub": "De hele ploeg krijgt meteen een melding; agenda's passen zich vanzelf aan.",
+    "status.off": "Afgelasten",
+    "status.on": "Toch niet afgelast",
+    "status.move": "Verplaatsen",
+    "status.offConfirm": ({ opp, when }) => `${opp} op ${when} afgelasten? De hele ploeg krijgt een melding.`,
+    "status.onConfirm": ({ opp }) => `Gaat ${opp} toch door? De antwoorden blijven zoals ze waren.`,
+    "move.date": "Nieuwe datum",
+    "move.time": "Start (optioneel)",
+    "move.note": "Antwoorden en carpool beginnen opnieuw: iedereen antwoordt opnieuw voor de nieuwe dag.",
+    "move.go": "Verplaatsen en verwittigen",
+    "move.exists": "Er staat al een wedstrijd op die dag.",
+    "move.same": "Kies een andere dag.",
+    "status.shareTitle": "Laat het ook in de WhatsApp-groep weten",
+    "status.notified": "Klaar: de ploeg krijgt een melding",
+    "msg.off": ({ team, opp, when }) => `*❌ Afgelast: ${team} vs ${opp}*
+📅 ${when}
+
+Deze wedstrijd gaat niet door.`,
+    "msg.moved": ({ team, opp, was, when, url }) => `*📅 Verplaatst: ${team} vs ${opp}*
+Was: ${was}
+Nu: *${when}*
+
+👉 Laat opnieuw weten of je kan: ${url}`,
     "meet": "Verzamelen",
 
     "carpool.pageTitle": () => `${TEAM.brand} · Carpool`,
@@ -1995,6 +2049,33 @@ const T = {
     "details.cancel": "Annuler",
     "details.clear": "Tout effacer",
     "details.clearConfirm": "Supprimer l'heure, le lieu et les infos de ce match ?",
+    "off.pill": "Annulé",
+    "moved.pill": "Déplacé",
+    "moved.was": ({ when }) => `Déplacé, c'était le ${when}`,
+    "status.head": "Annulé ou déplacé ?",
+    "status.sub": "Toute l'équipe reçoit tout de suite une notification ; les agendas se mettent à jour tout seuls.",
+    "status.off": "Annuler le match",
+    "status.on": "Finalement maintenu",
+    "status.move": "Déplacer",
+    "status.offConfirm": ({ opp, when }) => `Annuler ${opp} du ${when} ? Toute l'équipe reçoit une notification.`,
+    "status.onConfirm": ({ opp }) => `${opp} a finalement lieu ? Les réponses restent comme elles étaient.`,
+    "move.date": "Nouvelle date",
+    "move.time": "Début (facultatif)",
+    "move.note": "Les réponses et le covoiturage repartent de zéro : chacun répond à nouveau pour le nouveau jour.",
+    "move.go": "Déplacer et prévenir",
+    "move.exists": "Il y a déjà un match ce jour-là.",
+    "move.same": "Choisis un autre jour.",
+    "status.shareTitle": "Préviens aussi le groupe WhatsApp",
+    "status.notified": "C'est fait : l'équipe reçoit une notification",
+    "msg.off": ({ team, opp, when }) => `*❌ Annulé : ${team} vs ${opp}*
+📅 ${when}
+
+Ce match n'a pas lieu.`,
+    "msg.moved": ({ team, opp, was, when, url }) => `*📅 Déplacé : ${team} vs ${opp}*
+C'était : ${was}
+Maintenant : *${when}*
+
+👉 Indique à nouveau si tu peux venir : ${url}`,
     "meet": "Rendez-vous",
 
     // carpool page

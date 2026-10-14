@@ -649,7 +649,7 @@ function renderMatches() {
   document.getElementById("matches").innerHTML = EVENTS.length ? EVENTS.map(e => `
     <li class="${isPast(e) ? "past" : ""}">
       <span class="when">${esc(fmt(e.date, { weekday: "short", day: "numeric", month: "short", year: "numeric" }))}</span>
-      <div><span class="opp">${esc(e.opp)}</span>${e.final ? `<span class="tag">${t("final")}</span>` : ""}${detailsHtml(e, "", true)}</div>
+      <div><span class="opp">${esc(e.opp)}</span>${e.final ? `<span class="tag">${t("final")}</span>` : ""}${statusPill(e)}${detailsHtml(e, "", true)}</div>
       <div class="acts">
         <button data-home-cycle="${e.date}" title="${t("match.homeAway")}">${e.home === true ? `${ic("home")} ${t("match.home")}` : e.home === false ? `${ic("car")} ${t("match.away")}` : t("match.homeUnknown")}</button>
         <a href="./${teamQuery()}#edit=${e.date}" title="${t("details.edit")}">✏️</a>
@@ -830,15 +830,7 @@ bf.addEventListener("submit", async ev => {
   savedMsg(bf, ok, ok ? "" : t("status.saveFailed"));
 });
 
-// ---- Matches (the first change copies the built-in list into the database) ----
-function scheduleUpdate(changes) {
-  const base = {};
-  if (!(root.settings && root.settings.scheduleInDb)) {
-    base["settings/scheduleInDb"] = true;
-    for (const e of EVENTS) base[`schedule/${e.date}`] = { opp: e.opp, ...(e.final ? { final: true } : {}), ...(typeof e.home === "boolean" ? { home: e.home } : {}) };
-  }
-  return update({ ...base, ...changes });
-}
+// ---- Matches (scheduleUpdate in common.js) ----
 document.getElementById("add-match").addEventListener("submit", ev => {
   ev.preventDefault();
   const f = ev.target, date = f.date.value, opp = f.opp.value.trim().slice(0, 60);

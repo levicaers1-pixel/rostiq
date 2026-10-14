@@ -28,3 +28,25 @@ assert(fr.includes("Tu montes avec Jonas") && fr.includes("à répondre"));
 assert(ics.split("\r\n").every(l => [...l].length <= 75), "lines folded");
 console.log("ics tests ok");
 console.log(un.split("\r\n").filter(l => /^(SUMMARY|DESCRIPTION)/.test(l)).slice(0, 4).join("\n"));
+
+// Called off: stays in the feed, marked cancelled
+const off = buildFeed({ ...team, schedule: { ...team.schedule, "2026-10-25": { opp: "KSV Bosrand", home: true, cancelled: true } } }, player, names, { lang: "nl", today: "2026-10-13" }).replace(/\r\n /g, "");
+assert(off.includes("SUMMARY:❌ Afgelast: Zuiderpark · KSV Bosrand"), "cancelled title");
+assert(off.includes("STATUS:CANCELLED"), "cancelled status");
+assert((off.match(/TRANSP:TRANSPARENT/g) || []).length === 2, "cancelled = free time");
+
+// The notification for a cancelled / moved match
+import { noticeMessage } from "./notice.js";
+const tm = { brand: "KFC Zuiderpark", opp: "Racing", start: "15:00" };
+const c = noticeMessage("kfc", { k: "c", d: "2026-10-25" }, tm, "K".repeat(22), "nl");
+assert.equal(c.body, "❌ Afgelast: Racing op zondag 25 oktober gaat niet door.");
+assert(!c.actions && c.link === "https://app.rostiq.be/?t=kfc", "no answer buttons for a cancelled match");
+const mv = noticeMessage("kfc", { k: "m", d: "2026-11-01", o: "2026-10-25" }, tm, "K".repeat(22), "fr");
+assert.equal(mv.body, "📅 Déplacé : Racing est maintenant le dimanche 1 novembre à 15:00. Tu peux ?");
+assert.equal(JSON.parse(mv.links).yes, `https://app.rostiq.be/a/?${"K".repeat(22)}y261101`, "personal answer link");
+assert.equal(JSON.parse(mv.actions).length, 3);
+const mv2 = noticeMessage("kfc", { k: "m", d: "2026-11-01", o: "2026-10-25" }, { ...tm, start: "", quickLinks: false }, "K".repeat(22), "en");
+assert.equal(mv2.body, "📅 Moved: Racing is now on Sunday 1 November. Can you make it?");
+assert.equal(JSON.parse(mv2.links).no, "https://app.rostiq.be/?t=kfc&ans=no&d=2026-11-01", "links off: the app");
+assert.equal(noticeMessage("kfc", { k: "z", d: "2026-11-01" }, tm, null, "nl"), null);
+console.log("notice tests ok");

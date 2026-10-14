@@ -105,6 +105,8 @@ def schedule_rules():
         ".validate": "$date.matches(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/) && newData.hasChild('opp')",
         "opp": s(60, 1), "final": {".validate": "newData.isBoolean()"},
         "home": {".validate": "newData.isBoolean()"},  # true = home match, false = away
+        "cancelled": {".validate": "newData.val() === true"},  # called off (kept in the list, struck through)
+        "moved": {".validate": "newData.isString() && newData.val().matches(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/)"},  # moved here from that date
         "$other": NO}}
 
 
@@ -466,6 +468,23 @@ final["rules"]["history"] = {"$tid": {
         },
     },
 }}
+# ---- Match called off / moved: notices/<team>/<id> = {k: "c" (cancelled) | "m" (moved), d: date, o: old date, by, at} ----
+# An admin adds one right after marking the match in the schedule; a Cloud Function (functions/index.js) tells the team
+# at once with a notification, then removes the notice. Only for a match that really is cancelled / moved, so nobody can
+# make the function send something made up. Nobody reads them.
+N_SCHED = "root.child('teams').child($tid).child('schedule').child(newData.child('d').val())"
+final["rules"]["notices"] = {"$tid": {"$id": {
+    ".write": f"!data.exists() && newData.exists() && ({PA} || ({VERIFIED} && {TA_OF('$tid')}))",
+    ".validate": "$id.matches(/^[0-9a-z]{10,24}$/) && newData.hasChildren(['k', 'd', 'by', 'at'])"
+                 " && newData.child('by').val() === auth.uid && newData.child('at').val() === now"
+                 f" && ((newData.child('k').val() === 'c' && {N_SCHED}.child('cancelled').val() === true)"
+                 f" || (newData.child('k').val() === 'm' && {N_SCHED}.child('moved').val() === newData.child('o').val()))",
+    "k": {".validate": "newData.val() === 'c' || newData.val() === 'm'"},
+    "d": {".validate": "newData.isString() && newData.val().matches(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/)"},
+    "o": {".validate": "newData.isString() && newData.val().matches(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/)"},
+    "by": {".validate": "newData.isString()"}, "at": {".validate": "newData.isNumber()"},
+    "$other": NO,
+}}}
 final["rules"]["$other"] = final["rules"].pop("$other")  # keep the catch-all last
 
 # ---- Transition: also allow the old single-team structure at the root (Pampas, pre-migration) ----

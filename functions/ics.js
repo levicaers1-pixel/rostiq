@@ -20,19 +20,19 @@ const APP = "https://app.rostiq.be";
 const TEXT = {
   nl: {
     yes: "Je bent erbij", maybe: "Je antwoord: misschien", no: "Je kan niet", none: "Je hebt nog niet geantwoord",
-    todo: "nog antwoorden", final: "(finale)", home: "Thuiswedstrijd", away: "Uitwedstrijd", meet: "Verzamelen",
+    todo: "nog antwoorden", off: "Afgelast", final: "(finale)", home: "Thuiswedstrijd", away: "Uitwedstrijd", meet: "Verzamelen",
     answer: "Antwoorden of aanpassen", driving: "Jij rijdt", drivingWith: n => `Jij rijdt, met ${n}`, ridingWith: n => `Je rijdt mee met ${n}`,
     needRide: "Je zoekt nog een lift", seats: n => `${n} vrije ${n === 1 ? "plaats" : "plaatsen"}`, name: b => `${b} · RostiQ`,
   },
   fr: {
     yes: "Tu es là", maybe: "Ta réponse : peut-être", no: "Tu ne peux pas", none: "Tu n'as pas encore répondu",
-    todo: "à répondre", final: "(finale)", home: "Match à domicile", away: "Match à l'extérieur", meet: "Rendez-vous",
+    todo: "à répondre", off: "Annulé", final: "(finale)", home: "Match à domicile", away: "Match à l'extérieur", meet: "Rendez-vous",
     answer: "Répondre ou modifier", driving: "Tu conduis", drivingWith: n => `Tu conduis, avec ${n}`, ridingWith: n => `Tu montes avec ${n}`,
     needRide: "Tu cherches encore un trajet", seats: n => `${n} ${n < 2 ? "place libre" : "places libres"}`, name: b => `${b} · RostiQ`,
   },
   en: {
     yes: "You're in", maybe: "Your answer: maybe", no: "You can't make it", none: "You haven't answered yet",
-    todo: "answer needed", final: "(final)", home: "Home match", away: "Away match", meet: "Meeting",
+    todo: "answer needed", off: "Called off", final: "(final)", home: "Home match", away: "Away match", meet: "Meeting",
     answer: "Answer or change", driving: "You're driving", drivingWith: n => `You're driving, with ${n}`, ridingWith: n => `You ride with ${n}`,
     needRide: "You still need a ride", seats: n => `${n} free ${n === 1 ? "seat" : "seats"}`, name: b => `${b} · RostiQ`,
   },
@@ -93,9 +93,12 @@ export function buildFeed(team, player, names, opts) {
       ride = drv ? T.ridingWith(nameOf(drv)) + (cp[drv].note ? ` · ${cp[drv].note}` : "") : T.needRide;
     }
 
-    const summary = `${MARK[status]} ${label} · ${e.opp}${e.final ? " " + T.final : ""}${status ? "" : " · " + T.todo}`;
+    // Called off: stays in the calendar, marked as cancelled (most apps strike it through).
+    const off = e.cancelled === true;
+    const summary = off ? `❌ ${T.off}: ${label} · ${e.opp}${e.final ? " " + T.final : ""}`
+      : `${MARK[status]} ${label} · ${e.opp}${e.final ? " " + T.final : ""}${status ? "" : " · " + T.todo}`;
     const desc = [
-      T[status || "none"],
+      off ? T.off : T[status || "none"],
       e.home === true ? T.home : e.home === false ? T.away : "",
       m.meet && `${T.meet}: ${m.meet}`,
       ride && `🚗 ${ride}`,
@@ -109,8 +112,8 @@ export function buildFeed(team, player, names, opts) {
       `DTSTAMP:${stamp}`,
       ...(allDay ? [`DTSTART;VALUE=DATE:${d}`, `DTEND;VALUE=DATE:${nextDay}`]
         : [`DTSTART;TZID=Europe/Brussels:${d}T${hhmmss(start)}`, `DTEND;TZID=Europe/Brussels:${d}T${hhmmss(end)}`]),
-      `STATUS:${status === "maybe" ? "TENTATIVE" : "CONFIRMED"}`,
-      `TRANSP:${status === "no" ? "TRANSPARENT" : "OPAQUE"}`,
+      `STATUS:${off ? "CANCELLED" : status === "maybe" ? "TENTATIVE" : "CONFIRMED"}`,
+      `TRANSP:${off || status === "no" ? "TRANSPARENT" : "OPAQUE"}`,
       `SUMMARY:${icsText(summary)}`,
       `LOCATION:${icsText(v ? venueText(v) : e.opp)}`,
       ...(v && v.lat != null ? [`GEO:${v.lat};${v.lon}`] : []),

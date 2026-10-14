@@ -86,7 +86,8 @@ function refreshEvents() {
   const fromDb = (root.settings && root.settings.scheduleInDb) || Object.keys(s).length;
   EVENTS = fromDb
     ? Object.keys(s).sort().map(date => ({ date, opp: s[date].opp || "?", ...(s[date].final ? { final: true } : {}),
-      ...(typeof s[date].home === "boolean" ? { home: s[date].home } : {}) }))
+      ...(typeof s[date].home === "boolean" ? { home: s[date].home } : {}),
+      ...(s[date].cancelled === true ? { cancelled: true } : {}), ...(s[date].moved ? { moved: s[date].moved } : {}) }))
     : (TEAM.events || []).slice();
 }
 const seasonName = () => (root.settings && root.settings.seasonName) || TEAM.season || TEAM.brand;
@@ -94,6 +95,7 @@ const teamSize = () => TEAM.teamSize ?? 0;
 
 const TODAY = new Date().toLocaleDateString("sv-SE"); // YYYY-MM-DD, local time
 const isPast = e => e.date < TODAY;
+const isOn = e => !isPast(e) && !e.cancelled; // still to be played (not called off)
 
 const parse = d => new Date(d + "T12:00:00");
 const fmt = (d, opts) => parse(d).toLocaleDateString(LOCALE, opts);
@@ -391,6 +393,16 @@ async function update(changes) {
   render();
   shareProfile(changes);
   return saved(send("PATCH", "", changes));
+}
+
+// Schedule changes (the first change copies the built-in list into the database).
+function scheduleUpdate(changes) {
+  const base = {};
+  if (!(root.settings && root.settings.scheduleInDb)) {
+    base["settings/scheduleInDb"] = true;
+    for (const e of EVENTS) base[`schedule/${e.date}`] = { opp: e.opp, ...(e.final ? { final: true } : {}), ...(typeof e.home === "boolean" ? { home: e.home } : {}) };
+  }
+  return update({ ...base, ...changes });
 }
 
 // ---- Toasts: a short "Saved ✓" after something the user did (not after automatic syncing), errors always ----
@@ -898,6 +910,9 @@ const fedLabel = () => (root.settings || {}).fedLabel || t("team.fed");
 const customFields = () => Object.entries((root.settings || {}).fields || {})
   .filter(([k, v]) => /^c[1-4]$/.test(k) && v).sort(([a], [b]) => a.localeCompare(b)); // [["c1", "Handicap"], …]
 
+// Called off / moved (set by an admin from the match's edit dialog).
+const statusPill = e => e.cancelled ? `<span class="pill no">${ic("x")} ${t("off.pill")}</span>`
+  : e.moved && !isPast(e) ? `<span class="pill maybe" title="${esc(t("moved.was", { when: fmt(e.moved, { weekday: "short", day: "numeric", month: "short" }) }))}">${ic("calendar")} ${t("moved.pill")}</span>` : "";
 // Home / away pill for a match (nothing when it isn't set).
 const homePill = e => e.home === true ? `<span class="pill cyan">${ic("home")} ${t("match.home")}</span>`
   : e.home === false ? `<span class="pill gray">${ic("car")} ${t("match.away")}</span>` : "";
@@ -1214,7 +1229,7 @@ function gateMessage(text, err) { gateMsg = { text, err }; renderAuth(); }
 const appUrl = file => location.href.split(/[?#]/)[0].replace(/[^/]*$/, file);
 
 // ---- Feedback to RostiQ (account menu, footer): only the RostiQ admin reads it ----
-const APP_VERSION = "2026.10.33";
+const APP_VERSION = "2026.10.34";
 function deviceText() {
   const ua = navigator.userAgent;
   const os = /iPhone/.test(ua) ? "iPhone" : /iPad/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1) ? "iPad"

@@ -583,7 +583,7 @@ function loadLeaflet() {
 
 function renderMapSelect() {
   const sel = document.getElementById("map-match");
-  sel.innerHTML = `<option value="">${t("map.none")}</option>` + EVENTS.filter(e => !isPast(e)).map(e =>
+  sel.innerHTML = `<option value="">${t("map.none")}</option>` + EVENTS.filter(isOn).map(e =>
     `<option value="${e.date}" ${e.date === mapMatch ? "selected" : ""}>${esc(fmt(e.date, { weekday: "short", day: "numeric", month: "short" }))} · ${esc(e.opp)}</option>`).join("");
 }
 document.getElementById("map-match").addEventListener("change", ev => { mapMatch = ev.target.value; drawMap(false); });
@@ -694,7 +694,7 @@ function render() {
   const wrap = document.getElementById("matches");
   if (!dataLoaded) { wrap.innerHTML = skeletonCards(3); return; }
   wrap.innerHTML = "";
-  const upcoming = EVENTS.filter(e => !isPast(e));
+  const upcoming = EVENTS.filter(isOn);
   upcoming.forEach(e => wrap.append(renderMatch(e)));
   if (!upcoming.length) wrap.innerHTML = emptyState("car", t("carpool.none"), t("empty.carpoolText"));
 

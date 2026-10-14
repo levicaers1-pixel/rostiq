@@ -4,7 +4,7 @@
 // Every run (each 10 minutes) this compares each upcoming match (next 8 weeks) with what that player last received
 // (inviteLog/<team>/<player>/<date> = { h: hash sent, s: sequence, p: hash seen last run }) and sends:
 //   - a REQUEST for a new match, or an updated one (SEQUENCE + 1): the event appears/moves in their own calendar;
-//   - a CANCEL when a match disappears from the schedule: the event is removed.
+//   - a CANCEL when a match disappears from the schedule or is called off: the event is removed.
 // Changes are only sent once they've been stable for one run (p === current), so a captain editing a match three times
 // in a row sends one email. inviteLog is only readable/writable by this job (Admin SDK); the rules give clients nothing.
 import crypto from "node:crypto";
@@ -127,7 +127,9 @@ export async function runInvites({ teams, subs, log, today, dry, verbose }) {
       // Gone: the team, the player, or the address changed since the log was made -> start over quietly.
       if (!team || !player || !player.name || !sub || typeof sub.e !== "string") { writes[`inviteLog/${tid}/${pid}`] = null; continue; }
       const lang = TEXT[sub.l] ? sub.l : "nl";
-      const dates = Object.keys(team.schedule || {}).filter(d => isDate(d) && d >= today && d <= until && (team.schedule[d] || {}).opp).sort();
+      // A match that is called off counts as gone: its invitation is cancelled (and sent again if it's back on).
+      const on = d => !!((team.schedule || {})[d] || {}).opp && team.schedule[d].cancelled !== true;
+      const dates = Object.keys(team.schedule || {}).filter(d => isDate(d) && d >= today && d <= until && on(d)).sort();
       // New subscriber (or a new address): start a fresh log, every match waiting one run before it's sent.
       if (mine._e !== sub.e) {
         writes[`inviteLog/${tid}/${pid}`] = { _e: sub.e, ...Object.fromEntries(dates.map(d => [d, { p: hashOf(matchFacts(team, d)) }])) };
@@ -148,10 +150,11 @@ export async function runInvites({ teams, subs, log, today, dry, verbose }) {
       for (const [date, L] of Object.entries(known)) {
         if (!isDate(date)) continue;
         if (date < today) { writes[`inviteLog/${tid}/${pid}/${date}`] = null; continue; }                 // played: forget
-        if ((team.schedule || {})[date] && (team.schedule[date] || {}).opp) continue;                       // still on
+        if (on(date)) continue;                                                                             // still on
         if (typeof L.s !== "number") { writes[`inviteLog/${tid}/${pid}/${date}`] = null; continue; }        // never sent
         if (budget <= 0) continue;
-        const f = { ...matchFacts({ ...team, schedule: { [date]: { opp: L.o || "?" } } }, date) };
+        const f = ((team.schedule || {})[date] || {}).opp ? matchFacts(team, date)   // called off: still has its details
+          : matchFacts({ ...team, schedule: { [date]: { opp: L.o || "?" } } }, date);
         const ok = await send(sub.e, emailFor({ tid, date, f, kind: "can", lang }), buildInvite({ tid, date, f, seq: L.s + 1, method: "CANCEL", to: sub.e, name: player.name, lang }), "CANCEL");
         budget--;
         if (ok) { writes[`inviteLog/${tid}/${pid}/${date}`] = null; stats.cancelled++; }

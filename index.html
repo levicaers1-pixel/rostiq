@@ -337,6 +337,17 @@
   .details-dlg .muted { color: var(--muted); }
   .details-dlg .warn { color: var(--maybe); }
   .details-dlg .row { margin-top: 16px; align-items: center; }
+  .status-box { margin-top: 16px; padding: 12px; border: 1px dashed var(--border); border-radius: 10px; display: grid; gap: 10px; }
+  .status-text { display: flex; flex-direction: column; gap: 2px; }
+  .status-text small, .status-box > div > small { color: var(--muted); font-size: .78rem; }
+  .status-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+  .status-btns button { display: inline-flex; align-items: center; gap: 6px; }
+  .status-btns .st-off:not(.is-off) { color: var(--no); border-color: color-mix(in srgb, var(--no) 40%, var(--border)); }
+  #move-box { display: grid; gap: 8px; }
+  #move-box[hidden] { display: none; }
+  #move-box .err { color: var(--no); font-size: .82rem; }
+  #move-box .err:empty { display: none; }
+  #move-go { justify-self: start; }
   .details-dlg .spacer { flex: 1; }
   .link-danger { background: none; border: none; padding: 0; color: var(--no); text-decoration: underline; font-size: .85rem; }
 </style>
@@ -427,6 +438,22 @@
       <input name="meet" maxlength="120" data-i18n-placeholder="details.meetPh"></label>
     <label class="block"><span data-i18n="details.info">Extra info</span>
       <input name="info" maxlength="200" data-i18n-placeholder="details.infoPh"></label>
+    <div class="status-box" id="status-box">
+      <div class="status-text"><b data-i18n="status.head">Called off or moved?</b><small data-i18n="status.sub"></small></div>
+      <div class="status-btns">
+        <button type="button" id="st-off" class="st-off"></button>
+        <button type="button" id="st-move" aria-expanded="false"><span data-i18n="status.move">Move</span></button>
+      </div>
+      <div id="move-box" hidden>
+        <div class="times">
+          <label><span data-i18n="move.date">New date</span> <input type="date" name="mdate"></label>
+          <label><span data-i18n="move.time">Start</span> <input type="time" name="mstart"></label>
+        </div>
+        <small class="muted" data-i18n="move.note"></small>
+        <div class="err" id="move-err" role="alert"></div>
+        <button type="button" class="primary" id="move-go" data-i18n="move.go">Move and notify</button>
+      </div>
+    </div>
     <div class="row">
       <button type="button" id="details-clear" class="link-danger" data-i18n="details.clear">Clear all</button>
       <span class="spacer"></span>
@@ -460,7 +487,7 @@ let heroMoreOpen = false;
 // Admins: the players who haven't answered this match yet, and one button that prepares a reminder for exactly them.
 const missingHtml = (e, players) => {
   const miss = players.filter(p => p.name && !p.avail[e.date]);
-  if (!AUTH_ON || !session.admin || isPast(e) || !miss.length) return "";
+  if (!AUTH_ON || !session.admin || !isOn(e) || !miss.length) return "";
   return `<div class="m-missing"><span class="avatars">${miss.slice(0, 6).map(p => avatar(p, players.indexOf(p))).join("")}${
       miss.length > 6 ? `<span class="av more">+${miss.length - 6}</span>` : ""}</span>
     <span class="m-missing-text"><b>${t("missing.title", { n: miss.length })}</b><small>${esc(miss.slice(0, 4).map(p => firstName(p.name)).join(", "))}${miss.length > 4 ? " …" : ""}</small></span>
@@ -498,7 +525,7 @@ function renderMatches(players, events) {
   const me = AUTH_ON ? players.find(p => p.id === session.pid) : null;
   const order = { yes: 0, maybe: 1, no: 2, "": 3 };
   // The next match is the big card at the top: the list continues after it (unless past matches are shown too).
-  const heroDate = !showPast && (EVENTS.find(x => !isPast(x)) || {}).date;
+  const heroDate = !showPast && (EVENTS.find(isOn) || {}).date;
   const listed = events.filter(e => e.date !== heroDate);
   if (!listed.length) { box.innerHTML = ""; return; }
   box.innerHTML = listed.map(e => {
@@ -517,10 +544,11 @@ function renderMatches(players, events) {
     const team = players.map((p, i) => ({ p, i, s: p.avail[e.date] || "" })).filter(x => x.p.name)
       .sort((a, b) => order[a.s] - order[b.s] || a.i - b.i);
     const glow = animStyle("done:" + e.date, 1200);
-    return `<article class="match${e.final ? " final" : ""}${isPast(e) ? " past" : ""}${glow ? " complete" : ""}"${glow ? ` style="${glow}"` : ""}>
+    const off = !!e.cancelled, open = isOn(e);
+    return `<article class="match${e.final ? " final" : ""}${isPast(e) ? " past" : ""}${off ? " off" : ""}${glow ? " complete" : ""}"${glow ? ` style="${glow}"` : ""}>
       <div class="m-date"><span>${fmt(e.date, { weekday: "short" }).replace(".", "")}</span><b>${parse(e.date).getDate()}</b><span>${fmt(e.date, { month: "short" }).replace(".", "")}</span></div>
       <div class="m-body">
-        <div class="m-title">${esc(e.opp)}${homePill(e)}${e.final ? `<span class="pill violet">${ic("trophy")} ${t("final")}</span>` : ""}</div>
+        <div class="m-title"><span class="m-opp">${esc(e.opp)}</span>${statusPill(e)}${homePill(e)}${e.final ? `<span class="pill violet">${ic("trophy")} ${t("final")}</span>` : ""}</div>
         ${summaryLine(e) ? `<div class="m-sub">${summaryLine(e)}</div>` : ""}
       </div>
       <div class="m-score ${LEVEL_PILL[c.level]}" title="${esc(t("level." + c.level))}"><b>${c.yes}</b>/${min}</div>
@@ -529,20 +557,20 @@ function renderMatches(players, events) {
           <i class="min" style="left:${pct(min)}%" title="min. ${min}"></i></div>
       </div>
       <div class="m-foot">
-        ${mine !== null && !isPast(e) ? `<div class="answer" role="group" aria-label="${t("match.mine")}">${
+        ${mine !== null && open ? `<div class="answer" role="group" aria-label="${t("match.mine")}">${
           ["yes", "maybe", "no"].map(a => `<button data-answer="${a}" data-date="${e.date}" data-a="${a}" aria-pressed="${mine === a}"${mine === a && animStyle("just:" + e.date, 300) ? ` class="just" style="${animStyle("just:" + e.date, 300)}"` : ""}>${ic({ yes: "check", maybe: "help", no: "x" }[a])} ${t("answer." + a)}</button>`).join("")
         }</div>` : `<span class="m-coming">${coming.length ? `<span class="avatars">${coming.slice(0, 6).map(p => avatar(p, players.indexOf(p), animStyle(`pop:${e.date}:${p.id}`, 350))).join("")}${coming.length > 6 ? `<span class="av more">+${coming.length - 6}</span>` : ""}</span>` : t("match.nobody")}</span>`}
         <div class="m-actions">
           <button data-share="${e.date}" title="${t("share.match")}" aria-label="${t("share.match")}">${ic("share")}</button>
           <button data-ics="${e.date}" title="${t("ics.oneTitle")}" aria-label="${t("ics.oneTitle")}">${ic("calendar-plus")}</button>
-          ${isPast(e) ? "" : `<button class="remind" data-date="${e.date}" title="${t("remind.title", { n: c.missing.length })}" aria-label="${t("remind.short")}"
+          ${!open ? "" : `<button class="remind" data-date="${e.date}" title="${t("remind.title", { n: c.missing.length })}" aria-label="${t("remind.short")}"
             ${c.missing.length ? "" : "disabled"}>${ic("bell")}${c.missing.length ? `<span class="count">${c.missing.length}</span>` : ""}</button>`}
-          ${session.admin && !isPast(e) ? `<button data-history="${e.date}" title="${t("hist.button")}" aria-label="${t("hist.button")}">${ic("clock")}</button>` : ""}
+          ${session.admin && open ? `<button data-history="${e.date}" title="${t("hist.button")}" aria-label="${t("hist.button")}">${ic("clock")}</button>` : ""}
           ${session.admin ? `<button data-edit="${e.date}" title="${t("details.edit")}" aria-label="${t("details.edit")}">${ic("pencil")}</button>` : ""}
         </div>
       </div>
       <details class="m-team" data-date="${e.date}"${openTeams.has(e.date) ? " open" : ""}>
-        <summary>${ic("users")} ${t("match.everyone", { n: named.length })}${c.missing.length && !isPast(e) ? ` · ${t("match.noAnswer", { n: c.missing.length })}` : ""}${ic("chevron-down")}</summary>
+        <summary>${ic("users")} ${t("match.everyone", { n: named.length })}${c.missing.length && open ? ` · ${t("match.noAnswer", { n: c.missing.length })}` : ""}${ic("chevron-down")}</summary>
         ${detailsHtml(e, "", true)}
         <div class="chips">${team.map(({ p, i, s }) => `<button class="chip${me && p.id === me.id ? " me" : ""}" data-s="${s}" data-pid="${p.id}" data-date="${e.date}"
           ${canEdit(p.id) ? "" : "disabled"}>${SYMBOL[s]} ${esc(displayName(p, i))}</button>`).join("")}</div>
@@ -572,7 +600,7 @@ function renderWelcome(players) {
   const el = document.getElementById("welcome");
   const me = AUTH_ON && dataLoaded ? players.find(p => p.id === session.pid) : null;
   if (!me || DEMO || pref.get(flagKey("welcomeHidden"), "")) { el.hidden = true; return; }
-  const upcoming = EVENTS.filter(e => !isPast(e));
+  const upcoming = EVENTS.filter(isOn);
   const answered = upcoming.filter(e => me.avail[e.date]).length;
   const wa = root.settings && root.settings.waGroup;
   const pl = onb.place;
@@ -641,7 +669,7 @@ for (const id of ["welcome", "setup"]) document.getElementById(id).addEventListe
   if (!b) return;
   const act = b.dataset.onb;
   if (act === "answer") {
-    const me = root.players[session.pid] || {}, e = EVENTS.find(x => !isPast(x) && !(me.avail || {})[x.date]);
+    const me = root.players[session.pid] || {}, e = EVENTS.find(x => isOn(x) && !(me.avail || {})[x.date]);
     const target = e && document.querySelector(`.match [data-answer][data-date="${e.date}"]`) || document.getElementById("hero");
     target.scrollIntoView({ behavior: "smooth", block: "center" });
   }
@@ -662,7 +690,7 @@ document.getElementById("welcome").addEventListener("keydown", ev => {
 // The next match, big, at the top: countdown, details, progress, who's coming, my answer, quick actions.
 function renderHero(players) {
   const el = document.getElementById("hero");
-  const e = dataLoaded ? EVENTS.find(x => !isPast(x)) : null;
+  const e = dataLoaded ? EVENTS.find(isOn) : null;
   el.hidden = !e;
   if (!e) return;
   const c = tally(e, players), min = minPlayers();
@@ -677,7 +705,7 @@ function renderHero(players) {
     <div class="hero-top"><span class="hero-kicker">${ic("flag")} ${t("hero.next")}</span>
       <span class="hero-top-r">${session.admin ? `<button class="hero-icon" data-history="${e.date}" title="${t("hist.button")}" aria-label="${t("hist.button")}">${ic("clock")}</button><button class="hero-icon" data-edit="${e.date}" title="${t("details.edit")}" aria-label="${t("details.edit")}">${ic("pencil")}</button>` : ""}<span class="hero-when">${when}</span></span></div>
     <div class="hero-main">
-      <div class="hero-head"><h2 class="hero-title">${esc(e.opp)}${homePill(e)}${e.final ? `<span class="pill violet">${ic("trophy")} ${t("final")}</span>` : ""}</h2>
+      <div class="hero-head"><h2 class="hero-title">${esc(e.opp)}${statusPill(e)}${homePill(e)}${e.final ? `<span class="pill violet">${ic("trophy")} ${t("final")}</span>` : ""}</h2>
         <div class="hero-date">${esc(fmt(e.date, { weekday: "long", day: "numeric", month: "long" }))}${summaryLine(e) ? ` · ${summaryLine(e)}` : ""}</div>
         ${more ? `<details class="hero-more"${heroMoreOpen ? " open" : ""}><summary>${t("hero.more")} ${ic("chevron-down")}</summary>${more}</details>` : ""}</div>
       <div class="hero-stat"><b>${c.yes}</b><span>/ ${min}</span><small>${t("label.yes")}</small></div>
@@ -764,7 +792,7 @@ function applyDeepAnswer() {
   u.searchParams.delete("ans"); u.searchParams.delete("d");
   history.replaceState(history.state, "", u);
   const e = EVENTS.find(x => x.date === d);
-  if (!e || isPast(e)) return;
+  if (!e || !isOn(e)) return;
   write(`players/${session.pid}/avail/${d}`, a).then(ok => {
     if (ok) toast(t("qa.done." + a, { opp: e.opp, when: fmt(d, { weekday: "long", day: "numeric", month: "long" }) }), "", 3500);
   });
@@ -776,7 +804,7 @@ const prevLevel = {};
 function checkComplete(players) {
   if (!dataLoaded) return;
   for (const e of EVENTS) {
-    if (isPast(e)) continue;
+    if (!isOn(e)) continue;
     const lv = tally(e, players).level, was = prevLevel[e.date];
     prevLevel[e.date] = lv;
     if (was && was !== "ok" && lv === "ok") celebrate(e);
@@ -785,7 +813,7 @@ function checkComplete(players) {
 function celebrate(e) {
   toast(t("complete.toast", { opp: e.opp }), "", 3000);
   anim["done:" + e.date] = { at: performance.now() };
-  const hero = document.getElementById("hero"), isNext = (EVENTS.find(x => !isPast(x)) || {}).date === e.date;
+  const hero = document.getElementById("hero"), isNext = (EVENTS.find(isOn) || {}).date === e.date;
   if (isNext) { hero.classList.remove("complete"); void hero.offsetWidth; hero.classList.add("complete"); setTimeout(() => hero.classList.remove("complete"), 1300); }
   const bar = document.querySelector(`.match .bar[data-date="${e.date}"]`), card = bar && bar.closest(".match");
   if (card) card.classList.add("complete");
@@ -827,15 +855,15 @@ function render() {
   renderControls();
 
   document.querySelector("#table-view table").style.minWidth = `${180 + events.length * (compact ? 44 : 68)}px`;
-  const nextDate = (EVENTS.find(x => !isPast(x)) || {}).date;
+  const nextDate = (EVENTS.find(isOn) || {}).date;
   const tv = document.getElementById("table-view");
   tv.classList.toggle("compact", compact);
   document.getElementById("compact").setAttribute("aria-pressed", compact);
   document.getElementById("head").innerHTML =
     `<th class="name">${t("player")}</th>` +
-    events.map(e => `<th class="${e.final ? "final" : ""}${e.date === nextDate ? " next" : ""}" title="${esc(e.opp)}">
+    events.map(e => `<th class="${e.final ? "final" : ""}${e.date === nextDate ? " next" : ""}${e.cancelled ? " off" : ""}" title="${esc(e.opp)}${e.cancelled ? " · " + esc(t("off.pill")) : ""}">
       <span class="d">${fmt(e.date, { weekday: "short", day: "numeric", month: "short" })}</span>
-      <span class="opp">${esc(e.opp)}${e.final ? " 🏆" : ""}</span>
+      <span class="opp">${esc(e.opp)}${e.final ? " 🏆" : ""}${e.cancelled ? " ❌" : ""}</span>
       ${matchInfo(e).start ? `<span class="time">${esc(matchInfo(e).start)}</span>` : ""}</th>`).join("");
 
   const body = document.getElementById("body");
@@ -897,8 +925,8 @@ function render() {
       const c = tally(e, players);
       return `<td class="${e.date === nextDate ? "next" : ""}"><span class="tot ${c.level}">${c.yes}<small>/${minPlayers()}</small></span>
         <span class="tot-sub">${c.maybe} ? · ${c.no} ✗</span>
-        <button class="remind" data-date="${e.date}" title="${t("remind.title", { n: c.missing.length })}" aria-label="${t("remind.short")}"
-          ${c.missing.length ? "" : "disabled"}>${ic("bell")}${c.missing.length ? " " + c.missing.length : ""}</button></td>`;
+        ${e.cancelled ? "" : `<button class="remind" data-date="${e.date}" title="${t("remind.title", { n: c.missing.length })}" aria-label="${t("remind.short")}"
+          ${c.missing.length ? "" : "disabled"}>${ic("bell")}${c.missing.length ? " " + c.missing.length : ""}</button>`}</td>`;
     }).join("");
 }
 
@@ -960,7 +988,7 @@ function overviewMessage() {
     const c = tally(e, players), v = matchInfo(e).venue;
     const where = [timeText(e) && `🕘 ${timeText(e)}`, v && `📍 ${venueShort(v)}`].filter(Boolean).join(" · ");
     return lines([
-      `*${fmt(e.date, { weekday: "short", day: "numeric", month: "short" })} · ${e.opp}*${e.final ? " 🏆" : ""}`,
+      `*${fmt(e.date, { weekday: "short", day: "numeric", month: "short" })} · ${e.opp}*${e.final ? " 🏆" : ""}${e.cancelled ? ` ❌ ${t("off.pill")}` : e.moved ? ` (${t("moved.pill").toLowerCase()})` : ""}`,
       where ? `   ${where}` : null,
       `   ${t("msg.counts", { y: c.yes, min: minPlayers(), m: c.maybe, none: c.missing.length })}`,
     ]);
@@ -1042,8 +1070,73 @@ function openDetails(e) {
   form.info.value = m.info || "";
   form.q.value = "";
   renderVenue();
+  renderStatus();
   detailsDlg.showModal();
 }
+
+// ---- Admin: match called off / moved. The team hears it at once: a notification (notices/<team>, sent by the Cloud
+// Function), a ready-made WhatsApp message, and their calendars (feed and email invitations) follow by themselves. ----
+function renderStatus() {
+  const e = draft.e, past = isPast(e);
+  document.getElementById("status-box").hidden = past;
+  document.getElementById("st-off").innerHTML = e.cancelled ? `${ic("check")} ${t("status.on")}` : `${ic("x")} ${t("status.off")}`;
+  document.getElementById("st-off").classList.toggle("is-off", !!e.cancelled);
+  document.getElementById("move-box").hidden = true;
+  document.getElementById("st-move").setAttribute("aria-expanded", "false");
+  document.getElementById("move-err").textContent = "";
+}
+const teamName = () => TEAM.shortName || TEAM.brand;
+const whenLong = (date, start) => fmt(date, { weekday: "long", day: "numeric", month: "long" }) + (start ? ` · ${start}` : "");
+// The notification itself is sent by the Cloud Function; the rules only take a notice for a match that really changed.
+function notifyTeam(k, d, o) {
+  if (DEMO || !AUTH_ON || !session.user) return Promise.resolve(false);
+  return send("PUT", `notices/${TEAM_ID}/${historyId()}`, { k, d, ...(o ? { o } : {}), by: session.user.uid, at: { ".sv": "timestamp" } }, true, true, true);
+}
+document.getElementById("st-off").onclick = async () => {
+  const e = draft.e, when = whenLong(e.date, matchInfo(e).start);
+  if (e.cancelled) {
+    if (!confirm(t("status.onConfirm", { opp: e.opp }))) return;
+    detailsDlg.close();
+    return scheduleUpdate({ [`schedule/${e.date}/cancelled`]: null });
+  }
+  if (!confirm(t("status.offConfirm", { opp: e.opp, when }))) return;
+  detailsDlg.close();
+  const ok = await scheduleUpdate({ [`schedule/${e.date}/cancelled`]: true });
+  if (!ok) return;
+  if (await notifyTeam("c", e.date) === true) toast(t("status.notified"), "", 2500);
+  openShare(t("status.shareTitle"), t("msg.off", { team: teamName(), opp: e.opp, when }));
+};
+document.getElementById("st-move").onclick = ev => {
+  const box = document.getElementById("move-box"), open = box.hidden;
+  box.hidden = !open;
+  ev.currentTarget.setAttribute("aria-expanded", open);
+  if (!open) return;
+  form.mdate.value = ""; form.mdate.min = TODAY;
+  form.mstart.value = matchInfo(draft.e).start || "";
+  form.mdate.focus();
+};
+document.getElementById("move-go").onclick = async () => {
+  const e = draft.e, nd = form.mdate.value, ns = form.mstart.value, err = document.getElementById("move-err");
+  err.textContent = !/^\d{4}-\d{2}-\d{2}$/.test(nd) || nd === e.date ? t("move.same") : EVENTS.some(x => x.date === nd) ? t("move.exists") : "";
+  if (err.textContent) return;
+  const m = { ...matchInfo(e) };
+  if (ns !== (m.start || "")) { if (ns) m.start = ns; else delete m.start; delete m.end; } // a new time: the old end no longer fits
+  // The match moves to the new day; answers and carpools were for the old day, so they start over.
+  const changes = {
+    [`schedule/${e.date}`]: null, [`matches/${e.date}`]: null,
+    [`schedule/${nd}`]: { opp: e.opp, ...(e.final ? { final: true } : {}), ...(typeof e.home === "boolean" ? { home: e.home } : {}), moved: e.date },
+    ...(Object.keys(m).length ? { [`matches/${nd}`]: m } : {}),
+  };
+  for (const [pid, p] of Object.entries(root.players || {})) if (p && p.avail && p.avail[e.date]) changes[`players/${pid}/avail/${e.date}`] = null;
+  for (const pid of Object.keys((root.carpool || {})[e.date] || {})) changes[`carpool/${e.date}/${pid}`] = null;
+  detailsDlg.close();
+  const ok = await scheduleUpdate(changes);
+  if (!ok) return;
+  if (session.admin && !DEMO && AUTH_ON) send("DELETE", `history/${TEAM_ID}/${e.date}`, undefined, true, true, true); // that day's answer history
+  if (await notifyTeam("m", nd, e.date) === true) toast(t("status.notified"), "", 2500);
+  openShare(t("status.shareTitle"), t("msg.moved", { team: teamName(), opp: e.opp, was: whenLong(e.date, matchInfo(e).start || ""),
+    when: whenLong(nd, m.start), url: pageUrl("") }));
+};
 
 function renderVenue() {
   const v = draft.venue;

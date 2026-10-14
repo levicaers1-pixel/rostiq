@@ -385,6 +385,11 @@ details.panel[open] > summary::after { transform: translateY(2px) rotate(-135deg
 .match:hover { box-shadow: var(--shadow); }
 .match.final { border-color: color-mix(in srgb, var(--final) 45%, var(--border)); }
 .match.past { opacity: .55; }
+/* Called off: kept in the list, struck through */
+.match.off { opacity: .7; }
+.match.off .m-opp { text-decoration: line-through; text-decoration-thickness: 2px; }
+.match.off .m-progress, .match.off .m-score { opacity: .4; }
+th.off .opp { text-decoration: line-through; }
 .m-date { height: 68px; border-radius: 12px; background: color-mix(in srgb, var(--accent) 8%, var(--surface));
   display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1; }
 .m-date b { margin: 3px 0 2px; font-family: var(--font-head); font-weight: var(--head-weight); font-size: 1.55rem; color: var(--accent); font-variant-numeric: lining-nums; }

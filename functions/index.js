@@ -1,13 +1,19 @@
 // RostiQ Cloud Functions.
 //
+// notice: notices/<team>/<id> (an admin called a match off or moved it): a notification to every member's devices at
+// once, then the notice is removed. The rules only accept a notice for a match that really is cancelled / moved.
+//
 // calendar: GET /cal/<key>.ics: a player's personal calendar feed (read-only). calKeys/<key> = { t: team, p: player,
 // l: language, h: hide "no" matches }. Served through Firebase Hosting (firebase.json rewrite), which caches each feed
 // for 15 minutes: calendar apps polling every hour mostly hit that cache, not this function or the database.
 // Capped at a few instances, so even a flood of requests can't run up the bill.
 import { onRequest } from "firebase-functions/v2/https";
+import { onValueCreated } from "firebase-functions/v2/database";
 import { initializeApp } from "firebase-admin/app";
 import { getDatabase } from "firebase-admin/database";
+import { getMessaging } from "firebase-admin/messaging";
 import { buildFeed } from "./ics.js";
+import { noticeMessage } from "./notice.js";
 
 initializeApp({ databaseURL: process.env.FIREBASE_DATABASE_EMULATOR_HOST
   ? `http://${process.env.FIREBASE_DATABASE_EMULATOR_HOST}?ns=${process.env.DB_NS || "demo-rostiq"}`
@@ -55,4 +61,35 @@ export const calendar = onRequest({ region: "europe-west1", memory: "256MiB", ma
   res.set("Content-Type", "text/calendar; charset=utf-8");
   res.set("Content-Disposition", 'inline; filename="rostiq.ics"');
   res.status(200).send(req.method === "HEAD" ? "" : body);
+});
+
+// The trigger runs where the database is (europe-west1); the local emulator's database counts as us-central1.
+export const notice = onValueCreated({ ref: "/notices/{tid}/{id}", instance: "wintermidam-default-rtdb",
+  region: process.env.FUNCTIONS_EMULATOR === "true" ? "us-central1" : "europe-west1",
+  memory: "256MiB", maxInstances: 3, timeoutSeconds: 60 }, async event => {
+  const { tid, id } = event.params, n = event.data.val() || {};
+  const done = () => db.ref(`notices/${tid}/${id}`).remove();
+  if (!/^[a-z0-9][a-z0-9-]{1,39}$/.test(tid)) return done();
+  const T = `teams/${tid}`;
+  const [brand, sched, match, quickLinks, members, quick] = await Promise.all([val(`${T}/info/brand`), val(`${T}/schedule/${n.d}`),
+    val(`${T}/matches/${n.d}`), val(`${T}/settings/quickLinks`), val(`${T}/members`), val(`quickIndex/${tid}`)]);
+  // Still the way the notice says (not undone in the meantime)?
+  if (!sched || (n.k === "c" && sched.cancelled !== true) || (n.k === "m" && sched.moved !== n.o)) return done();
+  const team = { brand, opp: sched.opp, start: (match || {}).start, quickLinks };
+  let sent = 0, gone = {};
+  for (const [uid, pid] of Object.entries(members || {})) {
+    if (uid === n.by) continue; // the admin who did it knows
+    for (const [dev, info] of Object.entries((await val(`pushTokens/${uid}`)) || {})) {
+      const data = info && info.token && noticeMessage(tid, n, team, (quick || {})[pid] || null, info.lang);
+      if (!data) continue;
+      try { await getMessaging().send({ token: info.token, data, webpush: { headers: { Urgency: "high", TTL: String(24 * 3600) } } }); sent++; }
+      catch (e) {
+        const code = (e && (e.code || e.errorInfo && e.errorInfo.code)) || "";
+        if (/registration-token-not-registered|invalid-registration-token/.test(code)) gone[`pushTokens/${uid}/${dev}`] = null;
+      }
+    }
+  }
+  if (Object.keys(gone).length) await db.ref().update(gone);
+  console.log(`notice ${n.k}: ${sent} notifications sent`);
+  return done();
 });

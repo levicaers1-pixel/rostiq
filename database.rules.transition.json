@@ -178,6 +178,12 @@
         "home": {
           ".validate": "newData.isBoolean()"
         },
+        "cancelled": {
+          ".validate": "newData.val() === true"
+        },
+        "moved": {
+          ".validate": "newData.isString() && newData.val().matches(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/)"
+        },
         "$other": {
           ".validate": false
         }
@@ -459,6 +465,12 @@
             },
             "home": {
               ".validate": "newData.isBoolean()"
+            },
+            "cancelled": {
+              ".validate": "newData.val() === true"
+            },
+            "moved": {
+              ".validate": "newData.isString() && newData.val().matches(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/)"
             },
             "$other": {
               ".validate": false
@@ -927,6 +939,32 @@
             "$other": {
               ".validate": false
             }
+          }
+        }
+      }
+    },
+    "notices": {
+      "$tid": {
+        "$id": {
+          ".write": "!data.exists() && newData.exists() && ((auth != null && auth.token.email_verified === true && (auth.token.email === 'levicaers1@gmail.com')) || (auth != null && auth.token.email_verified === true && root.child('teams').child($tid).child('admins').child(auth.uid).val() === true))",
+          ".validate": "$id.matches(/^[0-9a-z]{10,24}$/) && newData.hasChildren(['k', 'd', 'by', 'at']) && newData.child('by').val() === auth.uid && newData.child('at').val() === now && ((newData.child('k').val() === 'c' && root.child('teams').child($tid).child('schedule').child(newData.child('d').val()).child('cancelled').val() === true) || (newData.child('k').val() === 'm' && root.child('teams').child($tid).child('schedule').child(newData.child('d').val()).child('moved').val() === newData.child('o').val()))",
+          "k": {
+            ".validate": "newData.val() === 'c' || newData.val() === 'm'"
+          },
+          "d": {
+            ".validate": "newData.isString() && newData.val().matches(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/)"
+          },
+          "o": {
+            ".validate": "newData.isString() && newData.val().matches(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/)"
+          },
+          "by": {
+            ".validate": "newData.isString()"
+          },
+          "at": {
+            ".validate": "newData.isNumber()"
+          },
+          "$other": {
+            ".validate": false
           }
         }
       }

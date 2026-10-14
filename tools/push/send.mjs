@@ -146,6 +146,7 @@ if (MODE !== "requests") {
     if (!team || (team.settings || {}).autoRemind === false) continue;
     const brand = (team.info || {}).brand || "RostiQ";
     for (const [date, m] of Object.entries(team.schedule || {})) {
+      if (!m || m.cancelled === true) continue; // called off: nothing to answer
       const d = daysUntil(date);
       const kind = d === 1 ? "r1" : d >= 2 && d <= 3 ? "r3" : null;
       if (!kind) continue;
