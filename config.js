@@ -11,7 +11,7 @@ window.FIREBASE_VAPID_KEY = "BKoBDqp8uzkXXea-Z4AeND7wgXJgkQY44XfPiMAiy59CBZUjv7T
 // Calendar subscriptions: where the personal calendar feeds are served (functions/, deployed with Firebase).
 // Empty = the subscribe dialog doesn't appear and "Add to calendar" downloads a one-off .ics file.
 // Calendar invitations by email (Brevo, sent by the GitHub job): true once the secrets are set.
-window.INVITES_ON = false;
+window.INVITES_ON = true;
 
 window.CAL_BASE = "https://wintermidam.web.app/cal/";
 
