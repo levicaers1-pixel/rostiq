@@ -312,8 +312,8 @@ function matchState(e) {
   }));
   const waiting = Object.keys(all).filter(id =>
     all[id].role === "rider" && player(id) && !drivers.includes(all[id].with));
-  const open = named().filter(p =>
-    !all[p.id] && (p.avail || {})[e.date] && ["yes", "maybe"].includes(p.avail[e.date])).map(p => p.id);
+  // Only players who said yes (a "maybe" isn't playing yet).
+  const open = named().filter(p => !all[p.id] && (p.avail || {})[e.date] === "yes").map(p => p.id);
   return { all, cars, waiting, open };
 }
 
