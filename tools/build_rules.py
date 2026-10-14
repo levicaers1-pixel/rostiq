@@ -416,6 +416,21 @@ final["rules"]["calIndex"] = {"$tid": {"$pid": {
                  " && newData.parent().parent().parent().child('calKeys').child(newData.val()).child('p').val() === $pid",
 }}}
 
+# ---- Calendar invitations by email: inviteSubs/<team>/<player> = {e: email, l: lang, at} ----
+# Only the player themself switches them on, and only to their own verified login email (no one can sign up someone
+# else's address). Admins may switch them off. inviteLog (what was sent) is for the job only: no client rules.
+INV_ME = "root.child('teams').child($tid).child('members').child(auth.uid).val() === $pid"
+final["rules"]["inviteSubs"] = {"$tid": {"$pid": {
+    ".read": f"{PA} || ({VERIFIED} && ({TA_OF('$tid')} || {INV_ME}))",
+    ".write": f"{PA} || ({VERIFIED} && (({INV_ME} && (!newData.exists() || newData.child('e').val() === auth.token.email))"
+              f" || ({TA_OF('$tid')} && !newData.exists())))",
+    ".validate": "newData.hasChildren(['e', 'l', 'at']) && root.child('teams').child($tid).child('players').child($pid).child('name').exists()",
+    "e": {".validate": "newData.isString() && newData.val().length <= 100 && newData.val().matches(/^[^ @]+@[^ @]+\\.[^ @]+$/)"},
+    "l": {".validate": "newData.val() === 'nl' || newData.val() === 'fr' || newData.val() === 'en'"},
+    "at": {".validate": "newData.isNumber()"},
+    "$other": NO,
+}}}
+
 # ---- Answer history: history/<team>/<date>/<id> = {p, f (was), a (now), by, at} ----
 # Outside the team (members can read the whole team), only the team's admins read it. An entry can only be added in the
 # same write as the answer it describes: "f" must be the answer before, "a" the answer after, and the answer must really

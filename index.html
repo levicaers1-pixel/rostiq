@@ -180,6 +180,9 @@
   .cal-check { display: flex; gap: 10px; align-items: flex-start; margin: 14px 0 0; font-size: .9rem; cursor: pointer; }
   .cal-check input { margin-top: 3px; }
   .cal-small { margin: 10px 0 0; color: var(--muted); font-size: .8rem; }
+  .cal-invite { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border); }
+  .cal-invite h4 { margin: 0 0 4px; font-size: .95rem; }
+  .cal-invite .cal-check small { display: block; color: var(--muted); font-size: .8rem; margin-top: 2px; }
   .cal-links { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 12px; font-size: .85rem; }
   .cal-links button { border: none; background: none; padding: 0; color: var(--accent); text-decoration: underline; font-size: .85rem; }
   /* Answer history (admins) */
@@ -1206,7 +1209,7 @@ document.getElementById("ics-all").onclick = () => calOn() ? openCalendar() : do
 // ---- Calendar subscription: one read-only link per player (calKeys/<key>, calIndex/<team>/<player>) ----
 const calDlg = document.getElementById("cal");
 document.getElementById("cal-close").onclick = () => calDlg.close();
-let cal = { key: "", hideNo: false };
+let cal = { key: "", hideNo: false, invite: null };
 const calRecord = () => ({ t: TEAM_ID, p: session.pid, at: { ".sv": "timestamp" }, l: LANG, ...(cal.hideNo ? { h: true } : {}) });
 async function openCalendar() {
   const body = document.getElementById("cal-body");
@@ -1219,9 +1222,10 @@ async function openCalendar() {
     const ok = await send("PATCH", "", { [`calKeys/${key}`]: calRecord(), [`calIndex/${TEAM_ID}/${session.pid}`]: key }, true, true);
     if (ok !== true) { body.innerHTML = `<p class="cal-small">${t("cal.failed")}</p>`; return; }
   } else {
-    cal = { key, hideNo: rec.h === true };
+    cal = { key, hideNo: rec.h === true, invite: null };
     if (rec.l !== LANG) send("PUT", `calKeys/${key}/l`, LANG, true, true, true); // the feed follows the app's language
   }
+  if (window.INVITES_ON) cal.invite = !!(await getAbs(`inviteSubs/${TEAM_ID}/${session.pid}`));
   renderCalendar();
 }
 function renderCalendar() {
@@ -1237,7 +1241,10 @@ function renderCalendar() {
     <label class="cal-check"><input type="checkbox" data-cal="hide"${cal.hideNo ? " checked" : ""}> <span>${t("cal.hideNo")}</span></label>
     <p class="cal-small">${t("cal.refresh")}</p>
     <p class="cal-small">${t("cal.private")}</p>
-    <div class="cal-links"><button type="button" data-cal="download">${t("cal.download")}</button><button type="button" data-cal="reset">${t("cal.reset")}</button></div>`;
+    <div class="cal-links"><button type="button" data-cal="download">${t("cal.download")}</button><button type="button" data-cal="reset">${t("cal.reset")}</button></div>
+    ${window.INVITES_ON && session.user.email ? `<div class="cal-invite"><h4>${t("inv.title")}</h4>
+      <label class="cal-check"><input type="checkbox" data-cal="invite"${cal.invite ? " checked" : ""}>
+        <span>${t("inv.toggle", { email: esc(session.user.email) })}<small>${t("inv.help")}</small></span></label></div>` : ""}`;
 }
 document.getElementById("cal-body").addEventListener("click", async ev => {
   const b = ev.target.closest("[data-cal]");
@@ -1254,6 +1261,14 @@ document.getElementById("cal-body").addEventListener("click", async ev => {
   }
 });
 document.getElementById("cal-body").addEventListener("change", async ev => {
+  if (ev.target.matches('[data-cal="invite"]')) {
+    const on = ev.target.checked;
+    const ok = await send(on ? "PUT" : "DELETE", `inviteSubs/${TEAM_ID}/${session.pid}`,
+      on ? { e: session.user.email, l: LANG, at: { ".sv": "timestamp" } } : undefined, true, true);
+    if (ok === true) { cal.invite = on; toast(t(on ? "inv.on" : "inv.off"), "", 4000); }
+    else { ev.target.checked = !on; toast(t("cal.failed"), "err"); }
+    return;
+  }
   if (!ev.target.matches('[data-cal="hide"]')) return;
   cal.hideNo = ev.target.checked;
   const ok = await send(cal.hideNo ? "PUT" : "DELETE", `calKeys/${cal.key}/h`, cal.hideNo ? true : undefined, true, true);

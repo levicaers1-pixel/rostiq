@@ -9,6 +9,7 @@
 // Dry run (sends nothing, writes nothing):  DRY_RUN=1 node send.mjs
 import admin from "firebase-admin";
 import crypto from "node:crypto";
+import { runInvites } from "./invites.mjs";
 
 const DB_URL = "https://wintermidam-default-rtdb.europe-west1.firebasedatabase.app";
 const APP = "https://app.rostiq.be";
@@ -73,7 +74,7 @@ function answerLinks(tid, date, key) {
 }
 const whenText = (date, lang) => new Date(date + "T12:00:00Z").toLocaleDateString(LOCALES[lang], { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" });
 
-const [teamsSnap, tokensSnap, logSnap, quickSnap] = await Promise.all(["teams", "pushTokens", "pushLog", "quickIndex"].map(p => db.ref(p).once("value")));
+const [teamsSnap, tokensSnap, logSnap, quickSnap, subsSnap, invLogSnap] = await Promise.all(["teams", "pushTokens", "pushLog", "quickIndex", "inviteSubs", "inviteLog"].map(p => db.ref(p).once("value")));
 const teams = teamsSnap.val() || {}, tokens = tokensSnap.val() || {}, log = logSnap.val() || {}, quickIndex = quickSnap.val() || {};
 
 // MODE=requests (every 10 minutes): only new access requests. Otherwise (daily run, manual run): everything.
@@ -120,6 +121,10 @@ for (const [tid, team] of Object.entries(teams)) {
   // Approved or rejected: forget it.
   for (const uid of Object.keys(reqLog[tid] || {})) if (!reqs[uid]) logWrites[`pushLog/_req/${tid}/${uid}`] = null;
 }
+
+// ---- Calendar invitations by email (every run): new / changed / cancelled matches, see invites.mjs ----
+const inv = await runInvites({ teams, subs: subsSnap.val() || {}, log: invLogSnap.val() || {}, today, dry: DRY, verbose: !!process.env.VERBOSE });
+Object.assign(logWrites, inv.writes);
 
 if (MODE !== "requests") {
   // ---- Match reminders: players who haven't answered, 3 days and 1 day before ----
@@ -191,6 +196,7 @@ if (MODE !== "requests" && !EMU) {
 
 // Only counts in the log (the repository is public): no names, teams or tokens.
 const would = DRY ? "would be " : "";
+console.log(`${today}: ${inv.stats.sent} invitations, ${inv.stats.updated} updates, ${inv.stats.cancelled} cancellations ${would}sent (${inv.stats.waiting} waiting, ${inv.stats.failed} failed).`);
 console.log(`${today}: ${reqSent} access-request notifications ${would}sent to admins` + (MODE === "requests" ? "." :
   `, ${sent} reminders ${would}sent, ${skipped} players without notifications, ${removed} old devices removed, ${madeKeys} personal links ${would}made, ${histCleaned} played matches' answer history ${would}cleaned up.`));
 process.exit(0);

@@ -456,6 +456,11 @@ const T = {
 
     // match details
     "details.edit": "Edit time & place",
+    "inv.title": "Or: as invitations in your own calendar",
+    "inv.toggle": ({ email }) => `Send me calendar invitations at ${email}`,
+    "inv.help": "Each match arrives as a normal invitation, straight into the calendar of that address (Gmail, Outlook, iCloud). Changes and cancellations follow by themselves. Use this or the subscription above, not both, or you'll see every match twice.",
+    "inv.on": "Invitations are on: the first ones arrive within half an hour.",
+    "inv.off": "Invitations are off. Matches already in your calendar stay there.",
     "cal.title": "Matches in your calendar",
     "cal.lead": "Subscribe once: new matches and changes appear in your calendar by themselves, with your answer in the title and your carpool in the details.",
     "cal.apple": "Apple / iPhone",
@@ -1192,6 +1197,11 @@ const T = {
     "csv.player": "Speler",
 
     "details.edit": "Uur & plaats aanpassen",
+    "inv.title": "Of: als uitnodigingen in je eigen agenda",
+    "inv.toggle": ({ email }) => `Stuur me agenda-uitnodigingen op ${email}`,
+    "inv.help": "Elke wedstrijd komt als gewone uitnodiging rechtstreeks in de agenda van dat adres (Gmail, Outlook, iCloud). Wijzigingen en afgelastingen volgen vanzelf. Gebruik dit of het abonnement hierboven, niet allebei, anders zie je elke wedstrijd twee keer.",
+    "inv.on": "Uitnodigingen staan aan: de eerste komen binnen het halfuur.",
+    "inv.off": "Uitnodigingen staan uit. Wedstrijden die al in je agenda staan, blijven staan.",
     "cal.title": "Wedstrijden in je agenda",
     "cal.lead": "Abonneer je één keer: nieuwe wedstrijden en wijzigingen komen vanzelf in je agenda, met jouw antwoord in de titel en je carpool erbij.",
     "cal.apple": "Apple / iPhone",
@@ -1924,6 +1934,11 @@ const T = {
 
     // match details
     "details.edit": "Modifier l'heure et le lieu",
+    "inv.title": "Ou : comme invitations dans ton propre agenda",
+    "inv.toggle": ({ email }) => `M'envoyer des invitations d'agenda à ${email}`,
+    "inv.help": "Chaque match arrive comme une invitation normale, directement dans l'agenda de cette adresse (Gmail, Outlook, iCloud). Les changements et annulations suivent tout seuls. Utilise ceci ou l'abonnement ci-dessus, pas les deux, sinon tu verras chaque match deux fois.",
+    "inv.on": "Invitations activées : les premières arrivent dans la demi-heure.",
+    "inv.off": "Invitations désactivées. Les matchs déjà dans ton agenda y restent.",
     "cal.title": "Les matchs dans ton agenda",
     "cal.lead": "Abonne-toi une fois : les nouveaux matchs et les changements arrivent tout seuls dans ton agenda, avec ta réponse dans le titre et ton covoiturage en détail.",
     "cal.apple": "Apple / iPhone",
