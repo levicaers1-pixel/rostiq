@@ -98,7 +98,7 @@ ${kind === "can" ? "" : `<p><a href="${appUrl}" style="color:#2f2a8f;font-weight
 /** One pass over all teams. Returns the database writes to make (merged into the job's own update). */
 export async function runInvites({ teams, subs, log, today, dry, verbose }) {
   const writes = {}, stats = { sent: 0, updated: 0, cancelled: 0, waiting: 0, failed: 0 };
-  const user = process.env.BREVO_SMTP_LOGIN, pass = process.env.BREVO_SMTP_KEY;
+  const user = (process.env.BREVO_SMTP_LOGIN || "").trim(), pass = (process.env.BREVO_SMTP_KEY || "").trim(); // pasted secrets often carry a newline
   const anySubs = Object.values(subs || {}).some(x => x && Object.keys(x).length);
   if (!anySubs) return { writes, stats };
   if (!dry && process.env.INVITE_TRANSPORT !== "stream" && (!user || !pass)) { console.log("Invitations: not set up yet (secrets BREVO_SMTP_LOGIN / BREVO_SMTP_KEY missing): nothing sent."); return { writes, stats }; }
