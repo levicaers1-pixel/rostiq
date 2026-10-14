@@ -36,7 +36,7 @@ const VTIMEZONE = [
   "BEGIN:DAYLIGHT", "TZOFFSETFROM:+0100", "TZOFFSETTO:+0200", "TZNAME:CEST", "DTSTART:19700329T020000", "RRULE:FREQ=YEARLY;BYMONTH=3;BYDAY=-1SU", "END:DAYLIGHT",
   "BEGIN:STANDARD", "TZOFFSETFROM:+0200", "TZOFFSETTO:+0100", "TZNAME:CET", "DTSTART:19701025T030000", "RRULE:FREQ=YEARLY;BYMONTH=10;BYDAY=-1SU", "END:STANDARD",
   "END:VTIMEZONE"];
-const icsText = s => String(s).replace(/[\\;,]/g, c => "\\" + c).replace(/\r?\n/g, "\\n");
+const icsText = s => String(s).replace(/[\\;,]/g, c => "\\" + c).replace(/\r\n|\r|\n/g, "\\n");
 const fold = line => line.length <= 70 ? line : line.match(/.{1,70}/gu).join("\r\n ");
 const venueText = v => (v ? [v.name, v.address].filter(Boolean).join(", ") : "");
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);

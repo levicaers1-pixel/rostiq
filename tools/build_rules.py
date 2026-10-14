@@ -174,7 +174,9 @@ team = {
         ".write": f"{TA} || (auth != null && auth.uid === $uid && !newData.exists())",  # leaving: only yourself
         ".validate": "newData.isString() && newData.parent().parent().child('players').child(newData.val()).child('uid').val() === $uid"
                      f" && ({PA} || $uid === auth.uid || root.child('teams').child($tid).exists())"}},
-    "requests": request_rules(f"auth != null && (auth.uid === $uid || {TA})", " && newData.parent().parent().child('info').exists()", TA),  # the team (also when created in the same write)
+    # Old place of access requests (inside the team, so every member could read them): only emptying it is allowed now.
+    # They live in requests/<team>/<uid> (below); the daily job moves any old ones over.
+    "requests": {"$uid": {".read": "auth != null && auth.uid === $uid", ".write": f"auth != null && (auth.uid === $uid || {TA}) && !newData.exists()"}},
     "initialized": {".write": TA},
     "players": {"$pid": {".write": f"{TA} || ({OWNER} && !newData.exists())", **player_rules(OWNER)}},  # own row: remove only
     "settings": {".write": TA, **settings_rules()},
@@ -326,7 +328,11 @@ push_tokens = {"$uid": {
 }}
 push_log = {".read": PA, ".write": PA}
 
-final = {"rules": {"teams": {".read": PA, "$tid": team}, "users": users, "signup": signup, "signupCodes": signup_codes,
+# ---- Access requests: requests/<team>/<uid>, outside the team: only the team's admins and the requester read them ----
+access_requests = {"$tid": {".read": TA, **request_rules(f"auth != null && (auth.uid === $uid || {TA})",
+                                                       " && root.child('teams').child($tid).child('info').exists()", TA)}}
+
+final = {"rules": {"teams": {".read": PA, "$tid": team}, "requests": access_requests, "users": users, "signup": signup, "signupCodes": signup_codes,
                    "feedback": feedback, "feedbackLast": feedback_last, "lastSeen": last_seen,
                    "errors": errors, "errorsLast": errors_last, "pushTokens": push_tokens, "pushLog": push_log, "$other": NO}}
 

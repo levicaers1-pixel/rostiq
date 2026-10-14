@@ -1138,7 +1138,9 @@ document.getElementById("export").onclick = () => {
   const rows = [[t("csv.player"), ...EVENTS.map(e => `${e.date} ${e.opp}`)]];
   sortedPlayers().forEach((p, i) =>
     rows.push([displayName(p, i), ...EVENTS.map(e => LABEL[p.avail[e.date] || ""])]));
-  const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\r\n");
+  // A cell starting with = + - @ would run as a formula in a spreadsheet: a leading ' keeps it plain text.
+  const cell = v => { const s = String(v); return `"${(/^[=+\-@\t\r]/.test(s) ? "'" + s : s).replace(/"/g, '""')}"`; };
+  const csv = rows.map(r => r.map(cell).join(",")).join("\r\n");
   const a = document.createElement("a");
   a.href = URL.createObjectURL(new Blob(["﻿" + csv], { type: "text/csv" }));
   a.download = "team-availability.csv";
@@ -1155,7 +1157,7 @@ const VTIMEZONE = [
   "DTSTART:19701025T030000", "RRULE:FREQ=YEARLY;BYMONTH=10;BYDAY=-1SU", "END:STANDARD",
   "END:VTIMEZONE",
 ];
-const icsText = s => String(s).replace(/[\\;,]/g, c => "\\" + c).replace(/\r?\n/g, "\\n");
+const icsText = s => String(s).replace(/[\\;,]/g, c => "\\" + c).replace(/\r\n|\r|\n/g, "\\n");
 const hhmmss = hm => hm.replace(":", "") + "00";
 // Long lines are folded (RFC 5545) so strict calendar apps accept them.
 const fold = line => line.length <= 70 ? line : line.match(/.{1,70}/gu).join("\r\n ");

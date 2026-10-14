@@ -39,7 +39,7 @@
   .codes .grow { flex: 1; color: var(--muted); font-size: .85rem; }
   form.code-new { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
   form.code-new input { font: inherit; font-size: .9rem; padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg); color: var(--text); }
-  form.code-new input[name=code] { text-transform: uppercase; width: 170px; }
+  form.code-new input[name=code] { text-transform: uppercase; width: 190px; }
   form.code-new input[name=uses] { width: 90px; }
   form.code-new input[name=note] { flex: 1 1 160px; min-width: 0; }
   .fb-filters { display: flex; gap: 6px; flex-wrap: wrap; margin: 6px 0 12px; }
@@ -100,7 +100,8 @@
       <h3 data-i18n="rostiq.codes" style="margin:16px 0 0;font-size:1rem">Pilot codes</h3>
       <ul class="codes" id="codes"></ul>
       <form class="code-new" id="code-new">
-        <input name="code" maxlength="30" required pattern="[A-Za-z0-9\-]{3,30}" placeholder="PILOT-GOLF">
+        <input name="code" maxlength="30" required pattern="[A-Za-z0-9\-]{3,30}" placeholder="PILOT-7KQ3-M9XR">
+        <button type="button" id="code-dice" data-i18n-title="rostiq.codeRandom" aria-label="New random code">🎲</button>
         <input name="uses" type="number" min="1" max="1000" value="5" required data-i18n-title="rostiq.codeUses">
         <input name="note" maxlength="60" data-i18n-placeholder="rostiq.codeNote">
         <button class="primary" data-i18n="rostiq.codeAdd">Create code</button>
@@ -244,12 +245,22 @@ document.getElementById("signup-open").addEventListener("change", async ev => {
   if (ok) signup.open = ev.target.checked; else ev.target.checked = signup.open;
   if (ok) toast(t("toast.saved"));
 });
+// Pilot codes: random by default, so nobody can guess one (a typed word like PILOT-GOLF can be).
+// 8 characters from 32 (no 0/O, 1/I/L): about a trillion combinations.
+const randomCode = () => {
+  const A = "ABCDEFGHJKMNPQRSTUVWXYZ23456789", b = crypto.getRandomValues(new Uint8Array(8));
+  const c = [...b].map(x => A[x % A.length]).join("");
+  return `PILOT-${c.slice(0, 4)}-${c.slice(4)}`;
+};
+const codeForm = document.getElementById("code-new");
+codeForm.code.value = randomCode();
+document.getElementById("code-dice").onclick = () => { codeForm.code.value = randomCode(); };
 document.getElementById("code-new").addEventListener("submit", async ev => {
   ev.preventDefault();
   const fm = ev.target, code = fm.code.value.trim().toUpperCase(), uses = Math.max(1, Math.min(1000, Number(fm.uses.value) || 1));
   if (!/^[A-Z0-9-]{3,30}$/.test(code)) return;
   const v = { uses, ...(fm.note.value.trim() ? { note: fm.note.value.trim().slice(0, 60) } : {}) };
-  if (await writeAbs(`signupCodes/${code}`, v)) { signup.codes[code] = v; fm.reset(); render(); toast(t("toast.saved")); }
+  if (await writeAbs(`signupCodes/${code}`, v)) { signup.codes[code] = v; fm.reset(); fm.code.value = randomCode(); render(); toast(t("toast.saved")); }
 });
 document.getElementById("codes").addEventListener("click", async ev => {
   const d = ev.target.closest("[data-code-del]");

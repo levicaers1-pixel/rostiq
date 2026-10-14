@@ -264,7 +264,8 @@ const isRecent = () => {
 async function loadMine() {
   const uid = session.user.uid, me = (await getAbs(`users/${uid}`)) || {};
   const teams = await Promise.all(Object.entries(me.teams || {}).map(async ([id, pid]) => ({
-    id, pid, data: await getAbs(`teams/${id}`), seen: await getAbs(`lastSeen/${id}/${uid}`) })));
+    id, pid, data: await getAbs(`teams/${id}`), seen: await getAbs(`lastSeen/${id}/${uid}`),
+    req: await getAbs(`requests/${id}/${uid}`), cal: await getAbs(`calIndex/${id}/${pid}`), inv: await getAbs(`inviteSubs/${id}/${pid}`) })));
   const fbIds = Object.keys(me.feedback || {});
   const feedback = (await Promise.all(fbIds.map(id => getAbs(`feedback/${id}`)))).map((x, i) => x && { id: fbIds[i], ...x }).filter(Boolean);
   return { uid, me, teams, feedback };
@@ -283,7 +284,8 @@ async function exportData(btn) {
         for (const [date, entries] of Object.entries(d.carpool || {})) if (entries && entries[x.pid]) carpool[date] = entries[x.pid];
         return { team: x.id, name: (d.info || {}).brand || x.id, player: (d.players || {})[x.pid] || null, carpool,
           admin: !!(d.admins || {})[uid], lastSeen: typeof x.seen === "number" ? new Date(x.seen).toISOString() : null,
-          startedByYou: (d.meta || {}).createdBy === uid };
+          startedByYou: (d.meta || {}).createdBy === uid, accessRequest: x.req || null,
+          calendarLink: !!x.cal, calendarInvitations: x.inv ? { email: x.inv.e } : null };
       }),
       feedback: feedback.map(f => ({ ...f, at: typeof f.at === "number" ? new Date(f.at).toISOString() : f.at })),
       teamsYouStarted: Object.values(me.created || {}),
@@ -302,6 +304,7 @@ function deletionPlan({ uid, me, teams, feedback }) {
   const ch = {}, names = [], blockers = [];
   for (const x of teams) {
     ch[`users/${uid}/teams/${x.id}`] = null;
+    if (x.req) ch[`requests/${x.id}/${uid}`] = null;
     const d = x.data;
     if (!d) continue; // no access any more: only the index entry
     const T = `teams/${x.id}`, name = (d.info || {}).brand || x.id, admins = d.admins || {};
@@ -320,6 +323,8 @@ function deletionPlan({ uid, me, teams, feedback }) {
     if ((d.members || {})[uid]) { ch[`${T}/members/${uid}`] = null; ch[`lastSeen/${x.id}/${uid}`] = null; }
     if (isAdmin) ch[`${T}/admins/${uid}`] = null;
     if ((d.requests || {})[uid]) ch[`${T}/requests/${uid}`] = null;
+    if (x.cal) { ch[`calKeys/${x.cal}`] = null; ch[`calIndex/${x.id}/${x.pid}`] = null; }
+    if (x.inv) ch[`inviteSubs/${x.id}/${x.pid}`] = null;
     const meta = d.meta || {};
     if (meta.createdBy === uid) {
       if (meta.creatorName) ch[`${T}/meta/creatorName`] = null;

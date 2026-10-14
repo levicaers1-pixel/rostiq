@@ -365,7 +365,29 @@ async function cleanHistory() {
     if (old.length) send("PATCH", `history/${TEAM_ID}`, Object.fromEntries(old.map(d => [d, null])), true, true, true);
   } catch {}
 }
+// ---- Access requests: requests/<team>/<uid>, outside the team (only the team's admins and the requester read them) ----
+let teamRequests = {}, reqStream = null;
+const reqList = () => (DEMO ? root.requests || {} : teamRequests);
+async function watchRequests() {
+  if (reqStream || DEMO || !AUTH_ON || !session.admin || !TEAM_ID) return;
+  const stream = reqStream = new EventSource(await dbUrlAbs(`requests/${TEAM_ID}`));
+  const refresh = async () => { teamRequests = (await getAbs(`requests/${TEAM_ID}`)) || {}; render(); };
+  stream.addEventListener("put", e => {
+    const { path, data } = JSON.parse(e.data);
+    if (path === "/") { teamRequests = data || {}; render(); } else refresh();
+  });
+  stream.addEventListener("patch", refresh);
+  stream.addEventListener("auth_revoked", () => { stream.close(); reqStream = null; watchRequests(); });
+  stream.addEventListener("cancel", () => { stream.close(); reqStream = null; });
+}
+async function dropRequest(uid) {
+  if (DEMO) { if (root.requests) delete root.requests[uid]; render(); return; }
+  delete teamRequests[uid]; render();
+  await send("DELETE", `requests/${TEAM_ID}/${uid}`, undefined, true, true);
+}
+
 function render() {
+  watchRequests();
   document.getElementById("no-access").hidden = session.admin || !session.ready;
   document.getElementById("admin").hidden = !session.admin;
   if (!session.admin) return;
@@ -436,7 +458,7 @@ function seenHtml(uid) {
 function renderTiles() {
   const players = sortedPlayers().filter(p => p.name);
   const linked = players.filter(p => p.uid).length, notLinked = players.length - linked;
-  const reqs = Object.keys(root.requests || {}).length;
+  const reqs = Object.keys(reqList()).length;
   const upcoming = EVENTS.filter(e => !isPast(e)), next = upcoming[0];
   const missing = next ? players.filter(p => !(p.avail || {})[next.date]).length : 0;
   const tile = (href, icon, value, label, sub, tone = "") =>
@@ -533,7 +555,7 @@ document.getElementById("invite-copy").onclick = ev => {
 
 function renderRequests() {
   document.getElementById("invite-link").value = pageUrl("");
-  const reqs = Object.entries(root.requests || {}).sort((a, b) => (a[1].at || 0) - (b[1].at || 0));
+  const reqs = Object.entries(reqList()).sort((a, b) => (a[1].at || 0) - (b[1].at || 0));
   const free = sortedPlayers().filter(p => p.name && !p.uid);
   document.getElementById("requests").innerHTML = reqs.length ? reqs.map(([uid, r]) => `
     <li>
@@ -553,10 +575,10 @@ function renderRequests() {
 document.getElementById("requests").addEventListener("click", ev => {
   const link = ev.target.closest("[data-req-link]");
   if (link) {
-    const uid = link.dataset.reqLink, r = root.requests[uid];
+    const uid = link.dataset.reqLink, r = reqList()[uid];
     let pid = document.querySelector(`[data-req-select="${uid}"]`).value;
     if (!pid) return;
-    const changes = { [`requests/${uid}`]: null };
+    const changes = {};
     // Their details from their other teams (phone, email, federation number, home town) come along.
     const prof = r.profile && typeof r.profile === "object" ? r.profile : {};
     if (pid === "__new") {
@@ -568,11 +590,11 @@ document.getElementById("requests").addEventListener("click", ev => {
       // Otherwise their login email becomes the contact email, unless one is already filled in.
       if (!prof.email && r.email && !root.players[pid].email) changes[`players/${pid}/email`] = r.email.toLowerCase();
     }
-    linkAccount(uid, pid, changes);
+    linkAccount(uid, pid, changes).then(ok => { if (ok) dropRequest(uid); });
   }
   const rej = ev.target.closest("[data-req-reject]");
-  if (rej && confirm(t("admin.rejectConfirm", { name: (root.requests[rej.dataset.reqReject] || {}).name || "?" })))
-    write(`requests/${rej.dataset.reqReject}`, null);
+  if (rej && confirm(t("admin.rejectConfirm", { name: (reqList()[rej.dataset.reqReject] || {}).name || "?" })))
+    dropRequest(rej.dataset.reqReject);
 });
 
 function renderPlayers() {

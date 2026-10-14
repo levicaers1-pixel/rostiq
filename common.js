@@ -1,6 +1,11 @@
 // RostiQ: shared by all pages: teams, database connection, login and helpers.
 // Each page defines a global render() that is called whenever the data changes.
 // Everything of one team lives under teams/{TEAM_ID}/ in the database; `root` mirrors that subtree.
+// Never inside someone else's page (clickjacking): GitHub Pages can't send a frame-blocking header, so the page
+// takes over the window, or stays empty if it can't.
+if (window.top !== window.self) {
+  try { window.top.location.href = window.location.href; } catch { document.documentElement.innerHTML = ""; }
+}
 
 const DB = (window.FIREBASE_DB_URL || "").trim().replace(/\/+$/, "");
 
@@ -1139,7 +1144,7 @@ async function checkMembership() {
     const [pid, isAdmin] = await Promise.all([getAbs(`teams/${TEAM_ID}/members/${uid}`), getAbs(`teams/${TEAM_ID}/admins/${uid}`)]);
     session.admin = isAdmin === true;
     if (!pid && !session.admin) {
-      session.request = await getAbs(`teams/${TEAM_ID}/requests/${uid}`);
+      session.request = await getAbs(`requests/${TEAM_ID}/${uid}`);
       session.pending = true;
       session.ready = true;
       renderAuth();
@@ -1209,7 +1214,7 @@ function gateMessage(text, err) { gateMsg = { text, err }; renderAuth(); }
 const appUrl = file => location.href.split(/[?#]/)[0].replace(/[^/]*$/, file);
 
 // ---- Feedback to RostiQ (account menu, footer): only the RostiQ admin reads it ----
-const APP_VERSION = "2026.10.32";
+const APP_VERSION = "2026.10.33";
 function deviceText() {
   const ua = navigator.userAgent;
   const os = /iPhone/.test(ua) ? "iPhone" : /iPad/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1) ? "iPad"
@@ -1561,7 +1566,7 @@ async function onGateSubmit(ev) {
     const mine = Object.fromEntries(PROFILE_FIELDS.filter(f => profile.data && profile.data[f] != null).map(f => [f, profile.data[f]]));
     if (Object.keys(mine).length) req.profile = mine;
     try {
-      const res = await fetch(await dbUrl(`requests/${u.uid}`), { method: "PUT", body: JSON.stringify(req) });
+      const res = await fetch(await dbUrlAbs(`requests/${TEAM_ID}/${u.uid}`), { method: "PUT", body: JSON.stringify(req) });
       if (!res.ok) throw new Error(res.status);
       session.request = req;
       gateMessage("", false);

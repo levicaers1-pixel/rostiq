@@ -7,7 +7,10 @@
 //
 // Needs the secret FIREBASE_SERVICE_ACCOUNT (the JSON key of the project's service account).
 // Dry run (sends nothing, writes nothing):  DRY_RUN=1 node send.mjs
-import admin from "firebase-admin";
+import { initializeApp, cert } from "firebase-admin/app";
+import { getDatabase, ServerValue } from "firebase-admin/database";
+import { getAuth } from "firebase-admin/auth";
+import { getMessaging } from "firebase-admin/messaging";
 import crypto from "node:crypto";
 import { runInvites } from "./invites.mjs";
 
@@ -20,14 +23,14 @@ const TZ = "Europe/Brussels";
 const EMU = process.env.FIREBASE_DATABASE_EMULATOR_HOST;
 const sa = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT || "null");
 if (!sa && !EMU) { console.log("Not set up yet (repository secret FIREBASE_SERVICE_ACCOUNT is missing): nothing sent."); process.exit(0); }
-admin.initializeApp(EMU ? { projectId: "demo-rostiq", databaseURL: `http://${EMU}?ns=${process.env.DB_NS || "demo-rostiq"}` }
-  : { credential: admin.credential.cert(sa), databaseURL: DB_URL });
-const db = admin.database();
+initializeApp(EMU ? { projectId: "demo-rostiq", databaseURL: `http://${EMU}?ns=${process.env.DB_NS || "demo-rostiq"}` }
+  : { credential: cert(sa), databaseURL: DB_URL });
+const db = getDatabase();
 
 const ACTIONS_TEST = { nl: [["yes", "✅ Ja"], ["no", "❌ Nee"]], fr: [["yes", "✅ Oui"], ["no", "❌ Non"]], en: [["yes", "✅ Yes"], ["no", "❌ No"]] };
 // Test: send one notification to the devices of one account (workflow input "test_email"), then stop.
 if (process.env.TEST_EMAIL) {
-  const user = await admin.auth().getUserByEmail(process.env.TEST_EMAIL).catch(() => null);
+  const user = await getAuth().getUserByEmail(process.env.TEST_EMAIL).catch(() => null);
   const devices = user ? Object.values((await db.ref(`pushTokens/${user.uid}`).once("value")).val() || {}) : [];
   let ok = 0;
   for (const d of devices) {
@@ -36,7 +39,7 @@ if (process.env.TEST_EMAIL) {
     const lang = ACTIONS_TEST[d.lang] ? d.lang : "nl";
     const data = { title: "RostiQ", body, link: `${APP}/`, tag: "test",
       actions: JSON.stringify(ACTIONS_TEST[lang].map(([action, title]) => ({ action, title }))), links: JSON.stringify({ yes: `${APP}/`, no: `${APP}/` }) };
-    try { await admin.messaging().send({ token: d.token, data }); ok++; }
+    try { await getMessaging().send({ token: d.token, data }); ok++; }
     catch (e) { console.warn("test send failed:", (e && e.code) || e); }
   }
   console.log(`Test: ${user ? "account found" : "no account with that email"}, ${devices.length} device(s), ${ok} sent.`);
@@ -74,7 +77,7 @@ function answerLinks(tid, date, key) {
 }
 const whenText = (date, lang) => new Date(date + "T12:00:00Z").toLocaleDateString(LOCALES[lang], { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" });
 
-const [teamsSnap, tokensSnap, logSnap, quickSnap, subsSnap, invLogSnap] = await Promise.all(["teams", "pushTokens", "pushLog", "quickIndex", "inviteSubs", "inviteLog"].map(p => db.ref(p).once("value")));
+const [teamsSnap, tokensSnap, logSnap, quickSnap, subsSnap, invLogSnap, reqSnap] = await Promise.all(["teams", "pushTokens", "pushLog", "quickIndex", "inviteSubs", "inviteLog", "requests"].map(p => db.ref(p).once("value")));
 const teams = teamsSnap.val() || {}, tokens = tokensSnap.val() || {}, log = logSnap.val() || {}, quickIndex = quickSnap.val() || {};
 
 // MODE=requests (every 10 minutes): only new access requests. Otherwise (daily run, manual run): everything.
@@ -85,7 +88,7 @@ const logWrites = {}, deadTokens = {};
 // One notification to one device; devices that no longer exist are removed.
 async function push(uid, dev, info, data) {
   if (DRY) { if (process.env.VERBOSE) console.log(JSON.stringify(data)); return true; }
-  try { await admin.messaging().send({ token: info.token, data, webpush: { headers: { Urgency: "normal", TTL: String(20 * 3600) } } }); return true; }
+  try { await getMessaging().send({ token: info.token, data, webpush: { headers: { Urgency: "normal", TTL: String(20 * 3600) } } }); return true; }
   catch (e) {
     const code = (e && (e.code || e.errorInfo && e.errorInfo.code)) || "";
     if (/registration-token-not-registered|invalid-registration-token|invalid-argument/.test(code)) { deadTokens[`pushTokens/${uid}/${dev}`] = null; removed++; }
@@ -100,10 +103,21 @@ const REQ_TEXT = {
   fr: name => `Nouvelle demande d'accès : ${name}. Touche pour voir.`,
   en: name => `New access request: ${name}. Tap to review.`,
 };
+// Access requests live in requests/<team>/<uid> (only admins read them). Old ones still inside a team are moved there.
+const allReqs = reqSnap.val() || {};
+let movedReqs = 0;
+for (const [tid, team] of Object.entries(teams)) {
+  for (const [uid, rq] of Object.entries((team && team.requests) || {})) {
+    if (!(allReqs[tid] || {})[uid] && rq) { (allReqs[tid] = allReqs[tid] || {})[uid] = rq; logWrites[`requests/${tid}/${uid}`] = rq; }
+    logWrites[`teams/${tid}/requests/${uid}`] = null;
+    movedReqs++;
+  }
+}
+for (const tid of Object.keys(allReqs)) if (!teams[tid]) { logWrites[`requests/${tid}`] = null; delete allReqs[tid]; } // team deleted
 const reqLog = log._req || {};
 for (const [tid, team] of Object.entries(teams)) {
   if (!team) continue;
-  const reqs = team.requests || {}, brand = (team.info || {}).brand || "RostiQ";
+  const reqs = allReqs[tid] || {}, brand = (team.info || {}).brand || "RostiQ";
   for (const [uid, rq] of Object.entries(reqs)) {
     if ((reqLog[tid] || {})[uid]) continue; // notified already
     // Only recent requests: ones that were already waiting when this started are just marked as known.
@@ -147,7 +161,7 @@ if (MODE !== "requests") {
           if (!key) { // made once, kept until an admin resets it (like the ones the app makes)
             key = newKey();
             (quickIndex[tid] = quickIndex[tid] || {})[pid] = key;
-            logWrites[`quickKeys/${key}`] = { t: tid, p: pid, at: admin.database.ServerValue.TIMESTAMP };
+            logWrites[`quickKeys/${key}`] = { t: tid, p: pid, at: ServerValue.TIMESTAMP };
             logWrites[`quickIndex/${tid}/${pid}`] = key;
             madeKeys++;
           }
@@ -180,7 +194,7 @@ if (MODE !== "requests" && !EMU) {
   const cutoff = Date.now() - 60 * 864e5, old = [];
   let page;
   do {
-    page = await admin.auth().listUsers(1000, page && page.pageToken);
+    page = await getAuth().listUsers(1000, page && page.pageToken);
     for (const u of page.users) {
       const anonymous = !u.email && !u.phoneNumber && u.providerData.length === 0;
       const last = Date.parse(u.metadata.lastRefreshTime || u.metadata.lastSignInTime || u.metadata.creationTime);
@@ -188,7 +202,7 @@ if (MODE !== "requests" && !EMU) {
     }
   } while (page.pageToken);
   if (!DRY && old.length) {
-    for (let i = 0; i < old.length; i += 1000) await admin.auth().deleteUsers(old.slice(i, i + 1000));
+    for (let i = 0; i < old.length; i += 1000) await getAuth().deleteUsers(old.slice(i, i + 1000));
     await db.ref().update(Object.fromEntries(old.map(uid => [`quickSessions/${uid}`, null])));
   }
   console.log(`${old.length} unused anonymous accounts ${DRY ? "would be " : ""}cleaned up (older than 60 days).`);
@@ -197,6 +211,7 @@ if (MODE !== "requests" && !EMU) {
 // Only counts in the log (the repository is public): no names, teams or tokens.
 const would = DRY ? "would be " : "";
 console.log(`${today}: ${inv.stats.sent} invitations, ${inv.stats.updated} updates, ${inv.stats.cancelled} cancellations ${would}sent (${inv.stats.waiting} waiting, ${inv.stats.failed} failed).`);
+if (movedReqs) console.log(`${movedReqs} access requests ${would}moved out of the team data.`);
 console.log(`${today}: ${reqSent} access-request notifications ${would}sent to admins` + (MODE === "requests" ? "." :
   `, ${sent} reminders ${would}sent, ${skipped} players without notifications, ${removed} old devices removed, ${madeKeys} personal links ${would}made, ${histCleaned} played matches' answer history ${would}cleaned up.`));
 process.exit(0);

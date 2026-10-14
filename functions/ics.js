@@ -39,7 +39,7 @@ const TEXT = {
 };
 const MARK = { yes: "✅", maybe: "❔", no: "❌", "": "❓" };
 
-const icsText = s => String(s).replace(/[\\;,]/g, c => "\\" + c).replace(/\r?\n/g, "\\n");
+const icsText = s => String(s).replace(/[\\;,]/g, c => "\\" + c).replace(/\r\n|\r|\n/g, "\\n");
 const hhmmss = hm => hm.replace(":", "") + "00";
 const fold = line => line.length <= 70 ? line : line.match(/.{1,70}/gu).join("\r\n ");
 const slug = t => String(t).normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().replace(/[^a-z0-9]+/g, "-");

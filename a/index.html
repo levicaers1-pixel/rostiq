@@ -54,6 +54,11 @@
 <script src="/i18n.js"></script>
 <script src="/icons.js"></script>
 <script>
+// Never inside someone else's page (clickjacking): GitHub Pages can't send a frame-blocking header, so the page
+// takes over the window, or stays empty if it can't.
+if (window.top !== window.self) {
+  try { window.top.location.href = window.location.href; } catch { document.documentElement.innerHTML = ""; }
+}
 // Answer page for a personal link (app.rostiq.be/a/?k=<key>[&d=<date>&r=yes|maybe|no]): no account needed.
 // It signs in anonymously in its own Firebase instance ("quick"), so a normal RostiQ login in the same browser is
 // never touched, and binds that session to the key. The database rules allow such a session only this screen.
