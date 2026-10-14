@@ -365,10 +365,11 @@ async function create() {
     admins: { [uid]: true },
     members: { [uid]: "p1" },
     players: { p1: { uid, name: you.slice(0, 60), order: 1 } },
-    meta: { createdBy: uid, createdAt: Date.now(), creatorName: you.slice(0, 60), creatorEmail: (session.user.email || "").slice(0, 100),
-      ...(codeUses !== null ? { code } : {}) },
+    meta: { createdBy: uid, createdAt: Date.now() },
   };
-  const changes = { [`teams/${id}`]: team, [`users/${uid}/teams/${id}`]: "p1", [`users/${uid}/created/${slot}`]: id,
+  // Name, email and code of who started it: outside the team, so members don't see them (only the RostiQ admin).
+  const creator = { n: you.slice(0, 60), e: session.user.email || "", ...(codeUses !== null ? { c: code } : {}) };
+  const changes = { [`teams/${id}`]: team, [`teamCreators/${id}`]: creator, [`users/${uid}/teams/${id}`]: "p1", [`users/${uid}/created/${slot}`]: id,
     ...(codeUses !== null ? { [`signupCodes/${code}/uses`]: codeUses - 1 } : {}) };
   const ok = await send("PATCH", "", changes, true, true);
   if (ok !== true) return fail(t(isOffline() ? "fb.offline" : "start.failed"));

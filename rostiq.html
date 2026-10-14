@@ -141,7 +141,10 @@ async function loadTeams() {
   teams = await Promise.all(ids.map(async id => {
     const memberIds = Object.keys((await fetch(await shallow(`teams/${id}/members`)).then(r => r.json()).catch(() => null)) || {});
     const admins = Object.keys((await fetch(await shallow(`teams/${id}/admins`)).then(r => r.json()).catch(() => null)) || {}).length;
-    return { id, info: (await getAbs(`teams/${id}/info`)) || {}, meta: (await getAbs(`teams/${id}/meta`)) || null, memberIds, members: memberIds.length, admins };
+    // Who started it: teamCreators/<team> (older teams: still inside meta until the daily job moves it).
+    const [meta, cr] = await Promise.all([getAbs(`teams/${id}/meta`), getAbs(`teamCreators/${id}`)]);
+    const m = meta || cr ? { ...(meta || {}), ...(cr ? { creatorName: cr.n, creatorEmail: cr.e, code: cr.c } : {}) } : null;
+    return { id, info: (await getAbs(`teams/${id}/info`)) || {}, meta: m, memberIds, members: memberIds.length, admins };
   }));
   signup = { open: (await getAbs("signup/open")) === true, codes: (await getAbs("signupCodes")) || {} };
   feedback = (await getAbs("feedback")) || {};
@@ -274,7 +277,7 @@ document.getElementById("codes").addEventListener("click", async ev => {
 async function deleteTeam(id) {
   const x = teams.find(tm => tm.id === id);
   if (!x || !confirm(t("rostiq.deleteConfirm", { name: x.info.brand || id }))) return;
-  const changes = { [`teams/${id}`]: null, [`lastSeen/${id}`]: null };
+  const changes = { [`teams/${id}`]: null, [`lastSeen/${id}`]: null, [`teamCreators/${id}`]: null };
   for (const uid of x.memberIds) changes[`users/${uid}/teams/${id}`] = null;
   if (x.meta && x.meta.createdBy) {
     const slots = (await getAbs(`users/${x.meta.createdBy}/created`)) || {};

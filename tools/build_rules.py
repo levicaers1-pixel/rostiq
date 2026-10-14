@@ -185,14 +185,15 @@ team = {
     "schedule": {".write": TA, **schedule_rules()},
     "matches": {".write": TA, **matches_rules()},
     "carpool": carpool_rules(f"{TA} || {OWNER}", MYPID),
-    # Who started the team (self-service): written once, at creation.
+    # Who started the team (self-service): written once, at creation. Only the account id and date: the creator's
+    # name, email and pilot code live in teamCreators/<team> (below), which members can't read.
     "meta": {
         "createdBy": {".validate": "newData.isString()"},
         "createdAt": {".validate": "newData.isNumber()"},
-        # The creator may erase their own name and email (account deletion).
-        "creatorName": {".write": "auth != null && data.parent().child('createdBy').val() === auth.uid && !newData.exists()", **s(60)},
-        "creatorEmail": {".write": "auth != null && data.parent().child('createdBy').val() === auth.uid && !newData.exists()", **s(100)},
-        "code": s(30, 1),
+        # Old place of name, email and code: only removing them is allowed (the job moves them to teamCreators).
+        "creatorName": {".write": "auth != null && data.parent().child('createdBy').val() === auth.uid && !newData.exists()", **NO},
+        "creatorEmail": {".write": "auth != null && data.parent().child('createdBy').val() === auth.uid && !newData.exists()", **NO},
+        "code": NO,
         "$other": NO,
     },
     "$other": NO,
@@ -202,7 +203,7 @@ team = {
 # One atomic write creates the team with the creator as its only admin and first player, their "my teams" entry,
 # their "created" entry and (with a code) one use less of that code. Max 3 self-started teams per person.
 NEW = "newData.parent().parent()"  # the database as it will be after the write
-CODE = "newData.child('meta').child('code').val()"
+CODE = "newData.parent().parent().child('teamCreators').child($tid).child('c').val()"
 SELF_CREATE = (
     "auth != null && auth.token.email_verified === true && !data.exists()"
     " && newData.child('admins').child(auth.uid).val() === true && newData.child('info').child('brand').isString()"
@@ -485,6 +486,19 @@ final["rules"]["notices"] = {"$tid": {"$id": {
     "by": {".validate": "newData.isString()"}, "at": {".validate": "newData.isNumber()"},
     "$other": NO,
 }}}
+# ---- Who started a team: teamCreators/<team> = {n: name, e: email, c: pilot code} ----
+# Outside the team, so members don't see the creator's email. Written together with the new team (the email must be the
+# creator's own); readable by the creator and the RostiQ admin; the creator may remove it (account deletion).
+CREATOR_NOW = "root.child('teams').child($tid).child('meta').child('createdBy').val() === auth.uid"
+CREATOR_NEW = ("!root.child('teams').child($tid).exists()"
+               " && newData.parent().parent().child('teams').child($tid).child('meta').child('createdBy').val() === auth.uid")
+final["rules"]["teamCreators"] = {"$tid": {
+    ".read": f"{PA} || (auth != null && {CREATOR_NOW})",
+    ".write": f"{PA} || ({VERIFIED} && ((!data.exists() && {CREATOR_NEW}) || (data.exists() && !newData.exists() && {CREATOR_NOW})))",
+    ".validate": f"{PA} || newData.child('e').val() === auth.token.email",
+    "n": s(60), "e": s(100), "c": s(30, 1),
+    "$other": NO,
+}}
 final["rules"]["$other"] = final["rules"].pop("$other")  # keep the catch-all last
 
 # ---- Transition: also allow the old single-team structure at the root (Pampas, pre-migration) ----

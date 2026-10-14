@@ -255,7 +255,7 @@
       ".read": "(auth != null && auth.token.email_verified === true && (auth.token.email === 'levicaers1@gmail.com'))",
       "$tid": {
         ".read": "((auth != null && auth.token.email_verified === true && (auth.token.email === 'levicaers1@gmail.com')) || (auth != null && auth.token.email_verified === true && root.child('teams').child($tid).child('admins').child(auth.uid).val() === true)) || (auth != null && auth.token.email_verified === true && root.child('teams').child($tid).child('members').child(auth.uid).exists())",
-        ".write": "(auth != null && auth.token.email_verified === true && (auth.token.email === 'levicaers1@gmail.com')) || (auth != null && auth.token.email_verified === true && !data.exists() && newData.child('admins').child(auth.uid).val() === true && newData.child('info').child('brand').isString() && newData.child('meta').child('createdBy').val() === auth.uid && newData.child('meta').child('createdAt').isNumber() && ((!root.child('users').child(auth.uid).child('created').child('s1').exists() && newData.parent().parent().child('users').child(auth.uid).child('created').child('s1').val() === $tid) || (!root.child('users').child(auth.uid).child('created').child('s2').exists() && newData.parent().parent().child('users').child(auth.uid).child('created').child('s2').val() === $tid) || (!root.child('users').child(auth.uid).child('created').child('s3').exists() && newData.parent().parent().child('users').child(auth.uid).child('created').child('s3').val() === $tid)) && (root.child('signup').child('open').val() === true     || (newData.child('meta').child('code').val() !== null && root.child('signupCodes').child(newData.child('meta').child('code').val()).child('uses').val() > 0         && newData.parent().parent().child('signupCodes').child(newData.child('meta').child('code').val()).child('uses').val() === root.child('signupCodes').child(newData.child('meta').child('code').val()).child('uses').val() - 1)))",
+        ".write": "(auth != null && auth.token.email_verified === true && (auth.token.email === 'levicaers1@gmail.com')) || (auth != null && auth.token.email_verified === true && !data.exists() && newData.child('admins').child(auth.uid).val() === true && newData.child('info').child('brand').isString() && newData.child('meta').child('createdBy').val() === auth.uid && newData.child('meta').child('createdAt').isNumber() && ((!root.child('users').child(auth.uid).child('created').child('s1').exists() && newData.parent().parent().child('users').child(auth.uid).child('created').child('s1').val() === $tid) || (!root.child('users').child(auth.uid).child('created').child('s2').exists() && newData.parent().parent().child('users').child(auth.uid).child('created').child('s2').val() === $tid) || (!root.child('users').child(auth.uid).child('created').child('s3').exists() && newData.parent().parent().child('users').child(auth.uid).child('created').child('s3').val() === $tid)) && (root.child('signup').child('open').val() === true     || (newData.parent().parent().child('teamCreators').child($tid).child('c').val() !== null && root.child('signupCodes').child(newData.parent().parent().child('teamCreators').child($tid).child('c').val()).child('uses').val() > 0         && newData.parent().parent().child('signupCodes').child(newData.parent().parent().child('teamCreators').child($tid).child('c').val()).child('uses').val() === root.child('signupCodes').child(newData.parent().parent().child('teamCreators').child($tid).child('c').val()).child('uses').val() - 1)))",
         ".validate": "$tid.matches(/^[a-z0-9][a-z0-9-]{1,39}$/)",
         "info": {
           ".read": "(auth != null && auth.token.email_verified === true) || (auth != null && root.child('quickSessions').child(auth.uid).child('k').isString() && root.child('quickKeys').child(root.child('quickSessions').child(auth.uid).child('k').val()).child('t').val() === $tid && root.child('teams').child($tid).child('settings').child('quickLinks').val() !== false)",
@@ -550,14 +550,14 @@
           },
           "creatorName": {
             ".write": "auth != null && auth.token.email_verified === true && data.parent().child('createdBy').val() === auth.uid && !newData.exists()",
-            ".validate": "newData.isString() && newData.val().length <= 60"
+            ".validate": false
           },
           "creatorEmail": {
             ".write": "auth != null && auth.token.email_verified === true && data.parent().child('createdBy').val() === auth.uid && !newData.exists()",
-            ".validate": "newData.isString() && newData.val().length <= 100"
+            ".validate": false
           },
           "code": {
-            ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 30"
+            ".validate": false
           },
           "$other": {
             ".validate": false
@@ -966,6 +966,25 @@
           "$other": {
             ".validate": false
           }
+        }
+      }
+    },
+    "teamCreators": {
+      "$tid": {
+        ".read": "(auth != null && auth.token.email_verified === true && (auth.token.email === 'levicaers1@gmail.com')) || (auth != null && root.child('teams').child($tid).child('meta').child('createdBy').val() === auth.uid)",
+        ".write": "(auth != null && auth.token.email_verified === true && (auth.token.email === 'levicaers1@gmail.com')) || (auth != null && auth.token.email_verified === true && ((!data.exists() && !root.child('teams').child($tid).exists() && newData.parent().parent().child('teams').child($tid).child('meta').child('createdBy').val() === auth.uid) || (data.exists() && !newData.exists() && root.child('teams').child($tid).child('meta').child('createdBy').val() === auth.uid)))",
+        ".validate": "(auth != null && auth.token.email_verified === true && (auth.token.email === 'levicaers1@gmail.com')) || newData.child('e').val() === auth.token.email",
+        "n": {
+          ".validate": "newData.isString() && newData.val().length <= 60"
+        },
+        "e": {
+          ".validate": "newData.isString() && newData.val().length <= 100"
+        },
+        "c": {
+          ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 30"
+        },
+        "$other": {
+          ".validate": false
         }
       }
     },

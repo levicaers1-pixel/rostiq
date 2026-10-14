@@ -113,6 +113,17 @@ for (const [tid, team] of Object.entries(teams)) {
     movedReqs++;
   }
 }
+// Who started a team: name, email and code move from teams/<t>/meta (readable by members) to teamCreators/<t>.
+const creators = (await db.ref("teamCreators").once("value")).val() || {};
+let movedCreators = 0;
+for (const [tid, team] of Object.entries(teams)) {
+  const m = (team && team.meta) || {};
+  if (m.creatorName === undefined && m.creatorEmail === undefined && m.code === undefined) continue;
+  if (!creators[tid]) logWrites[`teamCreators/${tid}`] = { ...(m.creatorName ? { n: m.creatorName } : {}), ...(m.creatorEmail ? { e: m.creatorEmail } : {}), ...(m.code ? { c: m.code } : {}) };
+  for (const k of ["creatorName", "creatorEmail", "code"]) logWrites[`teams/${tid}/meta/${k}`] = null;
+  movedCreators++;
+}
+for (const tid of Object.keys(creators)) if (!teams[tid]) logWrites[`teamCreators/${tid}`] = null; // team deleted
 for (const tid of Object.keys(allReqs)) if (!teams[tid]) { logWrites[`requests/${tid}`] = null; delete allReqs[tid]; } // team deleted
 const reqLog = log._req || {};
 for (const [tid, team] of Object.entries(teams)) {
@@ -212,6 +223,7 @@ if (MODE !== "requests" && !EMU) {
 // Only counts in the log (the repository is public): no names, teams or tokens.
 const would = DRY ? "would be " : "";
 console.log(`${today}: ${inv.stats.sent} invitations, ${inv.stats.updated} updates, ${inv.stats.cancelled} cancellations ${would}sent (${inv.stats.waiting} waiting, ${inv.stats.failed} failed).`);
+if (movedCreators) console.log(`${movedCreators} teams' creator details ${would}moved out of the team data.`);
 if (movedReqs) console.log(`${movedReqs} access requests ${would}moved out of the team data.`);
 console.log(`${today}: ${reqSent} access-request notifications ${would}sent to admins` + (MODE === "requests" ? "." :
   `, ${sent} reminders ${would}sent, ${skipped} players without notifications, ${removed} old devices removed, ${madeKeys} personal links ${would}made, ${histCleaned} played matches' answer history ${would}cleaned up.`));

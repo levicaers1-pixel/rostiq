@@ -327,6 +327,7 @@ function deletionPlan({ uid, me, teams, feedback }) {
     if (x.inv) ch[`inviteSubs/${x.id}/${x.pid}`] = null;
     const meta = d.meta || {};
     if (meta.createdBy === uid) {
+      ch[`teamCreators/${x.id}`] = null; // my name and email as the one who started it
       if (meta.creatorName) ch[`${T}/meta/creatorName`] = null;
       if (meta.creatorEmail) ch[`${T}/meta/creatorEmail`] = null;
     }
