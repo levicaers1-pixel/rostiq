@@ -1,5 +1,9 @@
 // RostiQ Cloud Functions.
 //
+// jobFrequent / jobDaily: the scheduled job (job.mjs) on Firebase's timer: every 10 minutes access requests and email
+// invitations, daily at 18:30 Belgian time also the match reminders. (GitHub's timer ran up to hours late; the GitHub
+// workflow is now only for running it by hand.) The Brevo login and key are Firebase secrets.
+//
 // notice: notices/<team>/<id> (an admin called a match off or moved it): a notification to every member's devices at
 // once, then the notice is removed. The rules only accept a notice for a match that really is cancelled / moved.
 //
@@ -9,11 +13,14 @@
 // Capped at a few instances, so even a flood of requests can't run up the bill.
 import { onRequest } from "firebase-functions/v2/https";
 import { onValueCreated } from "firebase-functions/v2/database";
+import { onSchedule } from "firebase-functions/v2/scheduler";
+import { defineSecret } from "firebase-functions/params";
 import { initializeApp } from "firebase-admin/app";
 import { getDatabase } from "firebase-admin/database";
 import { getMessaging } from "firebase-admin/messaging";
 import { buildFeed } from "./ics.js";
 import { noticeMessage } from "./notice.js";
+import { runJob } from "./job.mjs";
 
 initializeApp({ databaseURL: process.env.FIREBASE_DATABASE_EMULATOR_HOST
   ? `http://${process.env.FIREBASE_DATABASE_EMULATOR_HOST}?ns=${process.env.DB_NS || "demo-rostiq"}`
@@ -93,3 +100,9 @@ export const notice = onValueCreated({ ref: "/notices/{tid}/{id}", instance: "wi
   console.log(`notice ${n.k}: ${sent} notifications sent`);
   return done();
 });
+
+// Every 10 minutes at :05, :15, … (so it never runs at the same moment as the daily job at :30).
+const BREVO = [defineSecret("BREVO_SMTP_LOGIN"), defineSecret("BREVO_SMTP_KEY")];
+const JOB = { region: "europe-west1", timeZone: "Europe/Brussels", memory: "512MiB", timeoutSeconds: 300, maxInstances: 1, retryCount: 0, secrets: BREVO };
+export const jobFrequent = onSchedule({ ...JOB, schedule: "5-55/10 * * * *" }, () => runJob({ mode: "requests" }));
+export const jobDaily = onSchedule({ ...JOB, schedule: "30 18 * * *" }, () => runJob({ mode: "all" }));

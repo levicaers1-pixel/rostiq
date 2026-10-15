@@ -1,13 +1,15 @@
-# Push notifications (see tools/push/send.mjs):
-# - every 10 minutes: new access requests -> the team's admins; calendar invitations by email (new/changed/cancelled matches)
-# - daily: match reminders for players who haven't answered, plus cleanup
+# Runs the RostiQ job by hand (functions/cli.mjs). Normally Firebase runs it on its own timer (functions/index.js:
+# every 10 minutes and daily at 18:30 Belgian time); GitHub's timer was too unreliable. Use this as a backup, for a dry
+# run, or to send a test notification.
 name: Push reminders
 on:
-  schedule:
-    - cron: "30 16 * * *"   # daily run: 18:30 Belgian summer time, 17:30 winter time
-    - cron: "*/10 * * * *"  # access requests only
   workflow_dispatch:
     inputs:
+      mode:
+        description: "all = everything incl. match reminders; requests = only the 10-minute part"
+        type: choice
+        options: [all, requests]
+        default: all
       dry_run:
         description: "Only count, send nothing"
         type: boolean
@@ -27,16 +29,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          sparse-checkout: tools/push
+          sparse-checkout: functions
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: tools/push/package-lock.json
+          cache-dependency-path: functions/package-lock.json
       - run: npm ci --no-audit --no-fund
-        working-directory: tools/push
-      - run: node send.mjs
-        working-directory: tools/push
+        working-directory: functions
+      - run: node cli.mjs
+        working-directory: functions
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
           BREVO_SMTP_LOGIN: ${{ secrets.BREVO_SMTP_LOGIN }}   # calendar invitations by email (Brevo SMTP relay)
@@ -44,4 +46,4 @@ jobs:
           INVITE_FROM: ${{ vars.INVITE_FROM }}   # optional repository variable, default agenda@rostiq.be
           DRY_RUN: ${{ inputs.dry_run && '1' || '' }}
           TEST_EMAIL: ${{ inputs.test_email }}
-          MODE: ${{ github.event.schedule == '*/10 * * * *' && 'requests' || 'all' }}
+          MODE: ${{ inputs.mode }}
