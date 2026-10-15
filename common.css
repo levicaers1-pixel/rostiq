@@ -343,7 +343,22 @@ body.gated { padding-bottom: 0 !important; }
 .menu-item:hover:not(:disabled) { background: color-mix(in srgb, var(--accent) 7%, var(--surface)); border: none; }
 .menu-item svg.i { color: var(--muted); }
 .menu-item.danger, .menu-item.danger svg.i { color: var(--no); }
-.menu-lang { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 6px 10px; font-size: .9rem; }
+.menu-lang { display: flex; align-items: center; gap: 10px; padding: 6px 10px; font-size: .9rem; }
+.menu-lang > svg.i { color: var(--muted); }
+.menu-group { padding: 4px 0; }
+.menu-group + .menu-group, .menu-group + .menu-foot { border-top: 1px solid var(--border); }
+.menu-group:empty { display: none; }
+.acct-menu .grow { flex: 1; text-align: left; }
+/* Notifications: an on/off switch instead of "switch off" + an "on" label */
+.menu-switch .switch { width: 34px; height: 20px; border-radius: 999px; background: var(--border); position: relative; flex: none; transition: background .2s var(--ease); }
+.menu-switch .switch::after { content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff;
+  box-shadow: 0 1px 2px rgb(0 0 0 / .25); transition: transform .2s var(--ease); }
+.menu-switch[aria-checked="true"] .switch { background: var(--yes, #2e7d4f); }
+.menu-switch[aria-checked="true"] .switch::after { transform: translateX(14px); }
+/* Bottom row: small links, sign out on the right */
+.menu-foot { display: flex; align-items: center; gap: 14px; padding: 10px 10px 4px; font-size: .82rem; }
+.menu-foot .link { color: var(--muted); font-size: inherit; padding: 0; }
+.menu-signout { border: none; background: none; padding: 4px 0; font: inherit; font-size: .85rem; font-weight: 600; color: var(--no); cursor: pointer; }
 .menu-lang .lang { border-color: var(--border); }
 .menu-lang .lang button { color: var(--text); }
 .menu-lang .lang button[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); }

@@ -1287,7 +1287,8 @@ function injectAuthUI() {
   // Account menu: open/close, and close on a click elsewhere or Escape.
   document.addEventListener("click", ev => {
     if (ev.target.closest("[data-install]")) { acctOpen = false; renderAccount(); installApp(); return; }
-    if (ev.target.closest("[data-push]")) { acctOpen = false; renderAccount(); pushOn() ? disablePush() : enablePush(); return; }
+    // A switch: the menu stays open and shows the new state.
+    if (ev.target.closest("[data-push]")) { Promise.resolve(pushOn() ? disablePush() : enablePush()).catch(() => {}).finally(renderAccount); return; }
     if (ev.target.closest("#acct-menu [data-feedback]")) { ev.preventDefault(); acctOpen = false; renderAccount(); openFeedback(); return; }
     const btn = ev.target.closest("#acct-btn");
     if (btn) { acctOpen = !acctOpen; renderAccount(); return; }
@@ -1313,7 +1314,7 @@ function gateMessage(text, err) { gateMsg = { text, err }; renderAuth(); }
 const appUrl = file => location.href.split(/[?#]/)[0].replace(/[^/]*$/, file);
 
 // ---- Feedback to RostiQ (account menu, footer): only the RostiQ admin reads it ----
-const APP_VERSION = "2026.10.39";
+const APP_VERSION = "2026.10.40";
 function deviceText() {
   const ua = navigator.userAgent;
   const os = /iPhone/.test(ua) ? "iPhone" : /iPad/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1) ? "iPad"
@@ -1528,19 +1529,28 @@ function renderAccount() {
     <div class="acct-menu" id="acct-menu" role="menu"${acctOpen ? "" : " hidden"}>
       <div class="menu-head"><b>${esc(label)}</b>${name && u.email ? `<span>${esc(u.email)}</span>` : ""}
         <span class="pill ${session.platformAdmin ? "dark" : session.admin ? "cyan" : "gray"}">${role}</span></div>
-      ${switchable && TEAM_ID ? `<a class="menu-item" role="menuitem" href="${appUrl("index.html")}?pick">${ic("switch")} ${t("pick.switch")}</a>` : ""}
-      ${session.platformAdmin ? `<a class="menu-item" role="menuitem" href="${appUrl("rostiq.html")}">${ic("settings")} ${t("menu.platform")}${
-        session.feedbackNew ? ` <span class="pill cyan">${t("fb.newCount", { n: session.feedbackNew })}</span>` : ""}</a>` : ""}
-      ${DEMO ? "" : `<a class="menu-item" role="menuitem" href="${appUrl("me.html")}">${ic("user")} ${t("me.menu")}</a>`}
-      ${!DEMO && (session.teams || []).length > 1 ? `<a class="menu-item" role="menuitem" href="${appUrl("me.html")}?agenda">${ic("calendar")} ${t("me.agendaMenu")}</a>` : ""}
-      <a class="menu-item" role="menuitem" href="${appUrl("start.html")}">${ic("plus")} ${t("menu.newTeam")}</a>
-      ${DEMO ? "" : `<button class="menu-item" role="menuitem" data-feedback>${ic("message")} ${t("fb.menu")}</button>`}
-      <a class="menu-item" role="menuitem" href="${appUrl("privacy.html")}">${ic("shield")} ${t("priv.menu")}</a>
-      ${canInstall() ? `<button class="menu-item" role="menuitem" data-install>${ic("download")} ${t("menu.install")}</button>` : ""}
-      ${pushAvailable() ? `<button class="menu-item" role="menuitem" data-push>${ic("bell")} ${t(pushOn() ? "push.off" : "push.on")}${
-        pushOn() ? ` <span class="pill yes">${t("push.isOn")}</span>` : ""}</button>` : ""}
-      <div class="menu-lang"><span>${t("menu.language")}</span><div class="lang">${langButtons()}</div></div>
-      <button class="menu-item danger" role="menuitem" data-signout>${ic("x")} ${t(DEMO ? "demo.exit" : "auth.signOut")}</button>
+      ${DEMO ? "" : `<div class="menu-group">
+        <a class="menu-item" role="menuitem" href="${appUrl("me.html")}">${ic("user")} ${t("me.menu")}</a>
+        ${(session.teams || []).length > 1 ? `<a class="menu-item" role="menuitem" href="${appUrl("me.html")}?agenda">${ic("calendar")} ${t("me.agendaMenu")}</a>` : ""}
+      </div>`}
+      <div class="menu-group">
+        ${switchable && TEAM_ID ? `<a class="menu-item" role="menuitem" href="${appUrl("index.html")}?pick">${ic("switch")} ${t("pick.switch")}</a>` : ""}
+        <a class="menu-item" role="menuitem" href="${appUrl("start.html")}">${ic("plus")} ${t("menu.newTeam")}</a>
+        ${session.platformAdmin ? `<a class="menu-item" role="menuitem" href="${appUrl("rostiq.html")}">${ic("settings")} ${t("menu.platform")}${
+          session.feedbackNew ? ` <span class="pill cyan">${t("fb.newCount", { n: session.feedbackNew })}</span>` : ""}</a>` : ""}
+      </div>
+      <div class="menu-group">
+        ${pushAvailable() ? `<button class="menu-item menu-switch" role="menuitemcheckbox" aria-checked="${pushOn()}" data-push>${ic("bell")}
+          <span class="grow">${t("menu.notifications")}</span><span class="switch" aria-hidden="true"></span></button>` : ""}
+        <div class="menu-lang">${ic("globe")}<span class="grow">${t("menu.language")}</span><div class="lang">${langButtons()}</div></div>
+        ${canInstall() ? `<button class="menu-item" role="menuitem" data-install>${ic("download")} ${t("menu.install")}</button>` : ""}
+      </div>
+      <div class="menu-foot">
+        ${DEMO ? "" : `<button class="link" role="menuitem" data-feedback>${t("fb.menuShort")}</button>`}
+        <a class="link" role="menuitem" href="${appUrl("privacy.html")}">${t("priv.menuShort")}</a>
+        <span class="grow"></span>
+        <button class="menu-signout" role="menuitem" data-signout>${t(DEMO ? "demo.exit" : "auth.signOut")}</button>
+      </div>
     </div>`;
 }
 
