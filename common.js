@@ -1313,7 +1313,7 @@ function gateMessage(text, err) { gateMsg = { text, err }; renderAuth(); }
 const appUrl = file => location.href.split(/[?#]/)[0].replace(/[^/]*$/, file);
 
 // ---- Feedback to RostiQ (account menu, footer): only the RostiQ admin reads it ----
-const APP_VERSION = "2026.10.38";
+const APP_VERSION = "2026.10.39";
 function deviceText() {
   const ua = navigator.userAgent;
   const os = /iPhone/.test(ua) ? "iPhone" : /iPad/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1) ? "iPad"
@@ -1532,6 +1532,7 @@ function renderAccount() {
       ${session.platformAdmin ? `<a class="menu-item" role="menuitem" href="${appUrl("rostiq.html")}">${ic("settings")} ${t("menu.platform")}${
         session.feedbackNew ? ` <span class="pill cyan">${t("fb.newCount", { n: session.feedbackNew })}</span>` : ""}</a>` : ""}
       ${DEMO ? "" : `<a class="menu-item" role="menuitem" href="${appUrl("me.html")}">${ic("user")} ${t("me.menu")}</a>`}
+      ${!DEMO && (session.teams || []).length > 1 ? `<a class="menu-item" role="menuitem" href="${appUrl("me.html")}?agenda">${ic("calendar")} ${t("me.agendaMenu")}</a>` : ""}
       <a class="menu-item" role="menuitem" href="${appUrl("start.html")}">${ic("plus")} ${t("menu.newTeam")}</a>
       ${DEMO ? "" : `<button class="menu-item" role="menuitem" data-feedback>${ic("message")} ${t("fb.menu")}</button>`}
       <a class="menu-item" role="menuitem" href="${appUrl("privacy.html")}">${ic("shield")} ${t("priv.menu")}</a>

@@ -69,9 +69,19 @@
 <script src="i18n.js"></script>
 <script src="common.js"></script>
 <script>
-// "My profile": everything of mine across my teams. My matches in one list (with days where two teams play), my sport
-// details (sent to my teams of that sport), and my contact details (the same in all my teams).
+// "My profile": my sport details (sent to my teams of that sport) and my contact details (the same in all my teams).
+// me.html?agenda: my matches of all my teams in one list, with the days where two teams play.
 const FED = /^[A-Za-z0-9 .\/-]{1,20}$/, EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const AGENDA = new URLSearchParams(location.search).has("agenda");
+if (AGENDA) {
+  // (the page's own translation step reads these keys)
+  Object.assign(document.querySelector("main h1").dataset, { i18n: "me.agenda" });
+  Object.assign(document.querySelector("main .sub span").dataset, { i18n: "me.agendaSub" });
+  document.querySelector("title").dataset.i18nDoc = "me.agendaTitle";
+  document.querySelector("main h1").textContent = t("me.agenda");
+  document.querySelector("main .sub span").textContent = t("me.agendaSub");
+  document.title = t("me.agendaTitle");
+}
 const me = { loaded: false, teams: [], extraSports: [], msg: {}, place: { status: "idle", results: [] } };
 
 async function loadAll() {
@@ -215,8 +225,8 @@ function render() {
   if (!me.loaded) { box.innerHTML = skeletonCards(3); if (session.ready && !me.loading) { me.loading = true; loadAll(); } return; }
   // Keep what's being typed across a re-render.
   const a = document.activeElement, keep = a && a.form && a.name ? { form: a.form.id || a.form.dataset.sport, name: a.name, value: a.value } : null;
-  box.innerHTML = `
-    <section class="me-section"><h2>${ic("calendar")} ${t("me.agenda")}</h2><p class="muted">${t("me.agendaSub")}</p>${agendaHtml()}</section>
+  // me.html?agenda: only my matches (its own menu item); otherwise the profile itself, kept short.
+  box.innerHTML = AGENDA ? `<section class="me-section">${agendaHtml()}</section>` : `
     <section class="me-section"><h2>${ic("trophy")} ${t("me.sports")}</h2><p class="muted">${t("me.sportsSub")}</p>${sportsHtml()}</section>
     <section class="me-section"><h2>${ic("user")} ${t("me.contact")}</h2><p class="muted">${t("me.contactSub")}</p>${contactHtml()}</section>`;
   if (keep) {
