@@ -325,14 +325,15 @@ function forgetSnapshot() {
 }
 // Opening the app again: show the stored copy right away; the live data replaces it a moment later.
 function quickStart() {
-  if (dataLoaded || !TEAM_ID || NO_TEAM_PAGE || WANT_PICKER || DEMO) return;
+  if (dataLoaded || !TEAM_ID || NO_TEAM_PAGE || WANT_PICKER || DEMO) return false;
   const snap = loadSnapshot();
-  if (!snap || !snap.root || Date.now() - snap.at > 30 * 864e5) return;
+  if (!snap || !snap.root || Date.now() - snap.at > 30 * 864e5) return false;
   root = snap.root;
   snapshotAt = snap.at; // for "last known data of 14:05" if we turn out to be offline
   dataLoaded = true;
   reapplyOutbox();
   syncSession();
+  return true;
 }
 // No connection: show the stored data (if any) and the offline bar.
 function goOffline() {
@@ -518,7 +519,7 @@ async function connect(forceRefresh) {
   stream.onopen = () => setStatus("live", t("status.live"));
   stream.onerror = () => {
     if (stream !== es) return;
-    if (!navigator.onLine || !dataLoaded) return goOffline(); // no data yet: show the stored copy meanwhile
+    if (!navigator.onLine || !dataLoaded || offlineView) return goOffline(); // no data yet: show the stored copy meanwhile
     setStatus("err", t("status.reconnecting"));
   };
 }
@@ -1230,7 +1231,9 @@ async function initAuth() {
 // Signed in: load "my teams", pick the team, then check membership in it.
 async function afterSignIn() {
   const uid = session.user.uid;
-  quickStart();
+  // Already in this team on this device: open the live data straight away; the membership is checked alongside.
+  const early = quickStart() && !!(session.pid || session.admin);
+  if (early) connect();
   const mine = (await getAbs(`users/${uid}/teams`)) || {};
   session.teams = Object.keys(mine);
   profile.ready = loadProfile(mine).catch(() => {});
@@ -1242,7 +1245,7 @@ async function afterSignIn() {
   if (NO_TEAM_PAGE) { session.ready = true; renderAuth(); render(); return; }
   if (!TEAM_ID && session.teams.length === 1 && !WANT_PICKER) return chooseTeam(session.teams[0]);
   if (!TEAM_ID) return showPicker();
-  checkMembership();
+  checkMembership(early);
 }
 
 // Team chooser ("My teams"): shown when no team is chosen yet, or via "switch team".
@@ -1262,11 +1265,12 @@ async function showPicker(message) {
 let approvalEs = null;
 function stopApprovalWatch() { if (approvalEs) approvalEs.close(); approvalEs = null; }
 
-async function checkMembership() {
+// connected: the live data was already opened (see afterSignIn); only close it again when we're not in the team.
+async function checkMembership(connected) {
   const uid = session.user.uid;
   const info = await getAbs(`teams/${TEAM_ID}/info`);
   if (!info && isOffline()) return goOffline();
-  if (!info) { forgetSnapshot(); pref.set("team", ""); TEAM_ID = ""; return showPicker(t("pick.notFound")); }
+  if (!info) { disconnect(); forgetSnapshot(); pref.set("team", ""); TEAM_ID = ""; return showPicker(t("pick.notFound")); }
   mergeTeamInfo(info);
   applyBranding();
   pref.set("team", TEAM_ID);
@@ -1274,6 +1278,7 @@ async function checkMembership() {
     const [pid, isAdmin] = await Promise.all([getAbs(`teams/${TEAM_ID}/members/${uid}`), getAbs(`teams/${TEAM_ID}/admins/${uid}`)]);
     session.admin = isAdmin === true;
     if (!pid && !session.admin) {
+      disconnect();
       forgetSnapshot();
       session.request = await getAbs(`requests/${TEAM_ID}/${uid}`);
       session.pending = true;
@@ -1284,7 +1289,7 @@ async function checkMembership() {
     }
   }
   session.pending = false;
-  connect();
+  if (!connected || !es || es.readyState === EventSource.CLOSED) connect();
 }
 
 // Open the team by itself as soon as the team admin links this account.
@@ -1346,7 +1351,7 @@ function gateMessage(text, err) { gateMsg = { text, err }; renderAuth(); }
 const appUrl = file => location.href.split(/[?#]/)[0].replace(/[^/]*$/, file);
 
 // ---- Feedback to RostiQ (account menu, footer): only the RostiQ admin reads it ----
-const APP_VERSION = "2026.10.43";
+const APP_VERSION = "2026.10.44";
 function deviceText() {
   const ua = navigator.userAgent;
   const os = /iPhone/.test(ua) ? "iPhone" : /iPad/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1) ? "iPad"
