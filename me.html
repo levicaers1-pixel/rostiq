@@ -1,0 +1,273 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title data-i18n-doc="me.pageTitle">RostiQ · My profile</title>
+<meta name="theme-color" content="#1e1b4b">
+<meta name="robots" content="noindex">
+<link rel="icon" type="image/png" href="assets/favicon.png">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700;800&family=Cormorant+Garamond:wght@600&display=swap">
+<link rel="stylesheet" href="common.css">
+<style>
+  main.me { max-width: 760px; }
+  .me-section { margin-top: 18px; }
+  .me-section > h2 { display: flex; align-items: center; gap: 8px; font-size: 1.15rem; margin: 0 0 4px; }
+  .me-section > p.muted { margin: 0 0 12px; }
+  .clash { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border-radius: 12px; margin-bottom: 12px;
+    background: var(--no-bg); color: var(--text); border: 1px solid color-mix(in srgb, var(--no) 35%, var(--border)); font-size: .9rem; }
+  .clash svg { color: var(--no); flex: none; margin-top: 2px; }
+  .ag-day { margin: 14px 0 6px; font-size: .78rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted);
+    display: flex; gap: 8px; align-items: center; }
+  .ag { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 12px; align-items: center; padding: 12px;
+    border: 1px solid var(--border); border-radius: 12px; background: var(--surface); margin-bottom: 8px; }
+  .ag.clashing { border-color: color-mix(in srgb, var(--no) 45%, var(--border)); }
+  .ag.off { opacity: .65; }
+  .ag.off .ag-opp { text-decoration: line-through; }
+  .ag-team { display: inline-flex; align-items: center; gap: 6px; font-size: .78rem; font-weight: 700; color: var(--muted); }
+  .ag-team i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+  .ag-opp { font-weight: 700; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .ag-sub { font-size: .82rem; color: var(--muted); }
+  .ag a.ag-link { color: inherit; text-decoration: none; }
+  .ag .answer { grid-column: 1 / -1; }
+  .sport-card { border: 1px solid var(--border); border-radius: 12px; padding: 12px; background: var(--surface); margin-bottom: 10px; }
+  .sport-card h3 { margin: 0 0 2px; font-size: 1rem; display: flex; gap: 8px; align-items: center; }
+  .sport-card .shared { font-size: .8rem; color: var(--muted); margin: 0 0 10px; }
+  .fields { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; }
+  .fields label { display: flex; flex-direction: column; gap: 4px; font-size: .8rem; color: var(--muted); }
+  .fields input { font: inherit; font-size: .92rem; color: var(--text); background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 8px; min-width: 0; }
+  .fields small { font-size: .72rem; }
+  .row-end { display: flex; gap: 10px; align-items: center; justify-content: flex-end; margin-top: 10px; flex-wrap: wrap; }
+  .row-end .msg { font-size: .85rem; color: var(--muted); }
+  .row-end .msg.err { color: var(--no); }
+  .add-sport { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: .9rem; }
+  .add-sport select { font: inherit; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text); }
+  .place-results { display: grid; gap: 6px; margin-top: 8px; }
+  .place-results button { text-align: left; font-size: .88rem; }
+</style>
+</head>
+<body>
+<header class="brand">
+  <div class="brand-inner">
+    <a href="./"><img class="logo rostiq-logo" src="assets/rostiq-logo-header.png" alt="RostiQ"></a>
+  </div>
+</header>
+<main class="me">
+  <h1 data-i18n="me.title">My profile</h1>
+  <p class="sub"><span data-i18n="me.sub"></span></p>
+  <div id="me-body"></div>
+</main>
+
+<script>window.PLATFORM_PAGE = true;</script>
+<script src="icons.js"></script>
+<script src="config.js"></script>
+<script src="team.js"></script>
+<script src="i18n.js"></script>
+<script src="common.js"></script>
+<script>
+// "My profile": everything of mine across my teams. My matches in one list (with days where two teams play), my sport
+// details (sent to my teams of that sport), and my contact details (the same in all my teams).
+const FED = /^[A-Za-z0-9 .\/-]{1,20}$/, EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const me = { loaded: false, teams: [], extraSports: [], msg: {}, place: { status: "idle", results: [] } };
+
+async function loadAll() {
+  await profile.ready;
+  const entries = Object.entries(profile.teams || {});
+  me.teams = (await Promise.all(entries.map(async ([tid, pid]) => {
+    const T = `teams/${tid}`;
+    const [info, schedule, matches, avail, name] = await Promise.all([getAbs(`${T}/info`), getAbs(`${T}/schedule`), getAbs(`${T}/matches`),
+      getAbs(`${T}/players/${pid}/avail`), getAbs(`${T}/players/${pid}/name`)]);
+    if (!info) return null; // no access any more
+    return { tid, pid, info, settings: (profile.settings || {})[tid] || {}, schedule: schedule || {}, matches: matches || {}, avail: avail || {}, name };
+  }))).filter(Boolean).sort((a, b) => (a.info.brand || a.tid).localeCompare(b.info.brand || b.tid));
+  me.loaded = true;
+  render();
+}
+
+const teamColor = x => (x.info.colors && x.info.colors.light && x.info.colors.light["--brand"]) || "#1e1b4b";
+const teamName = x => x.info.shortName || x.info.brand || x.tid;
+const sportLabel = sp => `${sp === "golf" ? "⛳" : SPORTS[sp].icon} ${t("sport." + sp)}`; // the golfer emoji is missing on some devices
+
+// ---- My matches, all teams ----
+function agendaHtml() {
+  const items = [];
+  for (const x of me.teams) for (const [date, e] of Object.entries(x.schedule)) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || date < TODAY || !e || !e.opp) continue;
+    items.push({ x, date, e, m: x.matches[date] || {}, mine: x.avail[date] || "" });
+  }
+  items.sort((a, b) => a.date.localeCompare(b.date) || ((a.m.start || "99") > (b.m.start || "99") ? 1 : -1));
+  if (!items.length) return emptyState("calendar", t("me.noMatches"), "", "", true);
+  const perDay = {};
+  for (const it of items) if (!it.e.cancelled) perDay[it.date] = (perDay[it.date] || 0) + 1;
+  const clashes = Object.keys(perDay).filter(d => perDay[d] > 1);
+  let html = clashes.length ? `<div class="clash">${ic("info")}<span>${t("me.clashes", { n: clashes.length,
+    days: clashes.slice(0, 3).map(d => fmt(d, { weekday: "short", day: "numeric", month: "short" })).join(", ") })}</span></div>` : "";
+  let day = "";
+  for (const it of items.slice(0, 40)) {
+    if (it.date !== day) {
+      day = it.date;
+      html += `<div class="ag-day">${esc(fmt(day, { weekday: "long", day: "numeric", month: "long" }))}${perDay[day] > 1 ? ` <span class="pill no">${t("me.clash")}</span>` : ""}</div>`;
+    }
+    const { x, e, m, mine } = it, v = m.venue;
+    const sub = [m.start ? m.start + (m.end ? "–" + m.end : "") : "", v && v.name, e.home === true ? t("match.home") : e.home === false ? t("match.away") : ""].filter(Boolean).map(esc).join(" · ");
+    html += `<div class="ag${e.cancelled ? " off" : ""}${perDay[it.date] > 1 && !e.cancelled ? " clashing" : ""}">
+      <a class="ag-link" href="${appUrl("index.html")}?t=${encodeURIComponent(x.tid)}">
+        <span class="ag-team"><i style="background:${esc(teamColor(x))}"></i>${esc(teamName(x))}</span>
+        <div class="ag-opp"><span>${esc(e.opp)}</span>${e.cancelled ? `<span class="pill no">${t("off.pill")}</span>` : ""}${e.final ? `<span class="pill violet">${t("final")}</span>` : ""}</div>
+        ${sub ? `<div class="ag-sub">${sub}</div>` : ""}</a>
+      ${e.cancelled ? "" : `<div class="answer" role="group" aria-label="${t("match.mine")}">${["yes", "maybe", "no"].map(a =>
+        `<button data-ans="${a}" data-tid="${esc(x.tid)}" data-date="${it.date}" data-a="${a}" aria-pressed="${mine === a}">${ic({ yes: "check", maybe: "help", no: "x" }[a])} ${t("answer." + a)}</button>`).join("")}</div>`}
+    </div>`;
+  }
+  return html;
+}
+
+// My answer for a match of one of my teams: saved with a line in that match's history (as in the team page).
+async function answer(tid, date, a) {
+  const x = me.teams.find(y => y.tid === tid);
+  if (!x) return;
+  const old = x.avail[date] || null, value = old === a ? null : a; // tap again: clear
+  x.avail[date] = value || undefined; if (!value) delete x.avail[date];
+  render();
+  const path = `teams/${tid}/players/${x.pid}/avail/${date}`;
+  const entry = { p: x.pid, by: session.user.uid, at: { ".sv": "timestamp" }, ...(value ? { a: value } : {}), ...(old ? { f: old } : {}) };
+  let ok = await send("PATCH", "", { [path]: value, [`history/${tid}/${date}/${historyId()}`]: entry }, true, true, true);
+  if (ok !== true) ok = await send(value ? "PUT" : "DELETE", path, value || undefined, true);
+  if (!ok) { if (old) x.avail[date] = old; else delete x.avail[date]; render(); }
+  toast(ok ? t("toast.saved") : t("status.saveFailed"), ok ? "" : "err");
+}
+
+// ---- Sport details ----
+function mySports() {
+  const set = new Set([...me.teams.map(x => sportOf(x.settings)), ...Object.keys((profile.data || {}).sports || {}), ...me.extraSports]);
+  return [...set].filter(sp => SPORTS[sp]);
+}
+const kindLabel = k => k === "fed" ? t("team.fed") : t("field." + k);
+function sportsHtml() {
+  const sports = mySports(), mine = (profile.data || {}).sports || {};
+  let html = sports.map(sp => {
+    const teams = me.teams.filter(x => sportOf(x.settings) === sp);
+    const shared = teams.map(x => {
+      const kinds = Object.keys(sportSlots(x.settings)).filter(k => sportKinds(sp).includes(k));
+      return kinds.length ? `${esc(teamName(x))} (${kinds.map(kindLabel).map(esc).join(", ")})` : "";
+    }).filter(Boolean);
+    const msg = me.msg[sp] || {};
+    return `<form class="sport-card" data-sport="${sp}">
+      <h3>${sportLabel(sp)}</h3>
+      <p class="shared">${shared.length ? t("me.sharedWith", { list: shared.join(" · ") }) : t("me.sharedNone")}</p>
+      <div class="fields">${sportKinds(sp).map(k => `<label><span>${esc(kindLabel(k))}</span>
+        <input name="${k}" maxlength="${k === "fed" ? 20 : 60}" value="${esc((mine[sp] || {})[k] || "")}" autocomplete="off"${k === "handicap" ? ' inputmode="decimal"' : ""}></label>`).join("")}</div>
+      <div class="row-end"><span class="msg${msg.err ? " err" : ""}">${esc(msg.text || "")}</span><button class="primary">${t("me.save")}</button></div>
+    </form>`;
+  }).join("");
+  const others = Object.keys(SPORTS).filter(sp => !sports.includes(sp));
+  if (others.length) html += `<div class="add-sport">${t("me.addSport")} <select id="add-sport"><option value="">…</option>${
+    others.map(sp => `<option value="${sp}">${sportLabel(sp)}</option>`).join("")}</select></div>`;
+  return html;
+}
+
+async function saveSport(form) {
+  const sp = form.dataset.sport, cur = ((profile.data || {}).sports || {})[sp] || {}, changed = {};
+  for (const k of sportKinds(sp)) {
+    let v = form[k].value.trim();
+    if (k === "fed") { v = v.toUpperCase(); if (v && !FED.test(v)) { me.msg[sp] = { err: true, text: t("team.errFed") }; return render(); } }
+    v = v.slice(0, 60) || null;
+    if (!sameValue(cur[k], v)) changed[k] = v;
+  }
+  if (!Object.keys(changed).length) { me.msg[sp] = { text: t("me.noChanges") }; return render(); }
+  const ok = await shareSport(sp, changed);
+  me.msg[sp] = ok ? { text: t("me.savedSport") } : { err: true, text: t("status.saveFailed") };
+  render();
+}
+
+// ---- Contact details: the same in all my teams ----
+function contactHtml() {
+  const d = profile.data || {}, pl = me.place, msg = me.msg._contact || {};
+  return `<form class="sport-card" id="contact">
+    <div class="fields">
+      <label><span>${t("team.fPhone")}</span><input name="phone" type="tel" inputmode="tel" autocomplete="tel" value="${d.phone ? "+" + esc(d.phone) : ""}" placeholder="${t("phone.ph")}"></label>
+      <label><span>${t("team.fEmail")}</span><input name="email" type="email" autocomplete="email" value="${esc(d.email || "")}"></label>
+      <label><span>${t("me.place")}</span><input name="place" autocomplete="address-level2" value="${esc((d.geo && d.geo.label) || d.gemeente || "")}" placeholder="${t("carpool.gemeentePh")}">
+        <small class="muted">${t("me.placeHelp")}</small></label>
+    </div>
+    ${pl.status === "results" ? `<div class="place-results">${pl.results.map((r, i) => `<button type="button" data-place="${i}">${ic("pin")} ${esc(r.label)}${r.country ? ` · ${esc(r.country)}` : ""}</button>`).join("")}</div>` : ""}
+    ${pl.status === "none" ? `<p class="muted">${t("carpool.noPlace")}</p>` : pl.status === "loading" ? `<p class="muted">${t("carpool.searching")}</p>` : ""}
+    <div class="row-end"><span class="msg${msg.err ? " err" : ""}">${esc(msg.text || "")}</span><button class="primary">${t("me.save")}</button></div>
+  </form>`;
+}
+// Profile + every team row at once (like a change made in one team).
+async function saveContact(upd) {
+  const uid = session.user.uid;
+  for (const [f, v] of Object.entries(upd)) { if (v == null) delete profile.data[f]; else profile.data[f] = v; }
+  const jobs = [send("PATCH", `users/${uid}/profile`, upd, true)];
+  for (const [tid, pid] of Object.entries(profile.teams)) jobs.push(send("PATCH", `teams/${tid}/players/${pid}`, upd, true));
+  const r = await Promise.all(jobs);
+  return r[0] === true;
+}
+
+function render() {
+  const box = document.getElementById("me-body");
+  if (!session.user) { box.innerHTML = ""; return; }
+  if (!me.loaded) { box.innerHTML = skeletonCards(3); if (session.ready && !me.loading) { me.loading = true; loadAll(); } return; }
+  // Keep what's being typed across a re-render.
+  const a = document.activeElement, keep = a && a.form && a.name ? { form: a.form.id || a.form.dataset.sport, name: a.name, value: a.value } : null;
+  box.innerHTML = `
+    <section class="me-section"><h2>${ic("calendar")} ${t("me.agenda")}</h2><p class="muted">${t("me.agendaSub")}</p>${agendaHtml()}</section>
+    <section class="me-section"><h2>${ic("trophy")} ${t("me.sports")}</h2><p class="muted">${t("me.sportsSub")}</p>${sportsHtml()}</section>
+    <section class="me-section"><h2>${ic("user")} ${t("me.contact")}</h2><p class="muted">${t("me.contactSub")}</p>${contactHtml()}</section>`;
+  if (keep) {
+    const f = document.getElementById(keep.form) || document.querySelector(`form[data-sport="${keep.form}"]`);
+    const el = f && f[keep.name];
+    if (el) { el.value = keep.value; el.focus(); }
+  }
+}
+
+document.getElementById("me-body").addEventListener("click", ev => {
+  const b = ev.target.closest("[data-ans]");
+  if (b) return answer(b.dataset.tid, b.dataset.date, b.dataset.ans);
+  const pick = ev.target.closest("[data-place]");
+  if (pick) {
+    const r = me.place.results[Number(pick.dataset.place)];
+    me.place = { status: "idle", results: [] };
+    saveContact({ gemeente: r.name.slice(0, 60), geo: { lat: r.lat, lon: r.lon, label: r.label.slice(0, 120) } })
+      .then(ok => { me.msg._contact = ok ? { text: t("me.savedContact") } : { err: true, text: t("status.saveFailed") }; render(); });
+  }
+});
+document.getElementById("me-body").addEventListener("change", ev => {
+  if (ev.target.id === "add-sport" && ev.target.value) { me.extraSports.push(ev.target.value); render(); }
+});
+document.getElementById("me-body").addEventListener("submit", async ev => {
+  ev.preventDefault();
+  const f = ev.target;
+  if (f.dataset.sport) return saveSport(f);
+  if (f.id !== "contact") return;
+  const d = profile.data || {}, rawPhone = f.phone.value.trim(), email = f.email.value.trim(), place = f.place.value.trim();
+  const phone = rawPhone ? normPhone(rawPhone) : null;
+  const err = text => { me.msg._contact = { err: true, text }; render(); };
+  if (rawPhone && !phone) return err(t("phone.invalid"));
+  if (email && !EMAIL.test(email)) return err(t("team.errEmail"));
+  const upd = {};
+  if (!sameValue(d.phone || null, phone)) upd.phone = phone;
+  if (!sameValue(d.email || null, email.toLowerCase() || null)) upd.email = email.toLowerCase().slice(0, 100) || null;
+  // A new place: pick it from the list first (so distances are right).
+  if (place && place !== ((d.geo && d.geo.label) || d.gemeente || "")) {
+    me.place = { status: "loading", results: [] }; render();
+    try { const results = await searchPlaces(place); me.place = { status: results.length ? "results" : "none", results }; }
+    catch { me.place = { status: "none", results: [] }; }
+  }
+  if (Object.keys(upd).length) {
+    const ok = await saveContact(upd);
+    me.msg._contact = ok ? { text: me.place.status === "results" ? t("me.pickPlace") : t("me.savedContact") } : { err: true, text: t("status.saveFailed") };
+  } else if (me.place.status === "results") me.msg._contact = { text: t("me.pickPlace") };
+  else me.msg._contact = { text: t("me.noChanges") };
+  render();
+});
+
+start();
+</script>
+</body>
+</html>

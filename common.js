@@ -651,15 +651,17 @@ function fillLoginEmail() {
 // keeps a copy in my player row. Changing them in one team updates the profile and my other teams; opening
 // a team (or getting approved) copies the profile into that team's row.
 const PROFILE_FIELDS = ["phone", "email", "gemeente", "geo", "photo"]; // the federation number is per team (sport)
-const profile = { data: null, teams: {}, pending: null, applied: false };
+const profile = { data: null, teams: {}, settings: {}, pending: null, applied: false };
 const sameValue = (a, b) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
 
 async function loadProfile(myTeams) {
   const uid = session.user.uid;
   profile.teams = myTeams || {};
   const teams = Object.entries(profile.teams);
-  const [stored, ...rows] = await Promise.all([getAbs(`users/${uid}/profile`),
-    ...teams.map(([tid, pid]) => getAbs(`teams/${tid}/players/${pid}`))]);
+  const [stored, ...rest] = await Promise.all([getAbs(`users/${uid}/profile`),
+    ...teams.map(([tid, pid]) => getAbs(`teams/${tid}/players/${pid}`)), ...teams.map(([tid]) => getAbs(`teams/${tid}/settings`))]);
+  const rows = rest.slice(0, teams.length), settings = rest.slice(teams.length);
+  profile.settings = Object.fromEntries(teams.map(([tid], i) => [tid, settings[i] || {}]));
   if (!stored && netDown) { profile.teams = myTeams || {}; return; } // offline: no profile sync now, retried when online
   const data = stored || {};
   // My own edits always update the profile and all my teams together. So a team row that differs from the
@@ -671,20 +673,67 @@ async function loadProfile(myTeams) {
     const row = linked.find(r => r[f] != null && r[f] !== "" && !sameValue(r[f], data[f]));
     if (row) add[f] = row[f];
   }
+  // Sport details the profile doesn't have yet: from my teams of that sport.
+  teams.forEach(([tid], i) => {
+    const row = rows[i];
+    if (!row || row.uid !== uid) return;
+    const sport = sportOf(settings[i]);
+    for (const [kind, slot] of Object.entries(sportSlots(settings[i]))) {
+      const v = rowValue(row, slot), k = `sports/${sport}/${kind}`;
+      if (v != null && v !== "" && ((data.sports || {})[sport] || {})[kind] == null && add[k] == null) add[k] = v;
+    }
+  });
   // Use them right away, also if saving the profile fails (it's retried on the next sign-in).
-  if (Object.keys(add).length) { Object.assign(data, add); send("PATCH", `users/${uid}/profile`, add, true); }
+  if (Object.keys(add).length) {
+    for (const [k, v] of Object.entries(add)) setIn(data, k, v);
+    send("PATCH", `users/${uid}/profile`, add, true);
+  }
   if (session.user && session.user.uid !== uid) return; // signed out meanwhile
   // Bring all my other teams in line now (this team is done by applyProfile, which also updates the page).
   teams.forEach(([tid, pid], i) => {
     const row = rows[i];
     if (tid === TEAM_ID || !row || row.uid !== uid) return;
     const fix = Object.fromEntries(PROFILE_FIELDS.filter(f => data[f] != null && !sameValue(row[f], data[f])).map(f => [f, data[f]]));
+    Object.assign(fix, sportFill(row, settings[i], data)); // empty sport fields (e.g. just joined) get my details
     if (Object.keys(fix).length) send("PATCH", `teams/${tid}/players/${pid}`, fix, true);
   });
   profile.data = data;
   if (profile.pending) { const p = profile.pending; profile.pending = null; shareProfile(p); } // edits made while loading
   applyProfile();
   fillLoginEmail();
+}
+
+// Empty sport fields in a team row that my profile can fill: { "extra/c1": "12.4", fed: "…" }. Fields that already have
+// a value stay as they are (a team admin may have corrected them); my own edits on the profile page overwrite them.
+function sportFill(row, settings, data) {
+  const mine = ((data || {}).sports || {})[sportOf(settings)] || {}, out = {};
+  for (const [kind, slot] of Object.entries(sportSlots(settings))) {
+    const v = rowValue(row, slot);
+    if (mine[kind] != null && (v == null || v === "")) out[slot] = mine[kind];
+  }
+  return out;
+}
+function setIn(obj, path, v) {
+  const ks = path.split("/"), last = ks.pop();
+  let o = obj;
+  for (const k of ks) o = o[k] = o[k] && typeof o[k] === "object" ? o[k] : {};
+  if (v == null) delete o[last]; else o[last] = v;
+}
+// My sport details changed (my own edit): the profile, then every other team of that sport that has the field.
+function shareSport(sport, kinds) {
+  const uid = session.user && session.user.uid;
+  if (!uid || !profile.data || !Object.keys(kinds).length) return Promise.resolve(false);
+  const upd = {};
+  for (const [kind, v] of Object.entries(kinds)) { setIn(profile.data, `sports/${sport}/${kind}`, v); upd[`sports/${sport}/${kind}`] = v ?? null; }
+  const jobs = [send("PATCH", `users/${uid}/profile`, upd, true)];
+  for (const [tid, pid] of Object.entries(profile.teams)) {
+    const st = (profile.settings || {})[tid];
+    if ((tid === TEAM_ID && !NO_TEAM_PAGE) || !st || sportOf(st) !== sport) continue;
+    const slots = sportSlots(st), fix = {};
+    for (const [kind, v] of Object.entries(kinds)) if (slots[kind]) fix[slots[kind]] = v ?? null;
+    if (Object.keys(fix).length) jobs.push(send("PATCH", `teams/${tid}/players/${pid}`, fix, true));
+  }
+  return Promise.all(jobs).then(r => r[0] === true);
 }
 
 // After an offline start: load the profile (and sync it) once the connection is back.
@@ -696,10 +745,17 @@ async function reloadProfile() {
 // My own personal fields in `changes` (paths like "players/<my pid>/phone") → profile + my other teams.
 function shareProfile(changes) {
   if (!AUTH_ON || !session.user || !session.pid) return;
-  const base = `players/${session.pid}/`, mine = {};
+  const base = `players/${session.pid}/`, mine = {}, sport = {};
+  const kindOfSlot = Object.fromEntries(Object.entries(sportSlots(root.settings)).map(([k, slot]) => [slot, k]));
   for (const [path, value] of Object.entries(changes)) {
     const f = path.startsWith(base) ? path.slice(base.length) : null;
     if (PROFILE_FIELDS.includes(f)) mine[path] = value;
+    if (root.settings && kindOfSlot[f]) sport[kindOfSlot[f]] = value ?? null;
+  }
+  // Sport details (handicap, federation number…) go to my profile and my other teams of this sport.
+  if (Object.keys(sport).length && profile.data) {
+    const sp = sportKey(), cur = (profile.data.sports || {})[sp] || {};
+    shareSport(sp, Object.fromEntries(Object.entries(sport).filter(([k, v]) => !sameValue(cur[k], v))));
   }
   if (!Object.keys(mine).length) return;
   if (!profile.data) { profile.pending = { ...profile.pending, ...mine }; return; }
@@ -727,6 +783,7 @@ function applyProfile() {
     if (profile.data[f] != null) { if (!sameValue(row[f], profile.data[f])) changes[path] = profile.data[f]; }
     else if (row[f] != null && row[f] !== "") extra[path] = row[f]; // only known in this team: share it the other way
   }
+  for (const [slot, v] of Object.entries(sportFill(row, root.settings, profile.data))) changes[`players/${session.pid}/${slot}`] = v;
   if (Object.keys(changes).length) update(changes);
   if (Object.keys(extra).length) shareProfile(extra);
 }
@@ -909,6 +966,33 @@ const fedOn = () => !(root.settings || {}).fedOff;
 const fedLabel = () => (root.settings || {}).fedLabel || t("team.fed");
 const customFields = () => Object.entries((root.settings || {}).fields || {})
   .filter(([k, v]) => /^c[1-4]$/.test(k) && v).sort(([a], [b]) => a.localeCompare(b)); // [["c1", "Handicap"], …]
+
+// ---- Sport details: once per person and sport (users/<uid>/profile/sports/<sport>/<kind>), in all my teams of that sport ----
+// A team's own player field counts as a sport field when its name is one (Handicap, Klassement, Rugnummer, Positie, in
+// any language), and so does the federation number. A team only gets the fields it asks for.
+const SPORT_KINDS = ["handicap", "ranking", "number", "position"];
+const KIND_NAMES = { handicap: ["hcp"], ranking: ["klassement", "classement", "niveau", "level"],
+  number: ["nummer", "rugnr", "shirt nr", "numero"], position: ["positie", "poste"] };
+const normLabel = s => String(s || "").trim().toLowerCase().normalize("NFD").replace(/\p{M}/gu, "");
+function fieldKind(label) {
+  const l = normLabel(label);
+  return SPORT_KINDS.find(k => [...["en", "nl", "fr"].map(lang => T[lang] && T[lang]["field." + k]), ...KIND_NAMES[k]]
+    .some(n => n && normLabel(n) === l)) || null;
+}
+const sportOf = settings => SPORTS[(settings || {}).sport] ? settings.sport : "golf"; // existing teams: golf
+// Where each sport detail lives in one team's player rows, e.g. { handicap: "extra/c1", fed: "fed" }.
+function sportSlots(settings) {
+  const out = {};
+  for (const [c, label] of Object.entries((settings || {}).fields || {})) {
+    const k = /^c[1-4]$/.test(c) && label ? fieldKind(label) : null;
+    if (k && !out[k]) out[k] = `extra/${c}`;
+  }
+  if (!(settings || {}).fedOff) out.fed = "fed";
+  return out;
+}
+const rowValue = (row, slot) => slot.split("/").reduce((o, k) => (o || {})[k], row);
+// The details a sport asks for on the profile page: its usual fields plus the federation number.
+const sportKinds = sport => [...(SPORTS[sport] || SPORTS.other).suggest, "fed"];
 
 // Called off / moved (set by an admin from the match's edit dialog).
 const statusPill = e => e.cancelled ? `<span class="pill no">${ic("x")} ${t("off.pill")}</span>`
@@ -1106,7 +1190,7 @@ async function initAuth() {
     session.pending = false;
     session.picking = false;
     session.ready = !user; // with a user, wait until we know the team and the membership
-    Object.assign(profile, { data: null, teams: {}, pending: null, applied: false, ready: null });
+    Object.assign(profile, { data: null, teams: {}, settings: {}, pending: null, applied: false, ready: null });
     if (user) afterSignIn(); else { stopApprovalWatch(); disconnect(); brandUnknown = false; applyBranding(); }
     renderAuth();
     render();
@@ -1229,7 +1313,7 @@ function gateMessage(text, err) { gateMsg = { text, err }; renderAuth(); }
 const appUrl = file => location.href.split(/[?#]/)[0].replace(/[^/]*$/, file);
 
 // ---- Feedback to RostiQ (account menu, footer): only the RostiQ admin reads it ----
-const APP_VERSION = "2026.10.37";
+const APP_VERSION = "2026.10.38";
 function deviceText() {
   const ua = navigator.userAgent;
   const os = /iPhone/.test(ua) ? "iPhone" : /iPad/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1) ? "iPad"
@@ -1447,6 +1531,7 @@ function renderAccount() {
       ${switchable && TEAM_ID ? `<a class="menu-item" role="menuitem" href="${appUrl("index.html")}?pick">${ic("switch")} ${t("pick.switch")}</a>` : ""}
       ${session.platformAdmin ? `<a class="menu-item" role="menuitem" href="${appUrl("rostiq.html")}">${ic("settings")} ${t("menu.platform")}${
         session.feedbackNew ? ` <span class="pill cyan">${t("fb.newCount", { n: session.feedbackNew })}</span>` : ""}</a>` : ""}
+      ${DEMO ? "" : `<a class="menu-item" role="menuitem" href="${appUrl("me.html")}">${ic("user")} ${t("me.menu")}</a>`}
       <a class="menu-item" role="menuitem" href="${appUrl("start.html")}">${ic("plus")} ${t("menu.newTeam")}</a>
       ${DEMO ? "" : `<button class="menu-item" role="menuitem" data-feedback>${ic("message")} ${t("fb.menu")}</button>`}
       <a class="menu-item" role="menuitem" href="${appUrl("privacy.html")}">${ic("shield")} ${t("priv.menu")}</a>

@@ -246,7 +246,14 @@ users = {"$uid": {
         ".write": f"{PA} || (auth != null && (auth.uid === $uid || root.child('teams').child($tid).child('admins').child(auth.uid).val() === true))",
         ".validate": "newData.isString() && newData.val() === newData.parent().parent().parent().parent().child('teams').child($tid).child('members').child($uid).val()"}},
     # My personal details, shared by all my teams (each team keeps a copy in my player row).
-    "profile": {".write": "auth != null && auth.uid === $uid", **personal(), "$other": NO},
+    "profile": {".write": "auth != null && auth.uid === $uid", **personal(),
+                # Sport details, the same in all my teams of that sport: sports/<sport>/<kind>.
+                "sports": {"$sport": {
+                    ".validate": "$sport.matches(/^(golf|tennis|padel|hockey|football|basketball|volleyball|other)$/)",
+                    "handicap": s(60), "ranking": s(60), "number": s(60), "position": s(60),
+                    "fed": personal()["fed"],
+                    "$other": NO}},
+                "$other": NO},
     # Ids of my own feedback messages, so I can read or delete them later (Privacy → my data).
     "feedback": {"$id": {".write": "auth != null && auth.uid === $uid",
                          ".validate": "$id.matches(/^[a-z0-9]{8,30}$/) && newData.val() === true"}},

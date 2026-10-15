@@ -610,6 +610,29 @@
           "photo": {
             ".validate": "newData.isString() && newData.val().length <= 60000 && newData.val().matches(/^data:image\\/(png|jpeg|webp);base64,[A-Za-z0-9+\\/]+=*$/)"
           },
+          "sports": {
+            "$sport": {
+              ".validate": "$sport.matches(/^(golf|tennis|padel|hockey|football|basketball|volleyball|other)$/)",
+              "handicap": {
+                ".validate": "newData.isString() && newData.val().length <= 60"
+              },
+              "ranking": {
+                ".validate": "newData.isString() && newData.val().length <= 60"
+              },
+              "number": {
+                ".validate": "newData.isString() && newData.val().length <= 60"
+              },
+              "position": {
+                ".validate": "newData.isString() && newData.val().length <= 60"
+              },
+              "fed": {
+                ".validate": "newData.isString() && newData.val().matches(/^[A-Za-z0-9 .\\/-]{1,20}$/)"
+              },
+              "$other": {
+                ".validate": false
+              }
+            }
+          },
           "$other": {
             ".validate": false
           }
