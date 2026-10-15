@@ -4,11 +4,11 @@
 // - Fonts and the Firebase login library: the stored copy right away, refreshed in the background.
 // - Team data (Firebase database), maps, weather and place search are never stored here; common.js keeps
 //   the last-known team data itself.
-const CACHE = "rostiq-v5";
+const CACHE = "rostiq-v6";
 const SHELL = [
   "./", "index.html", "carpool.html", "ploeg.html", "admin.html", "rostiq.html", "start.html", "privacy.html", "me.html", "demo.js",
-  "common.css", "common.js", "i18n.js", "icons.js", "boot.js", "team.js", "config.js", "manifest.webmanifest",
-  "assets/rostiq-logo-header.png", "assets/icon-192.png", "assets/icon-512.png", "assets/favicon.png",
+  "common.css", "common.js", "i18n.js", "i18n/nl.js", "i18n/fr.js", "i18n/en.js", "icons.js", "boot.js", "team.js", "config.js", "manifest.webmanifest",
+  "assets/rostiq-logo-header.webp", "assets/icon-192.png", "assets/icon-512.png", "assets/favicon.png",
   "assets/apple-touch-icon.png", "assets/wordmark-light.png",
 ];
 const SHARED = ["fonts.googleapis.com", "fonts.gstatic.com", "www.gstatic.com"];

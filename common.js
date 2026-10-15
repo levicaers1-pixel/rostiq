@@ -209,7 +209,7 @@ function apply(path, value, merge) {
 // pid: this account's player row in the team. pending: signed in, waiting for the team admin.
 const PLATFORM = (window.PLATFORM_ADMINS || []).map(e => e.toLowerCase());
 const AUTH_ON = !!window.FIREBASE_CONFIG;
-const SDK = "https://www.gstatic.com/firebasejs/12.12.0/";
+const SDK = "https://www.gstatic.com/firebasejs/12.12.0/"; // also preloaded in each page's <head>: keep the version the same
 const session = { user: null, platformAdmin: !AUTH_ON, admin: !AUTH_ON, pid: null, ready: !AUTH_ON,
   pending: false, request: null, picking: false, teams: null, noTeam: false };
 let fbAuth = null, A = null, fbApp = null;
@@ -997,13 +997,12 @@ const customFields = () => Object.entries((root.settings || {}).fields || {})
 // A team's own player field counts as a sport field when its name is one (Handicap, Klassement, Rugnummer, Positie, in
 // any language), and so does the federation number. A team only gets the fields it asks for.
 const SPORT_KINDS = ["handicap", "ranking", "number", "position"];
-const KIND_NAMES = { handicap: ["hcp"], ranking: ["klassement", "classement", "niveau", "level"],
-  number: ["nummer", "rugnr", "shirt nr", "numero"], position: ["positie", "poste"] };
+const KIND_NAMES = { handicap: ["handicap", "hcp"], ranking: ["ranking", "klassement", "classement", "niveau", "level"],
+  number: ["shirt number", "rugnummer", "numéro de maillot", "nummer", "rugnr", "shirt nr", "numero"], position: ["position", "positie", "poste"] };
 const normLabel = s => String(s || "").trim().toLowerCase().normalize("NFD").replace(/\p{M}/gu, "");
 function fieldKind(label) {
   const l = normLabel(label);
-  return SPORT_KINDS.find(k => [...["en", "nl", "fr"].map(lang => T[lang] && T[lang]["field." + k]), ...KIND_NAMES[k]]
-    .some(n => n && normLabel(n) === l)) || null;
+  return SPORT_KINDS.find(k => KIND_NAMES[k].some(n => normLabel(n) === l)) || null;
 }
 const sportOf = settings => SPORTS[(settings || {}).sport] ? settings.sport : "golf"; // existing teams: golf
 // Where each sport detail lives in one team's player rows, e.g. { handicap: "extra/c1", fed: "fed" }.
@@ -1059,7 +1058,7 @@ async function photoFromFile(file) {
 // Avatar colour that stays the same for a name (match cards, team page).
 const AV_COLORS = ["#6c5ce7", "#0891b2", "#16a34a", "#d97706", "#db2777", "#2563eb", "#7c3aed", "#0d9488"];
 const avColor = n => AV_COLORS[[...(n || "")].reduce((h, c) => (h * 31 + c.codePointAt(0)) >>> 0, 7) % AV_COLORS.length];
-const ROSTIQ_LOGO = `<img class="logo rostiq-logo" src="assets/rostiq-logo-header.png" alt="RostiQ">`;
+const ROSTIQ_LOGO = `<img class="logo rostiq-logo" src="assets/rostiq-logo-header.webp" alt="RostiQ">`;
 // brandPreview: unsaved changes on the Admin page, shown live until saved or cancelled.
 let brandPreview = null;
 function applyBranding() {
@@ -1347,7 +1346,7 @@ function gateMessage(text, err) { gateMsg = { text, err }; renderAuth(); }
 const appUrl = file => location.href.split(/[?#]/)[0].replace(/[^/]*$/, file);
 
 // ---- Feedback to RostiQ (account menu, footer): only the RostiQ admin reads it ----
-const APP_VERSION = "2026.10.42";
+const APP_VERSION = "2026.10.43";
 function deviceText() {
   const ua = navigator.userAgent;
   const os = /iPhone/.test(ua) ? "iPhone" : /iPad/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1) ? "iPad"
@@ -1611,7 +1610,7 @@ function renderAuth() {
   const teamKnown = TEAM_ID && !NO_TEAM_PAGE && teamInfoKnown;
   const band = (sub = "") => `<div class="gate-brand">${teamKnown
       ? (TEAM.logo ? `<img src="${esc(TEAM.logo)}" alt="${esc(TEAM.brand)}">` : `<span class="gate-team">${esc(TEAM.brand)}</span>`)
-      : `<img src="assets/rostiq-logo-header.png" alt="RostiQ">`}
+      : `<img src="assets/rostiq-logo-header.webp" alt="RostiQ">`}
     ${sub ? `<p>${sub}</p>` : ""}</div>`;
   const signOutRow = extra => `<p class="gate-foot">${extra || ""}<button class="link" data-signout-gate>${t("auth.signOut")}</button></p>`;
   if (!u) {

@@ -361,11 +361,13 @@
   .details-dlg .spacer { flex: 1; }
   .link-danger { background: none; border: none; padding: 0; color: var(--no); text-decoration: underline; font-size: .85rem; }
 </style>
+<link rel="modulepreload" href="https://www.gstatic.com/firebasejs/12.12.0/firebase-app.js" crossorigin>
+<link rel="modulepreload" href="https://www.gstatic.com/firebasejs/12.12.0/firebase-auth.js" crossorigin>
 </head>
 <body>
 <header class="brand">
   <div class="brand-inner">
-    <a href="./"><img class="logo rostiq-logo" src="assets/rostiq-logo-header.png" alt="RostiQ"></a>
+    <a href="./"><img class="logo rostiq-logo" src="assets/rostiq-logo-header.webp" alt="RostiQ"></a>
     <nav class="tabs"><a href="./" aria-current="page" data-i18n="tab.availability">Availability</a><a href="carpool.html" data-i18n="tab.carpool">🚗 Carpool</a><a href="ploeg.html" data-i18n="tab.team">👥 Team</a><a href="admin.html" class="admin-tab" hidden data-i18n="tab.admin">⚙️ Admin</a></nav>
   </div>
 </header>

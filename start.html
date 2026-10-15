@@ -90,11 +90,13 @@
   .fld input.bad { background: color-mix(in srgb, var(--no) 6%, var(--bg)); animation: shake .35s; }
   @keyframes shake { 20%, 60% { transform: translateX(-4px); } 40%, 80% { transform: translateX(4px); } }
 </style>
+<link rel="modulepreload" href="https://www.gstatic.com/firebasejs/12.12.0/firebase-app.js" crossorigin>
+<link rel="modulepreload" href="https://www.gstatic.com/firebasejs/12.12.0/firebase-auth.js" crossorigin>
 </head>
 <body>
 <header class="brand">
   <div class="brand-inner">
-    <a href="./"><img class="logo rostiq-logo" src="assets/rostiq-logo-header.png" alt="RostiQ"></a>
+    <a href="./"><img class="logo rostiq-logo" src="assets/rostiq-logo-header.webp" alt="RostiQ"></a>
   </div>
 </header>
 <main class="start">
