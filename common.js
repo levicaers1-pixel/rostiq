@@ -239,6 +239,15 @@ async function getAbs(path) {
   } catch { netDown = true; return null; }
 }
 
+// Only the keys one level down (e.g. the team ids), each with the value true.
+async function getShallow(path) {
+  try {
+    const u = await dbUrlAbs(path);
+    const r = await fetch(u + (u.includes("?") ? "&" : "?") + "shallow=true");
+    return r.ok ? r.json() : null;
+  } catch { return null; }
+}
+
 // Returns true (saved), "queued" (no network: kept in the outbox, sent later) or false (refused).
 async function send(method, path, value, abs, noQueue, quiet) {
   if (DEMO) { saveDemo(); return true; } // a demo saves nothing online
@@ -299,14 +308,31 @@ function reapplyOutbox() {
     else apply(rel, it.method === "DELETE" ? null : it.value, false);
   }
 }
-// Last-known team data, per team, for reading offline.
+// Last-known team data, per team and account: shown at once when the app opens, and for reading offline.
 let snapTimer = null, snapshotAt = 0, offlineView = false;
+const snapUid = () => (session.user && session.user.uid) || "";
 function saveSnapshot() {
   clearTimeout(snapTimer);
-  snapTimer = setTimeout(() => { try { localStorage.setItem("snap:" + TEAM_ID, JSON.stringify({ at: Date.now(), root })); } catch {} }, 1500);
+  snapTimer = setTimeout(() => { try { localStorage.setItem("snap:" + TEAM_ID, JSON.stringify({ at: Date.now(), uid: snapUid(), root })); } catch {} }, 1500);
 }
 function loadSnapshot() {
-  try { return JSON.parse(localStorage.getItem("snap:" + TEAM_ID) || "null"); } catch { return null; }
+  try { const s = JSON.parse(localStorage.getItem("snap:" + TEAM_ID) || "null"); return s && s.uid === snapUid() ? s : null; } catch { return null; }
+}
+function forgetSnapshot() {
+  clearTimeout(snapTimer);
+  try { localStorage.removeItem("snap:" + TEAM_ID); } catch {}
+  if (!es) { root = {}; dataLoaded = false; }
+}
+// Opening the app again: show the stored copy right away; the live data replaces it a moment later.
+function quickStart() {
+  if (dataLoaded || !TEAM_ID || NO_TEAM_PAGE || WANT_PICKER || DEMO) return;
+  const snap = loadSnapshot();
+  if (!snap || !snap.root || Date.now() - snap.at > 30 * 864e5) return;
+  root = snap.root;
+  snapshotAt = snap.at; // for "last known data of 14:05" if we turn out to be offline
+  dataLoaded = true;
+  reapplyOutbox();
+  syncSession();
 }
 // No connection: show the stored data (if any) and the offline bar.
 function goOffline() {
@@ -1205,12 +1231,13 @@ async function initAuth() {
 // Signed in: load "my teams", pick the team, then check membership in it.
 async function afterSignIn() {
   const uid = session.user.uid;
+  quickStart();
   const mine = (await getAbs(`users/${uid}/teams`)) || {};
   session.teams = Object.keys(mine);
   profile.ready = loadProfile(mine).catch(() => {});
   if (session.platformAdmin) {
     getAbs("feedback").then(fb => { session.feedbackNew = Object.values(fb || {}).filter(x => x && x.status === "new").length; renderAccount(); });
-    const all = (await getAbs("teams")) || {};
+    const all = (await getShallow("teams")) || {}; // only the ids, not every team's data
     session.teams = [...new Set([...session.teams, ...Object.keys(all)])];
   }
   if (NO_TEAM_PAGE) { session.ready = true; renderAuth(); render(); return; }
@@ -1240,7 +1267,7 @@ async function checkMembership() {
   const uid = session.user.uid;
   const info = await getAbs(`teams/${TEAM_ID}/info`);
   if (!info && isOffline()) return goOffline();
-  if (!info) { pref.set("team", ""); TEAM_ID = ""; return showPicker(t("pick.notFound")); }
+  if (!info) { forgetSnapshot(); pref.set("team", ""); TEAM_ID = ""; return showPicker(t("pick.notFound")); }
   mergeTeamInfo(info);
   applyBranding();
   pref.set("team", TEAM_ID);
@@ -1248,6 +1275,7 @@ async function checkMembership() {
     const [pid, isAdmin] = await Promise.all([getAbs(`teams/${TEAM_ID}/members/${uid}`), getAbs(`teams/${TEAM_ID}/admins/${uid}`)]);
     session.admin = isAdmin === true;
     if (!pid && !session.admin) {
+      forgetSnapshot();
       session.request = await getAbs(`requests/${TEAM_ID}/${uid}`);
       session.pending = true;
       session.ready = true;
@@ -1319,7 +1347,7 @@ function gateMessage(text, err) { gateMsg = { text, err }; renderAuth(); }
 const appUrl = file => location.href.split(/[?#]/)[0].replace(/[^/]*$/, file);
 
 // ---- Feedback to RostiQ (account menu, footer): only the RostiQ admin reads it ----
-const APP_VERSION = "2026.10.41";
+const APP_VERSION = "2026.10.42";
 function deviceText() {
   const ua = navigator.userAgent;
   const os = /iPhone/.test(ua) ? "iPhone" : /iPad/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1) ? "iPad"
