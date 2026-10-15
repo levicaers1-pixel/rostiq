@@ -156,6 +156,7 @@ let render = function () {
     const facts = [
       p.email && `<a href="mailto:${esc(p.email)}">${esc(p.email)}</a>`,
       ...customFields().filter(([k]) => (p.extra || {})[k]).map(([k, label]) => `<span title="${esc(label)}"><span class="lbl">${esc(label)}</span> ${esc(p.extra[k])}</span>`),
+      awayNext(p) && `<span class="pill maybe" title="${esc(awayNext(p).n || "")}">${ic("calendar")} ${t("away.label", { when: esc(awayText(awayNext(p))) })}</span>`,
       fedOn() && p.fed && `<span><span class="lbl">${esc(fedLabel())}</span> <span class="fed">${esc(p.fed)}</span><button class="copy" data-copy="${esc(p.fed)}" title="${t("copy")}" aria-label="${t("copy")}">${ic("clipboard")}</button></span>`,
     ].filter(Boolean);
     const missing = mine && (!p.email || customFields().some(([k]) => !(p.extra || {})[k]) || (fedOn() && !p.fed));

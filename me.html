@@ -47,6 +47,9 @@
   .add-sport { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: .9rem; }
   .add-sport select { font: inherit; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text); }
   .place-results { display: grid; gap: 6px; margin-top: 8px; }
+  .away-row { display: flex; align-items: center; gap: 8px; padding: 6px 0 10px; margin-bottom: 8px; border-bottom: 1px solid var(--border); font-size: .92rem; }
+  .away-row > svg.i { color: var(--muted); }
+  .away-row .grow { flex: 1; }
   .place-results button { text-align: left; font-size: .88rem; }
 </style>
 </head>
@@ -194,6 +197,43 @@ async function saveSport(form) {
   render();
 }
 
+// ---- Holidays: away periods; my teams' matches in them get "no" (here at once, later matches by the daily job) ----
+const awayList = () => Object.entries((profile.data || {}).away || {}).filter(([, a]) => a && a.t >= TODAY).sort(([, a], [, b]) => a.f.localeCompare(b.f));
+function awayHtml() {
+  const msg = me.msg._away || {};
+  return `<form class="sport-card" id="away">
+    ${awayList().map(([id, a]) => `<div class="away-row">${ic("calendar")}<span class="grow"><b>${esc(awayText(a))}</b>${a.n ? ` · ${esc(a.n)}` : ""}</span>
+      <button type="button" class="small ghost" data-away-del="${id}" title="${t("away.remove")}" aria-label="${t("away.remove")}">${ic("trash")}</button></div>`).join("")}
+    <div class="fields">
+      <label><span>${t("away.from")}</span><input name="f" type="date" min="${TODAY}"></label>
+      <label><span>${t("away.to")}</span><input name="t" type="date" min="${TODAY}"></label>
+      <label><span>${t("away.note")}</span><input name="n" maxlength="60" placeholder="${t("away.notePh")}"></label>
+    </div>
+    <div class="row-end"><span class="msg${msg.err ? " err" : ""}">${esc(msg.text || "")}</span><button class="primary">${t("away.add")}</button></div>
+  </form>`;
+}
+// Saves the new list (profile + all my teams), and sets "no" for the matches it covers in my teams.
+async function saveAway(next, period) {
+  const ok = await saveContact({ away: Object.keys(next).length ? next : null });
+  let n = 0;
+  if (ok && period) {
+    for (const x of me.teams) {
+      const upd = {};
+      for (const [date, e] of Object.entries(x.schedule)) {
+        if (date < TODAY || date < period.f || date > period.t || !e || !e.opp || e.cancelled || x.avail[date] === "no") continue;
+        upd[`teams/${x.tid}/players/${x.pid}/avail/${date}`] = "no";
+        upd[`history/${x.tid}/${date}/${historyId()}`] = { p: x.pid, by: session.user.uid, at: { ".sv": "timestamp" }, a: "no", ...(x.avail[date] ? { f: x.avail[date] } : {}) };
+        x.avail[date] = "no"; n++;
+      }
+      if (!Object.keys(upd).length) continue;
+      if (await send("PATCH", "", upd, true, true, true) !== true) // without the history lines, if those are refused
+        await send("PATCH", "", Object.fromEntries(Object.entries(upd).filter(([k]) => k.startsWith("teams/"))), true, true);
+    }
+  }
+  me.msg._away = ok ? { text: period ? t("away.saved", { n }) : t("away.removed") } : { err: true, text: t("status.saveFailed") };
+  render();
+}
+
 // ---- Contact details: the same in all my teams ----
 function contactHtml() {
   const d = profile.data || {}, pl = me.place, msg = me.msg._contact || {};
@@ -227,6 +267,7 @@ function render() {
   const a = document.activeElement, keep = a && a.form && a.name ? { form: a.form.id || a.form.dataset.sport, name: a.name, value: a.value } : null;
   // me.html?agenda: only my matches (its own menu item); otherwise the profile itself, kept short.
   box.innerHTML = AGENDA ? `<section class="me-section">${agendaHtml()}</section>` : `
+    <section class="me-section"><h2>${ic("calendar")} ${t("away.title")}</h2><p class="muted">${t("away.sub")}</p>${awayHtml()}</section>
     <section class="me-section"><h2>${ic("trophy")} ${t("me.sports")}</h2><p class="muted">${t("me.sportsSub")}</p>${sportsHtml()}</section>
     <section class="me-section"><h2>${ic("user")} ${t("me.contact")}</h2><p class="muted">${t("me.contactSub")}</p>${contactHtml()}</section>`;
   if (keep) {
@@ -239,6 +280,8 @@ function render() {
 document.getElementById("me-body").addEventListener("click", ev => {
   const b = ev.target.closest("[data-ans]");
   if (b) return answer(b.dataset.tid, b.dataset.date, b.dataset.ans);
+  const del = ev.target.closest("[data-away-del]");
+  if (del) { const next = Object.fromEntries(awayList()); delete next[del.dataset.awayDel]; return saveAway(next, null); }
   const pick = ev.target.closest("[data-place]");
   if (pick) {
     const r = me.place.results[Number(pick.dataset.place)];
@@ -254,6 +297,13 @@ document.getElementById("me-body").addEventListener("submit", async ev => {
   ev.preventDefault();
   const f = ev.target;
   if (f.dataset.sport) return saveSport(f);
+  if (f.id === "away") {
+    const from = f.f.value, to = f.t.value || from, note = f.n.value.trim().slice(0, 60);
+    if (!from || to < from) { me.msg._away = { err: true, text: t("away.bad") }; return render(); }
+    const id = (Date.now().toString(36) + Math.random().toString(36).slice(2, 6)).slice(0, 14);
+    const period = { f: from, ...(note ? { n: note } : {}), t: to };
+    return saveAway({ ...Object.fromEntries(awayList()), [id]: period }, period); // ended periods drop out
+  }
   if (f.id !== "contact") return;
   const d = profile.data || {}, rawPhone = f.phone.value.trim(), email = f.email.value.trim(), place = f.place.value.trim();
   const phone = rawPhone ? normPhone(rawPhone) : null;

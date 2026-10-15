@@ -43,6 +43,7 @@ def num(lo, hi):
 
 
 NO = {".validate": False}
+DATE = {".validate": "newData.isString() && newData.val().matches(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/)"}
 HHMM = {".validate": "newData.isString() && newData.val().matches(/^([01][0-9]|2[0-3]):[0-5][0-9]$/)"}
 LATLON = {"lat": num(-90, 90), "lon": num(-180, 180)}
 COLOR = {".validate": "newData.isString() && newData.val().matches(/^#[0-9a-fA-F]{6}$/)"}
@@ -65,6 +66,9 @@ def personal():
         "gemeente": s(60),
         "geo": {".validate": "newData.hasChildren(['lat', 'lon', 'label'])", **LATLON, "label": s(120), "$other": NO},
         "photo": PHOTO,
+        # Holidays: away from f to t (dates); my teams' matches in that period get "no".
+        "away": {"$id": {".validate": "$id.matches(/^[0-9a-z]{6,20}$/) && newData.hasChildren(['f', 't']) && newData.child('t').val() >= newData.child('f').val()",
+                         "f": DATE, "t": DATE, "n": s(60), "$other": NO}},
     }
 
 
@@ -184,6 +188,12 @@ team = {
     "settings": {".write": TA, **settings_rules()},
     "schedule": {".write": TA, **schedule_rules()},
     "matches": {".write": TA, **matches_rules()},
+    # Selection per match (admins): p/<player> = "s" selected | "r" reserve; pub = shown to the team.
+    "selection": {".write": TA, "$date": {
+        ".validate": "$date.matches(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/)",
+        "p": {"$pid": {".validate": "newData.val() === 's' || newData.val() === 'r'"}},
+        "pub": {".validate": "newData.isBoolean()"}, "at": {".validate": "newData.isNumber()"},
+        "$other": NO}},
     "carpool": carpool_rules(f"{TA} || {OWNER}", MYPID),
     # Who started the team (self-service): written once, at creation. Only the account id and date: the creator's
     # name, email and pilot code live in teamCreators/<team> (below), which members can't read.
@@ -486,8 +496,9 @@ final["rules"]["notices"] = {"$tid": {"$id": {
     ".validate": "$id.matches(/^[0-9a-z]{10,24}$/) && newData.hasChildren(['k', 'd', 'by', 'at'])"
                  " && newData.child('by').val() === auth.uid && newData.child('at').val() === now"
                  f" && ((newData.child('k').val() === 'c' && {N_SCHED}.child('cancelled').val() === true)"
-                 f" || (newData.child('k').val() === 'm' && {N_SCHED}.child('moved').val() === newData.child('o').val()))",
-    "k": {".validate": "newData.val() === 'c' || newData.val() === 'm'"},
+                 f" || (newData.child('k').val() === 'm' && {N_SCHED}.child('moved').val() === newData.child('o').val())"
+                 " || (newData.child('k').val() === 's' && root.child('teams').child($tid).child('selection').child(newData.child('d').val()).child('pub').val() === true))",
+    "k": {".validate": "newData.val() === 'c' || newData.val() === 'm' || newData.val() === 's'"},
     "d": {".validate": "newData.isString() && newData.val().matches(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/)"},
     "o": {".validate": "newData.isString() && newData.val().matches(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/)"},
     "by": {".validate": "newData.isString()"}, "at": {".validate": "newData.isNumber()"},

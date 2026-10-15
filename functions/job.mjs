@@ -122,6 +122,23 @@ export async function runJob({ mode = "all", dry = false, verbose = false, clean
   const inv = await runInvites({ teams, subs: subsSnap.val() || {}, log: invLogSnap.val() || {}, today, dry: DRY, verbose: !!verbose });
   Object.assign(logWrites, inv.writes);
 
+  // ---- Holidays (players/<pid>/away): matches in such a period without an answer get "no" (logged as "away") ----
+  let awayFilled = 0;
+  const histId = () => (Date.now().toString(36) + crypto.randomBytes(6).toString("hex")).slice(0, 20);
+  for (const [tid, team] of Object.entries(teams)) {
+    for (const [pid, p] of Object.entries((team && team.players) || {})) {
+      const periods = Object.values((p && p.away) || {}).filter(a => a && a.f && a.t && a.t >= today);
+      if (!periods.length) continue;
+      for (const [date, m] of Object.entries(team.schedule || {})) {
+        if (date < today || !m || !m.opp || m.cancelled || (p.avail || {})[date] || !periods.some(a => a.f <= date && date <= a.t)) continue;
+        logWrites[`teams/${tid}/players/${pid}/avail/${date}`] = "no";
+        logWrites[`history/${tid}/${date}/${histId()}`] = { p: pid, a: "no", by: "away", at: ServerValue.TIMESTAMP };
+        (p.avail = p.avail || {})[date] = "no"; // so no reminder goes out for it below
+        awayFilled++;
+      }
+    }
+  }
+
   if (MODE !== "requests") {
     // ---- Match reminders: players who haven't answered, 3 days and 1 day before ----
     for (const [tid, team] of Object.entries(teams)) {
@@ -194,6 +211,7 @@ export async function runJob({ mode = "all", dry = false, verbose = false, clean
   // Only counts in the log (the repository is public): no names, teams or tokens.
   const would = DRY ? "would be " : "";
   console.log(`${today}: ${inv.stats.sent} invitations, ${inv.stats.updated} updates, ${inv.stats.cancelled} cancellations ${would}sent (${inv.stats.waiting} waiting, ${inv.stats.failed} failed).`);
+  if (awayFilled) console.log(`${awayFilled} answers ${would}set to "no" for players on holiday.`);
   if (movedCreators) console.log(`${movedCreators} teams' creator details ${would}moved out of the team data.`);
   if (movedReqs) console.log(`${movedReqs} access requests ${would}moved out of the team data.`);
   console.log(`${today}: ${reqSent} access-request notifications ${would}sent to admins` + (MODE === "requests" ? "." :

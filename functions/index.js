@@ -4,8 +4,8 @@
 // invitations, daily at 18:30 Belgian time also the match reminders. (GitHub's timer ran up to hours late; the GitHub
 // workflow is now only for running it by hand.) The Brevo login and key are Firebase secrets.
 //
-// notice: notices/<team>/<id> (an admin called a match off or moved it): a notification to every member's devices at
-// once, then the notice is removed. The rules only accept a notice for a match that really is cancelled / moved.
+// notice: notices/<team>/<id> (an admin called a match off, moved it, or published the selection): a notification to
+// every member's devices at once (for a selection: only the selected players and reserves), then the notice is removed. The rules only accept a notice for a match that really is cancelled / moved.
 //
 // calendar: GET /cal/<key>.ics: a player's personal calendar feed (read-only). calKeys/<key> = { t: team, p: player,
 // l: language, h: hide "no" matches }. Served through Firebase Hosting (firebase.json rewrite), which caches each feed
@@ -78,16 +78,17 @@ export const notice = onValueCreated({ ref: "/notices/{tid}/{id}", instance: "wi
   const done = () => db.ref(`notices/${tid}/${id}`).remove();
   if (!/^[a-z0-9][a-z0-9-]{1,39}$/.test(tid)) return done();
   const T = `teams/${tid}`;
-  const [brand, sched, match, quickLinks, members, quick] = await Promise.all([val(`${T}/info/brand`), val(`${T}/schedule/${n.d}`),
-    val(`${T}/matches/${n.d}`), val(`${T}/settings/quickLinks`), val(`${T}/members`), val(`quickIndex/${tid}`)]);
+  const [brand, sched, match, quickLinks, members, quick, selection] = await Promise.all([val(`${T}/info/brand`), val(`${T}/schedule/${n.d}`),
+    val(`${T}/matches/${n.d}`), val(`${T}/settings/quickLinks`), val(`${T}/members`), val(`quickIndex/${tid}`), val(`${T}/selection/${n.d}`)]);
   // Still the way the notice says (not undone in the meantime)?
-  if (!sched || (n.k === "c" && sched.cancelled !== true) || (n.k === "m" && sched.moved !== n.o)) return done();
+  if (!sched || (n.k === "c" && sched.cancelled !== true) || (n.k === "m" && sched.moved !== n.o) || (n.k === "s" && !(selection && selection.pub))) return done();
+  const placeOf = pid => ((selection || {}).p || {})[pid] || null;
   const team = { brand, opp: sched.opp, start: (match || {}).start, quickLinks };
   let sent = 0, gone = {};
   for (const [uid, pid] of Object.entries(members || {})) {
     if (uid === n.by) continue; // the admin who did it knows
     for (const [dev, info] of Object.entries((await val(`pushTokens/${uid}`)) || {})) {
-      const data = info && info.token && noticeMessage(tid, n, team, (quick || {})[pid] || null, info.lang);
+      const data = info && info.token && noticeMessage(tid, n, team, (quick || {})[pid] || null, info.lang, placeOf(pid));
       if (!data) continue;
       try { await getMessaging().send({ token: info.token, data, webpush: { headers: { Urgency: "high", TTL: String(24 * 3600) } } }); sent++; }
       catch (e) {

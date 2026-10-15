@@ -318,8 +318,9 @@ function matchState(e) {
   }));
   const waiting = Object.keys(all).filter(id =>
     all[id].role === "rider" && player(id) && !drivers.includes(all[id].with));
-  // Only players who said yes (a "maybe" isn't playing yet).
-  const open = named().filter(p => !all[p.id] && (p.avail || {})[e.date] === "yes").map(p => p.id);
+  // Only players who said yes (a "maybe" isn't playing yet); once a selection is published, only the selected ones.
+  const sel = (root.selection || {})[e.date], picked = sel && sel.pub ? (sel.p || {}) : null;
+  const open = named().filter(p => !all[p.id] && (picked ? picked[p.id] === "s" && (p.avail || {})[e.date] !== "no" : (p.avail || {})[e.date] === "yes")).map(p => p.id);
   return { all, cars, waiting, open };
 }
 

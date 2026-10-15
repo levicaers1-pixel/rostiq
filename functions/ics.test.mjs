@@ -49,4 +49,8 @@ const mv2 = noticeMessage("kfc", { k: "m", d: "2026-11-01", o: "2026-10-25" }, {
 assert.equal(mv2.body, "📅 Moved: Racing is now on Sunday 1 November. Can you make it?");
 assert.equal(JSON.parse(mv2.links).no, "https://app.rostiq.be/?t=kfc&ans=no&d=2026-11-01", "links off: the app");
 assert.equal(noticeMessage("kfc", { k: "z", d: "2026-11-01" }, tm, null, "nl"), null);
+const sl = noticeMessage("kfc", { k: "s", d: "2026-11-01" }, tm, null, "nl", "s");
+assert.equal(sl.body, "✅ Je bent geselecteerd voor Racing op zondag 1 november om 15:00.");
+assert.equal(noticeMessage("kfc", { k: "s", d: "2026-11-01" }, tm, null, "en", "r").body, "🔁 You're a reserve for Racing on Sunday 1 November. We'll let you know if a place opens up.");
+assert.equal(noticeMessage("kfc", { k: "s", d: "2026-11-01" }, tm, null, "nl", null), null, "not in the selection: nothing");
 console.log("notice tests ok");

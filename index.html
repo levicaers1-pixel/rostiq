@@ -337,6 +337,16 @@
   .details-dlg .muted { color: var(--muted); }
   .details-dlg .warn { color: var(--maybe); }
   .details-dlg .row { margin-top: 16px; align-items: center; }
+  .m-sel { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 6px; font-size: .85rem; }
+  .m-sel > svg.i { color: var(--yes); }
+  .m-sel i { color: var(--muted); }
+  .hero .m-sel { color: inherit; }
+  .sel-list { list-style: none; margin: 12px 0 0; padding: 0; max-height: 52vh; overflow: auto; display: grid; gap: 4px; }
+  .sel-list label { display: flex; align-items: center; gap: 10px; padding: 6px 8px; border-radius: 10px; cursor: pointer; }
+  .sel-list label:hover { background: color-mix(in srgb, var(--accent) 6%, transparent); }
+  .sel-list label.is-no { opacity: .6; }
+  .sel-list input { width: 18px; height: 18px; accent-color: var(--accent); }
+  .sel-list .grow { flex: 1; min-width: 0; }
   .status-box { margin-top: 16px; padding: 12px; border: 1px dashed var(--border); border-radius: 10px; display: grid; gap: 10px; }
   .status-text { display: flex; flex-direction: column; gap: 2px; }
   .status-text small, .status-box > div > small { color: var(--muted); font-size: .78rem; }
@@ -463,6 +473,20 @@
   </form>
 </dialog>
 
+<dialog id="sel" class="details-dlg sel-dlg">
+  <form method="dialog" id="sel-form">
+    <h3 id="sel-title"></h3>
+    <p class="muted" id="sel-sub"></p>
+    <ul class="sel-list" id="sel-list"></ul>
+    <div class="row">
+      <button type="button" id="sel-clear" class="link-danger" data-i18n="sel.clear">Clear</button>
+      <span class="spacer"></span>
+      <button type="button" id="sel-draft" data-i18n="sel.draft">Save draft</button>
+      <button type="button" class="primary" id="sel-pub" data-i18n="sel.publish">Publish</button>
+    </div>
+  </form>
+</dialog>
+
 <script>window.SKELETON_PAGE = true; window.WELCOME_HANDLES_PHONE = true;</script>
 <script src="icons.js"></script>
 <script src="config.js"></script>
@@ -550,6 +574,7 @@ function renderMatches(players, events) {
       <div class="m-body">
         <div class="m-title"><span class="m-opp">${esc(e.opp)}</span>${statusPill(e)}${homePill(e)}${e.final ? `<span class="pill violet">${ic("trophy")} ${t("final")}</span>` : ""}</div>
         ${summaryLine(e) ? `<div class="m-sub">${summaryLine(e)}</div>` : ""}
+        ${selLine(e, players)}
       </div>
       <div class="m-score ${LEVEL_PILL[c.level]}" title="${esc(t("level." + c.level))}"><b>${c.yes}</b>/${min}</div>
       <div class="m-progress">
@@ -566,6 +591,7 @@ function renderMatches(players, events) {
           ${!open ? "" : `<button class="remind" data-date="${e.date}" title="${t("remind.title", { n: c.missing.length })}" aria-label="${t("remind.short")}"
             ${c.missing.length ? "" : "disabled"}>${ic("bell")}${c.missing.length ? `<span class="count">${c.missing.length}</span>` : ""}</button>`}
           ${session.admin && open ? `<button data-history="${e.date}" title="${t("hist.button")}" aria-label="${t("hist.button")}">${ic("clock")}</button>` : ""}
+          ${session.admin && open ? `<button data-select="${e.date}" title="${t("sel.button")}" aria-label="${t("sel.button")}">${ic("users")}</button>` : ""}
           ${session.admin ? `<button data-edit="${e.date}" title="${t("details.edit")}" aria-label="${t("details.edit")}">${ic("pencil")}</button>` : ""}
         </div>
       </div>
@@ -703,10 +729,11 @@ function renderHero(players) {
   const more = detailsHtml(e);
   el.innerHTML = `
     <div class="hero-top"><span class="hero-kicker">${ic("flag")} ${t("hero.next")}</span>
-      <span class="hero-top-r">${session.admin ? `<button class="hero-icon" data-history="${e.date}" title="${t("hist.button")}" aria-label="${t("hist.button")}">${ic("clock")}</button><button class="hero-icon" data-edit="${e.date}" title="${t("details.edit")}" aria-label="${t("details.edit")}">${ic("pencil")}</button>` : ""}<span class="hero-when">${when}</span></span></div>
+      <span class="hero-top-r">${session.admin ? `<button class="hero-icon" data-history="${e.date}" title="${t("hist.button")}" aria-label="${t("hist.button")}">${ic("clock")}</button><button class="hero-icon" data-select="${e.date}" title="${t("sel.button")}" aria-label="${t("sel.button")}">${ic("users")}</button><button class="hero-icon" data-edit="${e.date}" title="${t("details.edit")}" aria-label="${t("details.edit")}">${ic("pencil")}</button>` : ""}<span class="hero-when">${when}</span></span></div>
     <div class="hero-main">
       <div class="hero-head"><h2 class="hero-title">${esc(e.opp)}${statusPill(e)}${homePill(e)}${e.final ? `<span class="pill violet">${ic("trophy")} ${t("final")}</span>` : ""}</h2>
         <div class="hero-date">${esc(fmt(e.date, { weekday: "long", day: "numeric", month: "long" }))}${summaryLine(e) ? ` · ${summaryLine(e)}` : ""}</div>
+        ${selLine(e, players)}
         ${more ? `<details class="hero-more"${heroMoreOpen ? " open" : ""}><summary>${t("hero.more")} ${ic("chevron-down")}</summary>${more}</details>` : ""}</div>
       <div class="hero-stat"><b>${c.yes}</b><span>/ ${min}</span><small>${t("label.yes")}</small></div>
     </div>
@@ -740,6 +767,8 @@ function onMatchClick(ev) {
   if (share) { const e = find(share); openShare(`${t("share.match")}: ${e.opp}`, matchMessage(e)); }
   const edit = ev.target.closest("[data-edit]");
   if (edit) openDetails(find(edit));
+  const selBtn = ev.target.closest("[data-select]");
+  if (selBtn) openSelection(EVENTS.find(x => x.date === selBtn.dataset.select));
   const hist = ev.target.closest("[data-history]");
   if (hist) openHistory(EVENTS.find(x => x.date === hist.dataset.history));
   // My own answer: tap again to clear it.
@@ -1046,13 +1075,83 @@ async function openHistory(e) {
   const rows = Object.values(data || {}).filter(x => x && x.p).sort((a, b) => b.at - a.at).map(x => {
     const who = byUid(x.by);
     const how = who ? (who[0] === x.p ? "" : t("hist.by", { name: who[1].name || "?" }))
-      : x.by === "demo" ? "" : admins[x.by] ? t("hist.byAdmin") : t("hist.byLink");
+      : x.by === "demo" ? "" : x.by === "away" ? t("hist.byAway") : admins[x.by] ? t("hist.byAdmin") : t("hist.byLink");
     const when = new Date(x.at).toLocaleString(LOCALE, { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
     return `<li><span class="h-time">${esc(when)}</span><b>${esc(nameOfPid(x.p))}</b>
       <span class="h-change">${x.f ? `${pill(x.f)}<span class="h-arrow">→</span>` : ""}${pill(x.a)}${how ? ` <small>${esc(how)}</small>` : ""}</span></li>`;
   });
   list.innerHTML = rows.length ? rows.join("") : `<li class="h-empty">${t(data === null && isOffline() ? "hist.offline" : "hist.empty")}</li>`;
 }
+
+// ---- Selection: when more players say yes than there are places, the admin picks who plays ----
+// selection/<date> = { p: { <pid>: "s" selected | "r" reserve }, pub: shown to the team, at }. Publishing tells the
+// players with a notification (notices k "s", sent by the Cloud Function) and opens a ready-made WhatsApp message.
+const selOf = e => (root.selection || {})[e.date] || null;
+const selNames = (e, players, s) => players.filter(p => p.name && ((selOf(e) || {}).p || {})[p.id] === s).map(p => p.name);
+function selLine(e, players) {
+  const sel = selOf(e);
+  if (!sel || !isOn(e) || (!sel.pub && !session.admin)) return "";
+  const chosen = selNames(e, players, "s"), mine = AUTH_ON && session.pid ? (sel.p || {})[session.pid] : null;
+  // Admins: selected players who can't come any more.
+  const gone = session.admin ? players.filter(p => (sel.p || {})[p.id] === "s" && p.avail[e.date] === "no").map(p => firstName(p.name)) : [];
+  return `<div class="m-sel">${sel.pub ? ic("check") : ic("pencil")} <span>${sel.pub ? "" : `<i>${t("sel.draftTag")}</i> `}<b>${t("sel.title")}:</b> ${esc(chosen.join(", ")) || "–"}</span>
+    ${sel.pub && mine === "s" ? `<span class="pill yes">${t("sel.you")}</span>` : sel.pub && mine === "r" ? `<span class="pill maybe">${t("sel.youReserve")}</span>` : ""}
+    ${gone.length ? `<span class="pill no">${ic("info")} ${esc(t("sel.gone", { names: gone.join(", ") }))}</span>` : ""}</div>`;
+}
+
+const selDlg = document.getElementById("sel");
+let selDraft = null; // { e, chosen: Set of player ids }
+function openSelection(e) {
+  if (!e) return;
+  const sel = selOf(e) || {};
+  selDraft = { e, chosen: new Set(Object.entries(sel.p || {}).filter(([, v]) => v === "s").map(([k]) => k)) };
+  document.getElementById("sel-title").textContent = t("sel.dlgTitle", { opp: e.opp, when: fmt(e.date, { weekday: "long", day: "numeric", month: "long" }) });
+  document.getElementById("sel-clear").hidden = !selOf(e);
+  renderSelection();
+  selDlg.showModal();
+}
+function renderSelection() {
+  const { e, chosen } = selDraft, players = sortedPlayers().filter(p => p.name);
+  const rank = { yes: 0, maybe: 1, "": 2, no: 3 };
+  const list = players.map((p, i) => ({ p, i, a: p.avail[e.date] || "" })).sort((x, y) => rank[x.a] - rank[y.a] || x.i - y.i);
+  const yes = players.filter(p => p.avail[e.date] === "yes").length;
+  document.getElementById("sel-sub").textContent = t("sel.count", { n: chosen.size, yes, min: minPlayers() });
+  document.getElementById("sel-list").innerHTML = list.map(({ p, i, a }) => `<li><label class="${a === "no" ? "is-no" : ""}">
+      <input type="checkbox" data-pick="${p.id}" ${chosen.has(p.id) ? "checked" : ""}>
+      ${avatar(p, i)}<span class="grow">${esc(displayName(p, i))}</span>
+      <span class="pill ${a || "gray"}">${esc(a ? t("answer." + a) : t("hist.none"))}</span></label></li>`).join("");
+}
+document.getElementById("sel-list").addEventListener("change", ev => {
+  const id = ev.target.dataset.pick;
+  if (!id) return;
+  ev.target.checked ? selDraft.chosen.add(id) : selDraft.chosen.delete(id);
+  renderSelection();
+});
+// Everyone who said yes or maybe but isn't chosen is a reserve.
+function selRecord(pub) {
+  const { e, chosen } = selDraft, p = {};
+  for (const pl of sortedPlayers()) {
+    if (chosen.has(pl.id)) p[pl.id] = "s";
+    else if (["yes", "maybe"].includes(pl.avail[e.date])) p[pl.id] = "r";
+  }
+  return { ...(Object.keys(p).length ? { p } : {}), pub, at: Date.now() };
+}
+document.getElementById("sel-draft").onclick = () => { update({ [`selection/${selDraft.e.date}`]: selRecord(false) }); selDlg.close(); };
+document.getElementById("sel-clear").onclick = () => {
+  if (!confirm(t("sel.clearConfirm"))) return;
+  update({ [`selection/${selDraft.e.date}`]: null }); selDlg.close();
+};
+document.getElementById("sel-pub").onclick = async () => {
+  const e = selDraft.e;
+  if (!selDraft.chosen.size) return alert(t("sel.none"));
+  selDlg.close();
+  const ok = await update({ [`selection/${e.date}`]: selRecord(true) });
+  if (!ok) return;
+  if (await notifyTeam("s", e.date) === true) toast(t("status.notified"), "", 2500);
+  const players = sortedPlayers();
+  openShare(t("status.shareTitle"), t("msg.selection", { team: teamName(), opp: e.opp, when: whenLong(e.date, matchInfo(e).start),
+    names: selNames(e, players, "s").join(", "), reserves: selNames(e, players, "r").join(", "), url: pageUrl("") }));
+};
 
 // ---- Admin: match details (time, venue via place search, meeting point) ----
 const detailsDlg = document.getElementById("details");
@@ -1123,7 +1222,7 @@ document.getElementById("move-go").onclick = async () => {
   if (ns !== (m.start || "")) { if (ns) m.start = ns; else delete m.start; delete m.end; } // a new time: the old end no longer fits
   // The match moves to the new day; answers and carpools were for the old day, so they start over.
   const changes = {
-    [`schedule/${e.date}`]: null, [`matches/${e.date}`]: null,
+    [`schedule/${e.date}`]: null, [`matches/${e.date}`]: null, [`selection/${e.date}`]: null,
     [`schedule/${nd}`]: { opp: e.opp, ...(e.final ? { final: true } : {}), ...(typeof e.home === "boolean" ? { home: e.home } : {}), moved: e.date },
     ...(Object.keys(m).length ? { [`matches/${nd}`]: m } : {}),
   };

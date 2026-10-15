@@ -650,7 +650,7 @@ function fillLoginEmail() {
 // users/{uid}/profile holds phone, email, federation number and home town once per account; every team
 // keeps a copy in my player row. Changing them in one team updates the profile and my other teams; opening
 // a team (or getting approved) copies the profile into that team's row.
-const PROFILE_FIELDS = ["phone", "email", "gemeente", "geo", "photo"]; // the federation number is per team (sport)
+const PROFILE_FIELDS = ["phone", "email", "gemeente", "geo", "photo", "away"]; // the federation number is per team (sport)
 const profile = { data: null, teams: {}, settings: {}, pending: null, applied: false };
 const sameValue = (a, b) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
 
@@ -994,6 +994,11 @@ const rowValue = (row, slot) => slot.split("/").reduce((o, k) => (o || {})[k], r
 // The details a sport asks for on the profile page: its usual fields plus the federation number.
 const sportKinds = sport => [...(SPORTS[sport] || SPORTS.other).suggest, "fed"];
 
+// Holidays (players/<pid>/away/<id> = { f, t, n }): the period covering a date, or the next one still to come.
+const awayOn = (p, date) => Object.values((p && p.away) || {}).find(a => a && a.f <= date && date <= a.t) || null;
+const awayNext = p => Object.values((p && p.away) || {}).filter(a => a && a.t >= TODAY).sort((a, b) => a.f.localeCompare(b.f))[0] || null;
+const awayText = a => `${fmt(a.f, { day: "numeric", month: "short" })}–${fmt(a.t, { day: "numeric", month: "short" })}`;
+
 // Called off / moved (set by an admin from the match's edit dialog).
 const statusPill = e => e.cancelled ? `<span class="pill no">${ic("x")} ${t("off.pill")}</span>`
   : e.moved && !isPast(e) ? `<span class="pill maybe" title="${esc(t("moved.was", { when: fmt(e.moved, { weekday: "short", day: "numeric", month: "short" }) }))}">${ic("calendar")} ${t("moved.pill")}</span>` : "";
@@ -1314,7 +1319,7 @@ function gateMessage(text, err) { gateMsg = { text, err }; renderAuth(); }
 const appUrl = file => location.href.split(/[?#]/)[0].replace(/[^/]*$/, file);
 
 // ---- Feedback to RostiQ (account menu, footer): only the RostiQ admin reads it ----
-const APP_VERSION = "2026.10.40";
+const APP_VERSION = "2026.10.41";
 function deviceText() {
   const ua = navigator.userAgent;
   const os = /iPhone/.test(ua) ? "iPhone" : /iPad/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1) ? "iPad"
