@@ -1336,7 +1336,7 @@ function injectAuthUI() {
   if (!NO_TEAM_PAGE) document.querySelector("main .sub").insertAdjacentHTML("afterend",
     `<a class="wa-group" id="wa-group" hidden target="_blank" rel="noopener" title="${t("wa.title")}">${t("wa.open")}</a>`);
   document.getElementById("account").addEventListener("click", ev => {
-    if (ev.target.closest("[data-signout]")) { if (DEMO) location.href = "https://rostiq.be/"; else A.signOut(fbAuth); }
+    if (ev.target.closest("[data-signout]")) { if (DEMO) location.href = "https://rostiq.be/"; else signOutAndForget(); }
   });
   document.getElementById("gate").addEventListener("click", onGateClick);
   document.getElementById("gate").addEventListener("submit", onGateSubmit);
@@ -1351,7 +1351,7 @@ function gateMessage(text, err) { gateMsg = { text, err }; renderAuth(); }
 const appUrl = file => location.href.split(/[?#]/)[0].replace(/[^/]*$/, file);
 
 // ---- Feedback to RostiQ (account menu, footer): only the RostiQ admin reads it ----
-const APP_VERSION = "2026.10.44";
+const APP_VERSION = "2026.10.45";
 function deviceText() {
   const ua = navigator.userAgent;
   const os = /iPhone/.test(ua) ? "iPhone" : /iPad/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1) ? "iPad"
@@ -1479,6 +1479,22 @@ async function disablePush() {
   toast(t("push.disabled"));
   renderAccount(); render();
 }
+// Signing out: first (while still signed in) stop this account's notifications on this device, then forget
+// what this device kept of the account: team copies, unsent changes, carpool pick, sign-in email.
+async function signOutAndForget() {
+  const uid = session.user && session.user.uid, [id] = uid ? pref.get("push:" + uid, "").split("|") : [];
+  if (id) {
+    await send("DELETE", `pushTokens/${uid}/${id}`, undefined, true, true, true);
+    try { const M = await import(SDK + "firebase-messaging.js"); await M.deleteToken(M.getMessaging(fbApp)); } catch {}
+  }
+  forgetDevice();
+  try { await A.signOut(fbAuth); } catch {}
+}
+function forgetDevice() {
+  clearTimeout(snapTimer);
+  try { for (const k of Object.keys(localStorage)) if (/^(snap:|me:|push:|outbox$|signinEmail$)/.test(k)) localStorage.removeItem(k); } catch {}
+}
+
 // Tokens can change: refresh this device's entry once a day while notifications are on.
 async function refreshPush() {
   if (!pushOn() || !fbApp) return;
@@ -1700,7 +1716,7 @@ async function onGateClick(ev) {
   }
   const team = ev.target.closest("[data-team]");
   if (team) chooseTeam(team.dataset.team);
-  if (ev.target.closest("[data-signout-gate]")) A.signOut(fbAuth);
+  if (ev.target.closest("[data-signout-gate]")) signOutAndForget();
 }
 
 async function onGateSubmit(ev) {

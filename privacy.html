@@ -78,7 +78,7 @@
     <li><b>Agenda-uitnodigingen</b> (als je ze aanzet): je login-e-mailadres, waarnaar we per wedstrijd een uitnodiging sturen via <b>Brevo</b> (e-maildienst in de EU). Uitzetten kan altijd in de app.</li>
     <li><b>Feedback</b> die je stuurt, met de pagina, je toestel (bv. „iPhone · Safari”) en de appversie.</li>
     <li><b>Foutmeldingen</b>: als de app een fout tegenkomt, sturen we de foutmelding met de pagina, je toestel en de appversie. Zonder je naam of account.</li>
-    <li><b>Op je eigen toestel</b>: je taal, je laatste ploeg, een kopie van de ploeggegevens om offline te werken en wijzigingen die nog verstuurd moeten worden. Geen tracking-cookies, geen advertenties, geen statistiekdiensten.</li>
+    <li><b>Op je eigen toestel</b>: je taal, je laatste ploeg, een kopie van de ploeggegevens om offline te werken en wijzigingen die nog verstuurd moeten worden. Bij het afmelden wordt dat gewist, en krijgt dit toestel geen meldingen meer voor je account. Geen tracking-cookies, geen advertenties, geen statistiekdiensten.</li>
   </ul>
 
   <h2>Waarom?</h2>
@@ -129,7 +129,7 @@
     <li><b>Calendar invitations</b> (if you switch them on): your login email address, to which we send an invitation per match through <b>Brevo</b> (an email service in the EU). You can switch them off in the app at any time.</li>
     <li><b>Feedback</b> you send, with the page, your device (e.g. “iPhone · Safari”) and the app version.</li>
     <li><b>Error reports</b>: when the app runs into an error, we send the error with the page, your device and the app version. Without your name or account.</li>
-    <li><b>On your own device</b>: your language, your last team, a copy of the team's data to work offline and changes still waiting to be sent. No tracking cookies, no ads, no analytics services.</li>
+    <li><b>On your own device</b>: your language, your last team, a copy of the team's data to work offline and changes still waiting to be sent. Signing out erases these, and this device stops getting notifications for your account. No tracking cookies, no ads, no analytics services.</li>
   </ul>
 
   <h2>Why?</h2>
@@ -180,7 +180,7 @@
     <li><b>Invitations d'agenda</b> (si tu les actives) : ton adresse e-mail de connexion, à laquelle nous envoyons une invitation par match via <b>Brevo</b> (service d'e-mail dans l'UE). Tu peux les désactiver dans l'app à tout moment.</li>
     <li><b>Les avis</b> que tu envoies, avec la page, ton appareil (p. ex. « iPhone · Safari ») et la version de l'app.</li>
     <li><b>Rapports d'erreur</b> : quand l'app rencontre une erreur, nous envoyons l'erreur avec la page, ton appareil et la version de l'app. Sans ton nom ni ton compte.</li>
-    <li><b>Sur ton propre appareil</b> : ta langue, ta dernière équipe, une copie des données de l'équipe pour travailler hors ligne et les modifications pas encore envoyées. Pas de cookies de suivi, pas de publicité, pas de services de statistiques.</li>
+    <li><b>Sur ton propre appareil</b> : ta langue, ta dernière équipe, une copie des données de l'équipe pour travailler hors ligne et les modifications pas encore envoyées. En te déconnectant, tout cela est effacé et cet appareil ne reçoit plus de notifications pour ton compte. Pas de cookies de suivi, pas de publicité, pas de services de statistiques.</li>
   </ul>
 
   <h2>Pourquoi ?</h2>
@@ -386,7 +386,7 @@ async function doDelete(btn) {
   if (!res.ok) return fail(t("priv.failedNothing")); // one write: either everything is removed, or nothing
   forgetDevice();
   try { await A.deleteUser(fbAuth.currentUser); }
-  catch { document.getElementById("del-dlg").close(); try { await A.signOut(fbAuth); } catch {} toast(t("priv.loginLeft"), "err"); }
+  catch { document.getElementById("del-dlg").close(); await signOutAndForget(); toast(t("priv.loginLeft"), "err"); }
   done = true; busy = false;
   const dlg = document.getElementById("del-dlg");
   if (dlg.open) dlg.close();
@@ -409,7 +409,7 @@ document.addEventListener("click", ev => {
   if (ev.target.closest("[data-delete]")) openDelete();
   const dlg = document.getElementById("del-dlg");
   if (ev.target.closest("[data-close]") || ev.target === dlg) { if (!busy) dlg.close(); }
-  if (ev.target.closest("[data-reauth]")) { pref.set(REAUTH, "1"); dlg.close(); session.wantLogin = true; A.signOut(fbAuth); }
+  if (ev.target.closest("[data-reauth]")) { pref.set(REAUTH, "1"); dlg.close(); session.wantLogin = true; signOutAndForget(); }
   const go = ev.target.closest("[data-confirm-delete]");
   if (go) doDelete(go);
 });
