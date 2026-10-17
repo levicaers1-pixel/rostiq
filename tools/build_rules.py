@@ -496,7 +496,7 @@ final["rules"]["history"] = {"$tid": {
     },
 }}
 # ---- Match called off / moved / selection / reminder: notices/<team>/<id> = {k: "c" (cancelled) | "m" (moved) | "s" (selection)
-#      | "a" (ask the players who haven't answered), d: date, o: old date, by, at} ----
+#      | "a" (ask the players who haven't answered; p/<player> = true: only those), d: date, o: old date, by, at} ----
 # An admin adds one right after marking the match in the schedule; a Cloud Function (functions/index.js) tells the team
 # at once with a notification, then removes the notice. Only for a match that really is cancelled / moved, so nobody can
 # make the function send something made up. Nobody reads them.
@@ -513,6 +513,7 @@ final["rules"]["notices"] = {"$tid": {"$id": {
     "d": {".validate": "newData.isString() && newData.val().matches(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/)"},
     "o": {".validate": "newData.isString() && newData.val().matches(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/)"},
     "by": {".validate": "newData.isString()"}, "at": {".validate": "newData.isNumber()"},
+    "p": {".validate": "newData.parent().child('k').val() === 'a'", "$pid": {".validate": "$pid.matches(/^[A-Za-z0-9_-]{1,40}$/) && newData.val() === true"}},
     "$other": NO,
 }}}
 # ---- Who started a team: teamCreators/<team> = {n: name, e: email, c: pilot code} ----

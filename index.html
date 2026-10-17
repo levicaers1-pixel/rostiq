@@ -348,7 +348,10 @@
   .sel-list input { width: 18px; height: 18px; accent-color: var(--accent); }
   .sel-list .grow { flex: 1; min-width: 0; }
   .rem-dlg { overflow-x: hidden; }
-  .rem-list li { display: flex; align-items: center; gap: 10px; padding: 6px 8px; }
+  .rem-list label { display: flex; align-items: center; gap: 10px; padding: 6px 8px; border-radius: 10px; cursor: pointer; }
+  .rem-list label:hover { background: color-mix(in srgb, var(--accent) 6%, transparent); }
+  .rem-list input { width: 18px; height: 18px; flex: none; accent-color: var(--accent); }
+  .rem-list .rem-nobox { width: 18px; flex: none; }
   .rem-list .via { font-size: .8rem; color: var(--muted); text-align: right; }
   .rem-list .via.wa { color: var(--warn, #b7791f); }
   .rem-result { margin-top: 12px; padding: 10px 12px; border-radius: 10px; background: color-mix(in srgb, var(--accent) 8%, transparent); font-size: .92rem; display: grid; gap: 4px; }
@@ -1088,7 +1091,7 @@ const missingOf = e => sortedPlayers().filter(p => p.name && !p.avail[e.date]);
 const linkedIds = () => new Set(DEMO ? sortedPlayers().map(p => p.id) : Object.values(root.members || {}));
 const recentReminder = (e, pid) => { const x = ((((root.reminded || {})[e.date] || {}).p) || {})[pid]; return x && Date.now() - x.at < REMIND_GAP ? x : null; };
 function openRemind(e) {
-  remState = { e, phase: "idle" };
+  remState = { e, phase: "idle", off: new Set() }; // off: players the admin unticked
   document.getElementById("rem-title").textContent = t("rem.title", { n: missingOf(e).length, opp: e.opp, when: fmt(e.date, { weekday: "long", day: "numeric", month: "long" }) });
   renderRemind();
   remDlg.showModal();
@@ -1097,6 +1100,7 @@ function renderRemind() {
   if (!remState) return;
   const { e, phase, result } = remState, players = sortedPlayers(), linked = linkedIds(), miss = missingOf(e);
   const sendable = miss.filter(p => p.id !== session.pid && linked.has(p.id) && !recentReminder(e, p.id)); // never to yourself
+  const chosen = sendable.filter(p => !remState.off.has(p.id)), can = new Set(sendable.map(p => p.id));
   document.getElementById("rem-sub").textContent = miss.length ? t("rem.sub") : t("rem.allAnswered");
   document.getElementById("rem-list").innerHTML = miss.map(p => {
     const recent = recentReminder(e, p.id);
@@ -1104,11 +1108,12 @@ function renderRemind() {
       : !linked.has(p.id) ? `<span class="via wa">${esc(t("rem.noAccount"))}</span>`
       : recent ? `<span class="via">${esc(t("rem.recent", { when: remindTime(recent.at), via: t("rem.v." + recent.v) }))}</span>`
       : `<span class="via">${esc(t("rem.personal"))}</span>`;
-    return `<li>${avatar(p, players.indexOf(p))}<span class="grow">${esc(displayName(p, players.indexOf(p)))}</span>${via}</li>`;
+    const box = can.has(p.id) && phase !== "sending" ? `<input type="checkbox" data-rem-pick="${p.id}" ${remState.off.has(p.id) ? "" : "checked"} aria-label="${esc(displayName(p, players.indexOf(p)))}">` : `<span class="rem-nobox"></span>`;
+    return `<li><label>${box}${avatar(p, players.indexOf(p))}<span class="grow">${esc(displayName(p, players.indexOf(p)))}</span>${via}</label></li>`;
   }).join("");
   const btn = document.getElementById("rem-send");
-  btn.disabled = phase === "sending" || !sendable.length;
-  btn.innerHTML = phase === "sending" ? esc(t("rem.sending")) : `${ic("bell")} ${esc(sendable.length ? t("rem.send", { n: sendable.length }) : t("rem.none"))}`;
+  btn.disabled = phase === "sending" || !chosen.length;
+  btn.innerHTML = phase === "sending" ? esc(t("rem.sending")) : `${ic("bell")} ${esc(chosen.length ? t("rem.send", { n: chosen.length }) : sendable.length ? t("rem.noneTicked") : t("rem.none"))}`;
   document.getElementById("rem-wa").hidden = !miss.length;
   const box = document.getElementById("rem-result");
   box.hidden = !result;
@@ -1125,16 +1130,24 @@ function remindResult(e, r, noAccount) {
     noAccount.length && t("rem.waNeeded", { names: names(noAccount) })].filter(Boolean);
   return lines.map(l => `<span>${esc(l)}</span>`).join("");
 }
+document.getElementById("rem-list").addEventListener("change", ev => {
+  const id = ev.target.dataset.remPick;
+  if (!id || !remState) return;
+  ev.target.checked ? remState.off.delete(id) : remState.off.add(id);
+  renderRemind();
+});
 document.getElementById("rem-send").onclick = async () => {
   const { e } = remState, linked = linkedIds();
+  const picked = missingOf(e).filter(p => p.id !== session.pid && linked.has(p.id) && !recentReminder(e, p.id) && !remState.off.has(p.id)).map(p => p.id);
+  if (!picked.length) return;
   const noAccount = missingOf(e).filter(p => p.id !== session.pid && !linked.has(p.id)).map(p => p.id);
   const prevAt = ((root.reminded || {})[e.date] || {}).at || 0;
   remState.phase = "sending"; remState.result = ""; renderRemind();
   if (DEMO) { // the demo sends nothing: it shows what the admin would see
     const now = Date.now(), p = {};
-    missingOf(e).filter(x => x.id !== session.pid && !recentReminder(e, x.id)).forEach((x, i) => { p[x.id] = { at: now, v: i % 3 === 2 ? "mail" : "push" }; });
+    picked.forEach((id, i) => { p[id] = { at: now, v: i % 3 === 2 ? "mail" : "push" }; });
     await update({ [`reminded/${e.date}`]: { at: now, by: "demo", p: { ...((((root.reminded || {})[e.date]) || {}).p || {}), ...p } } });
-  } else if (await notifyTeam("a", e.date) !== true) {
+  } else if (await notifyTeam("a", e.date, null, Object.fromEntries(picked.map(id => [id, true]))) !== true) {
     remState.phase = "error"; remState.result = `<span>${esc(t("rem.failed"))}</span>`; return renderRemind();
   }
   // Wait for the function's answer (it arrives with the live team data).
@@ -1303,9 +1316,10 @@ function renderStatus() {
 const teamName = () => TEAM.shortName || TEAM.brand;
 const whenLong = (date, start) => fmt(date, { weekday: "long", day: "numeric", month: "long" }) + (start ? ` · ${start}` : "");
 // The notification itself is sent by the Cloud Function; the rules only take a notice for a match that really changed.
-function notifyTeam(k, d, o) {
+// p (reminders): { <pid>: true } for only those players.
+function notifyTeam(k, d, o, p) {
   if (DEMO || !AUTH_ON || !session.user) return Promise.resolve(false);
-  return send("PUT", `notices/${TEAM_ID}/${historyId()}`, { k, d, ...(o ? { o } : {}), by: session.user.uid, at: { ".sv": "timestamp" } }, true, true, true);
+  return send("PUT", `notices/${TEAM_ID}/${historyId()}`, { k, d, ...(o ? { o } : {}), ...(p ? { p } : {}), by: session.user.uid, at: { ".sv": "timestamp" } }, true, true, true);
 }
 document.getElementById("st-off").onclick = async () => {
   const e = draft.e, when = whenLong(e.date, matchInfo(e).start);

@@ -1,8 +1,8 @@
 // RostiQ: a personal reminder an admin sends from a match card (notices/<team>/<id> = { k: "a", d: date, by, at },
 // handled by the notice function in index.js).
 //
-// It goes to every linked player of the team who hasn't answered that match yet (not the admin who sent it, and nobody
-// reminded in the last 12 hours): a notification with Yes / No / Maybe on each of their devices, or, when they have no
+// It goes to every linked player of the team who hasn't answered that match yet (or only the ones the admin ticked:
+// n.p = { <pid>: true }), not the admin who sent it, and nobody reminded in the last 12 hours: a notification with Yes / No / Maybe on each of their devices, or, when they have no
 // device with notifications (an iPhone without the app on the home screen, say), an email to their verified account
 // address with the same three buttons. The buttons use the player's personal answer link, so one tap saves the answer.
 //
@@ -101,6 +101,7 @@ export async function sendReminder(db, tid, n) {
   for (const [uid, pid] of Object.entries(mems)) {
     const p = pl[pid];
     if (uid === n.by || !p || !p.name || (p.avail || {})[date]) continue; // the sender knows; answered already
+    if (n.p && !n.p[pid]) continue; // the admin left this player out
     if (before[pid] && now - Number(before[pid].at || 0) < REMIND_GAP) { stats.skipped++; continue; }
     let key = (quick || {})[pid] || null;
     if (!key && quickLinks !== false) { // made once and kept, like the ones the app and the daily job make
