@@ -6,6 +6,7 @@
 //
 // notice: notices/<team>/<id> (an admin called a match off, moved it, or published the selection): a notification to
 // every member's devices at once (for a selection: only the selected players and reserves), then the notice is removed. The rules only accept a notice for a match that really is cancelled / moved.
+// A reminder (k "a"): to the players who haven't answered, by notification or else email (remind.mjs).
 //
 // calendar: GET /cal/<key>.ics: a player's personal calendar feed (read-only). calKeys/<key> = { t: team, p: player,
 // l: language, h: hide "no" matches }. Served through Firebase Hosting (firebase.json rewrite), which caches each feed
@@ -21,6 +22,7 @@ import { getMessaging } from "firebase-admin/messaging";
 import { buildFeed } from "./ics.js";
 import { noticeMessage } from "./notice.js";
 import { runJob } from "./job.mjs";
+import { sendReminder } from "./remind.mjs";
 
 initializeApp({ databaseURL: process.env.FIREBASE_DATABASE_EMULATOR_HOST
   ? `http://${process.env.FIREBASE_DATABASE_EMULATOR_HOST}?ns=${process.env.DB_NS || "demo-rostiq"}`
@@ -71,12 +73,18 @@ export const calendar = onRequest({ region: "europe-west1", memory: "256MiB", ma
 });
 
 // The trigger runs where the database is (europe-west1); the local emulator's database counts as us-central1.
+const BREVO = [defineSecret("BREVO_SMTP_LOGIN"), defineSecret("BREVO_SMTP_KEY")];
+
 export const notice = onValueCreated({ ref: "/notices/{tid}/{id}", instance: "wintermidam-default-rtdb",
   region: process.env.FUNCTIONS_EMULATOR === "true" ? "us-central1" : "europe-west1",
-  memory: "256MiB", maxInstances: 3, timeoutSeconds: 60 }, async event => {
+  memory: "256MiB", maxInstances: 3, timeoutSeconds: 120, secrets: BREVO }, async event => {
   const { tid, id } = event.params, n = event.data.val() || {};
   const done = () => db.ref(`notices/${tid}/${id}`).remove();
   if (!/^[a-z0-9][a-z0-9-]{1,39}$/.test(tid)) return done();
+  if (n.k === "a") { // a reminder: its own recipients, and email for those without notifications
+    try { await sendReminder(db, tid, n); } catch (e) { console.error("reminder failed:", (e && e.code) || "error"); }
+    return done();
+  }
   const T = `teams/${tid}`;
   const [brand, sched, match, quickLinks, members, quick, selection] = await Promise.all([val(`${T}/info/brand`), val(`${T}/schedule/${n.d}`),
     val(`${T}/matches/${n.d}`), val(`${T}/settings/quickLinks`), val(`${T}/members`), val(`quickIndex/${tid}`), val(`${T}/selection/${n.d}`)]);
@@ -103,7 +111,6 @@ export const notice = onValueCreated({ ref: "/notices/{tid}/{id}", instance: "wi
 });
 
 // Every 10 minutes at :05, :15, … (so it never runs at the same moment as the daily job at :30).
-const BREVO = [defineSecret("BREVO_SMTP_LOGIN"), defineSecret("BREVO_SMTP_KEY")];
 const JOB = { region: "europe-west1", timeZone: "Europe/Brussels", memory: "512MiB", timeoutSeconds: 300, maxInstances: 1, retryCount: 0, secrets: BREVO };
 export const jobFrequent = onSchedule({ ...JOB, schedule: "5-55/10 * * * *" }, () => runJob({ mode: "requests" }));
 export const jobDaily = onSchedule({ ...JOB, schedule: "30 18 * * *" }, () => runJob({ mode: "all" }));

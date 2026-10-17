@@ -852,7 +852,7 @@ document.getElementById("matches").addEventListener("click", ev => {
   if (!b) return;
   const e = EVENTS.find(x => x.date === b.dataset.delMatch);
   if (!confirm(t("admin.removeMatchConfirm", { opp: e.opp, when: fmt(e.date, { day: "numeric", month: "long", year: "numeric" }) }))) return;
-  scheduleUpdate({ [`schedule/${e.date}`]: null, [`matches/${e.date}`]: null, [`selection/${e.date}`]: null });
+  scheduleUpdate({ [`schedule/${e.date}`]: null, [`matches/${e.date}`]: null, [`selection/${e.date}`]: null, [`reminded/${e.date}`]: null });
 });
 
 // ---- Backup & new season ----
@@ -871,7 +871,7 @@ document.getElementById("new-season").onclick = () => {
   if ((prompt(t("admin.newSeasonPrompt")) || "").trim().toUpperCase() !== word) return;
   downloadBackup();
   // Clear answers, carpools, match details and the schedule; keep players, logins, phones, places and settings.
-  const changes = { "settings/scheduleInDb": true, schedule: null, matches: null, selection: null };
+  const changes = { "settings/scheduleInDb": true, schedule: null, matches: null, selection: null, reminded: null };
   for (const id of Object.keys(root.players || {})) if (root.players[id].avail) changes[`players/${id}/avail`] = null;
   for (const [date, entries] of Object.entries(root.carpool || {}))
     for (const pid of Object.keys(entries)) changes[`carpool/${date}/${pid}`] = null;

@@ -54,3 +54,23 @@ assert.equal(sl.body, "✅ Je bent geselecteerd voor Racing op zondag 1 november
 assert.equal(noticeMessage("kfc", { k: "s", d: "2026-11-01" }, tm, null, "en", "r").body, "🔁 You're a reserve for Racing on Sunday 1 November. We'll let you know if a place opens up.");
 assert.equal(noticeMessage("kfc", { k: "s", d: "2026-11-01" }, tm, null, "nl", null), null, "not in the selection: nothing");
 console.log("notice tests ok");
+
+// Personal reminder (remind.mjs): notification with answer buttons, email with the same three links.
+{
+  const { remindPush, remindEmail, answerLinks } = await import("./remind.mjs");
+  const m = { tid: "kfc", date: "2027-02-01", brand: "KFC", opp: "Racing", start: "14:30", who: "Anna", links: answerLinks("kfc", "2027-02-01", "KEY") };
+  const p = remindPush(m, "nl");
+  assert.equal(p.title, "KFC");
+  assert(p.body.startsWith("Anna vraagt: kan je erbij zijn? Racing, maandag 1 februari om 14:30"), p.body);
+  assert.equal(JSON.parse(p.links).yes, "https://app.rostiq.be/a/?KEYy270201");
+  assert.deepEqual(JSON.parse(p.actions).map(a => a.action), ["yes", "no", "maybe"]);
+  assert(remindPush({ ...m, who: "" }, "en").body.startsWith("Can you make it? Racing"), "no sender name");
+  assert(remindPush(m, "xx").body.startsWith("Anna vraagt"), "unknown language falls back to Dutch");
+  const e = remindEmail(m, "fr");
+  assert(e.subject.startsWith("Tu peux être là ? KFC · Racing"), e.subject);
+  for (const k of ["y", "m", "n"]) assert(e.html.includes(`https://app.rostiq.be/a/?KEY${k}270201`) && e.text.includes(`/a/?KEY${k}270201`), "link " + k);
+  assert(!remindEmail({ ...m, opp: "<b>x</b>" }, "nl").html.includes("<b>x</b>"), "names are escaped");
+  const noKey = answerLinks("kfc", "2027-02-01", null);
+  assert.equal(noKey.no, "https://app.rostiq.be/?t=kfc&ans=no&d=2027-02-01");
+}
+console.log("reminder tests passed");

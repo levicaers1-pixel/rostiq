@@ -347,6 +347,14 @@
   .sel-list label.is-no { opacity: .6; }
   .sel-list input { width: 18px; height: 18px; accent-color: var(--accent); }
   .sel-list .grow { flex: 1; min-width: 0; }
+  .rem-dlg { overflow-x: hidden; }
+  .rem-list li { display: flex; align-items: center; gap: 10px; padding: 6px 8px; }
+  .rem-list .via { font-size: .8rem; color: var(--muted); text-align: right; }
+  .rem-list .via.wa { color: var(--warn, #b7791f); }
+  .rem-result { margin-top: 12px; padding: 10px 12px; border-radius: 10px; background: color-mix(in srgb, var(--accent) 8%, transparent); font-size: .92rem; display: grid; gap: 4px; }
+  .rem-result.err { background: color-mix(in srgb, #c0392b 10%, transparent); }
+  .m-reminded { display: flex; align-items: center; gap: 6px; margin-top: 6px; font-size: .82rem; color: var(--muted); }
+  .m-reminded svg.i { width: 14px; height: 14px; }
   .status-box { margin-top: 16px; padding: 12px; border: 1px dashed var(--border); border-radius: 10px; display: grid; gap: 10px; }
   .status-text { display: flex; flex-direction: column; gap: 2px; }
   .status-text small, .status-box > div > small { color: var(--muted); font-size: .78rem; }
@@ -489,6 +497,20 @@
   </form>
 </dialog>
 
+<dialog id="rem" class="details-dlg sel-dlg rem-dlg">
+  <form method="dialog">
+    <h3 id="rem-title"></h3>
+    <p class="muted" id="rem-sub"></p>
+    <ul class="sel-list rem-list" id="rem-list"></ul>
+    <div class="rem-result" id="rem-result" role="status" hidden></div>
+    <div class="row">
+      <button type="button" id="rem-wa">💬 <span data-i18n="rem.whatsapp">WhatsApp</span></button>
+      <span class="spacer"></span>
+      <button type="button" class="primary" id="rem-send"></button>
+    </div>
+  </form>
+</dialog>
+
 <script>window.SKELETON_PAGE = true; window.WELCOME_HANDLES_PHONE = true;</script>
 <script src="icons.js"></script>
 <script src="config.js"></script>
@@ -513,11 +535,24 @@ let heroMoreOpen = false;
 // Admins: the players who haven't answered this match yet, and one button that prepares a reminder for exactly them.
 const missingHtml = (e, players) => {
   const miss = players.filter(p => p.name && !p.avail[e.date]);
-  if (!AUTH_ON || !session.admin || !isOn(e) || !miss.length) return "";
+  if (!AUTH_ON || !session.admin || !isOn(e)) return "";
+  if (!miss.length) return remindedLine(e, players); // everyone answered: still show what the reminder did
   return `<div class="m-missing"><span class="avatars">${miss.slice(0, 6).map(p => avatar(p, players.indexOf(p))).join("")}${
       miss.length > 6 ? `<span class="av more">+${miss.length - 6}</span>` : ""}</span>
     <span class="m-missing-text"><b>${t("missing.title", { n: miss.length })}</b><small>${esc(miss.slice(0, 4).map(p => firstName(p.name)).join(", "))}${miss.length > 4 ? " …" : ""}</small></span>
-    <button class="remind m-missing-btn" data-date="${e.date}">${ic("bell")} ${t("missing.remind", { n: miss.length, name: esc(firstName(miss[0].name)) })}</button></div>`;
+    <button class="remind m-missing-btn" data-date="${e.date}">${ic("bell")} ${t("missing.remind", { n: miss.length, name: esc(firstName(miss[0].name)) })}</button></div>${remindedLine(e, players)}`;
+};
+// Admins: when the last personal reminder went out, and how many of the players it reached have answered since.
+function remindedLine(e, players) {
+  const r = (root.reminded || {})[e.date], reached = Object.entries((r && r.p) || {}).filter(([, x]) => x && x.v !== "none");
+  if (!session.admin || !isOn(e) || !reached.length) return "";
+  const byId = Object.fromEntries(players.map(p => [p.id, p]));
+  const answered = reached.filter(([pid]) => byId[pid] && byId[pid].avail[e.date]).length;
+  return `<div class="m-reminded">${ic("bell")} ${esc(t("rem.line", { when: remindTime(r.at), n: answered, of: reached.length }))}</div>`;
+}
+const remindTime = at => {
+  const d = new Date(at), time = d.toLocaleTimeString(LOCALE, { hour: "2-digit", minute: "2-digit" });
+  return d.toDateString() === new Date().toDateString() ? t("rem.today", { time }) : `${d.toLocaleDateString(LOCALE, { weekday: "short", day: "numeric", month: "short" })} ${time}`;
 };
 const openTeams = new Set(); // match cards whose team list is unfolded (kept across live updates)
 
@@ -577,6 +612,7 @@ function renderMatches(players, events) {
         <div class="m-title"><span class="m-opp">${esc(e.opp)}</span>${statusPill(e)}${homePill(e)}${e.final ? `<span class="pill violet">${ic("trophy")} ${t("final")}</span>` : ""}</div>
         ${summaryLine(e) ? `<div class="m-sub">${summaryLine(e)}</div>` : ""}
         ${selLine(e, players)}
+        ${remindedLine(e, players)}
       </div>
       <div class="m-score ${LEVEL_PILL[c.level]}" title="${esc(t("level." + c.level))}"><b>${c.yes}</b>/${min}</div>
       <div class="m-progress">
@@ -869,6 +905,7 @@ function celebrate(e) {
 }
 
 function render() {
+  if (remState) renderRemind(); // the reminder window follows live changes (someone answers meanwhile)
   // Keep whatever someone is typing (and the caret) intact across live updates.
   const active = document.activeElement;
   const focusId = active && active.dataset && active.dataset.pid;
@@ -1033,11 +1070,88 @@ document.getElementById("show-table").onclick = ev => {
 };
 document.getElementById("share-overview").onclick = () => openShare(t("share.overviewTitle"), overviewMessage());
 
-// Reminder for players who haven't answered a match.
-document.addEventListener("click", async ev => {
+// Reminder for players who haven't answered a match. Admins: a personal reminder (notification, else email, with the
+// answer buttons; see functions/remind.mjs), with WhatsApp messages as the other way. Others: the WhatsApp messages.
+document.addEventListener("click", ev => {
   const b = ev.target.closest(".remind");
   if (!b) return;
   const e = EVENTS.find(x => x.date === b.dataset.date);
+  if (!e) return;
+  if (AUTH_ON && session.admin) openRemind(e); else whatsappReminder(e);
+});
+
+const remDlg = document.getElementById("rem");
+var remState = null; // (var: render() may run before this line) { e, phase: "idle" | "sending" | "done" | "error", prevAt, result }
+const REMIND_GAP = 12 * 3600e3; // the same as functions/remind.mjs: one reminder per player per 12 hours
+const missingOf = e => sortedPlayers().filter(p => p.name && !p.avail[e.date]);
+// Linked players (with an account) can get a personal reminder; the others only WhatsApp. In the demo: everyone.
+const linkedIds = () => new Set(DEMO ? sortedPlayers().map(p => p.id) : Object.values(root.members || {}));
+const recentReminder = (e, pid) => { const x = ((((root.reminded || {})[e.date] || {}).p) || {})[pid]; return x && Date.now() - x.at < REMIND_GAP ? x : null; };
+function openRemind(e) {
+  remState = { e, phase: "idle" };
+  document.getElementById("rem-title").textContent = t("rem.title", { n: missingOf(e).length, opp: e.opp, when: fmt(e.date, { weekday: "long", day: "numeric", month: "long" }) });
+  renderRemind();
+  remDlg.showModal();
+}
+function renderRemind() {
+  if (!remState) return;
+  const { e, phase, result } = remState, players = sortedPlayers(), linked = linkedIds(), miss = missingOf(e);
+  const sendable = miss.filter(p => p.id !== session.pid && linked.has(p.id) && !recentReminder(e, p.id)); // never to yourself
+  document.getElementById("rem-sub").textContent = miss.length ? t("rem.sub") : t("rem.allAnswered");
+  document.getElementById("rem-list").innerHTML = miss.map(p => {
+    const recent = recentReminder(e, p.id);
+    const via = p.id === session.pid ? `<span class="via">${esc(t("rem.you"))}</span>`
+      : !linked.has(p.id) ? `<span class="via wa">${esc(t("rem.noAccount"))}</span>`
+      : recent ? `<span class="via">${esc(t("rem.recent", { when: remindTime(recent.at), via: t("rem.v." + recent.v) }))}</span>`
+      : `<span class="via">${esc(t("rem.personal"))}</span>`;
+    return `<li>${avatar(p, players.indexOf(p))}<span class="grow">${esc(displayName(p, players.indexOf(p)))}</span>${via}</li>`;
+  }).join("");
+  const btn = document.getElementById("rem-send");
+  btn.disabled = phase === "sending" || !sendable.length;
+  btn.innerHTML = phase === "sending" ? esc(t("rem.sending")) : `${ic("bell")} ${esc(sendable.length ? t("rem.send", { n: sendable.length }) : t("rem.none"))}`;
+  document.getElementById("rem-wa").hidden = !miss.length;
+  const box = document.getElementById("rem-result");
+  box.hidden = !result;
+  box.className = "rem-result" + (phase === "error" ? " err" : "");
+  box.innerHTML = result || "";
+}
+// What the reminder function wrote back: who got a notification, an email, or couldn't be reached.
+function remindResult(e, r, noAccount) {
+  const names = ids => ids.map(id => { const p = sortedPlayers().find(x => x.id === id); return p ? firstName(p.name) : null; }).filter(Boolean).join(", ");
+  const got = Object.entries((r && r.p) || {}).filter(([, x]) => x && x.at === r.at);
+  const of = v => names(got.filter(([, x]) => x.v === v).map(([id]) => id));
+  const lines = [of("push") && t("rem.viaPush", { names: of("push") }), of("mail") && t("rem.viaMail", { names: of("mail") }),
+    of("none") && t("rem.viaNone", { names: of("none") }), !got.length && t("rem.nobody"),
+    noAccount.length && t("rem.waNeeded", { names: names(noAccount) })].filter(Boolean);
+  return lines.map(l => `<span>${esc(l)}</span>`).join("");
+}
+document.getElementById("rem-send").onclick = async () => {
+  const { e } = remState, linked = linkedIds();
+  const noAccount = missingOf(e).filter(p => p.id !== session.pid && !linked.has(p.id)).map(p => p.id);
+  const prevAt = ((root.reminded || {})[e.date] || {}).at || 0;
+  remState.phase = "sending"; remState.result = ""; renderRemind();
+  if (DEMO) { // the demo sends nothing: it shows what the admin would see
+    const now = Date.now(), p = {};
+    missingOf(e).filter(x => x.id !== session.pid && !recentReminder(e, x.id)).forEach((x, i) => { p[x.id] = { at: now, v: i % 3 === 2 ? "mail" : "push" }; });
+    await update({ [`reminded/${e.date}`]: { at: now, by: "demo", p: { ...((((root.reminded || {})[e.date]) || {}).p || {}), ...p } } });
+  } else if (await notifyTeam("a", e.date) !== true) {
+    remState.phase = "error"; remState.result = `<span>${esc(t("rem.failed"))}</span>`; return renderRemind();
+  }
+  // Wait for the function's answer (it arrives with the live team data).
+  const t0 = Date.now();
+  while (remState && remState.e === e && Date.now() - t0 < 30e3) {
+    const r = (root.reminded || {})[e.date];
+    if (r && r.at && r.at !== prevAt) { remState.phase = "done"; remState.result = remindResult(e, r, noAccount); render(); return renderRemind(); }
+    await new Promise(res => setTimeout(res, 300));
+  }
+  if (!remState || remState.e !== e) return;
+  remState.phase = "done"; remState.result = `<span>${esc(t("rem.later"))}</span>`; renderRemind();
+};
+document.getElementById("rem-wa").onclick = () => { const e = remState && remState.e; remDlg.close(); if (e) whatsappReminder(e); };
+remDlg.addEventListener("close", () => { remState = null; });
+
+// The prepared WhatsApp messages: one for the group, and one per player (with their personal answer link).
+async function whatsappReminder(e) {
   const c = tally(e, sortedPlayers());
   const m = matchInfo(e);
   const when = fmt(e.date, { weekday: "long", day: "numeric", month: "long" });
@@ -1057,7 +1171,7 @@ document.addEventListener("click", async ev => {
       : t("msg.personalReminder", { first: firstName(p.name), opp: e.opp, when: shortDate(e.date), url }),
   }));
   openShare(t("reminder.heading", { n: c.missing.length, opp: e.opp, when }), text, people);
-});
+}
 
 // ---- Admin: who changed which answer, when (history/<team>/<date>, cleaned up once the match is played) ----
 const historyDlg = document.getElementById("history");
@@ -1224,7 +1338,7 @@ document.getElementById("move-go").onclick = async () => {
   if (ns !== (m.start || "")) { if (ns) m.start = ns; else delete m.start; delete m.end; } // a new time: the old end no longer fits
   // The match moves to the new day; answers and carpools were for the old day, so they start over.
   const changes = {
-    [`schedule/${e.date}`]: null, [`matches/${e.date}`]: null, [`selection/${e.date}`]: null,
+    [`schedule/${e.date}`]: null, [`matches/${e.date}`]: null, [`selection/${e.date}`]: null, [`reminded/${e.date}`]: null,
     [`schedule/${nd}`]: { opp: e.opp, ...(e.final ? { final: true } : {}), ...(typeof e.home === "boolean" ? { home: e.home } : {}), moved: e.date },
     ...(Object.keys(m).length ? { [`matches/${nd}`]: m } : {}),
   };

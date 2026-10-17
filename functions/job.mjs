@@ -12,6 +12,7 @@ import { getAuth } from "firebase-admin/auth";
 import { getMessaging } from "firebase-admin/messaging";
 import crypto from "node:crypto";
 import { runInvites } from "./invites.mjs";
+import { REMIND_GAP } from "./remind.mjs";
 
 const APP = "https://app.rostiq.be";
 const TZ = "Europe/Brussels";
@@ -153,6 +154,8 @@ export async function runJob({ mode = "all", dry = false, verbose = false, clean
           const player = (team.players || {})[pid];
           if (!player || (player.avail || {})[date]) continue; // answered already
           if ((((log[tid] || {})[date] || {})[kind] || {})[uid]) continue; // sent already
+          const manual = (((team.reminded || {})[date] || {}).p || {})[pid];
+          if (manual && Date.now() - Number(manual.at || 0) < REMIND_GAP) continue; // the admin reminded them just now
           const devices = Object.entries(tokens[uid] || {});
           if (!devices.length) { skipped++; continue; }
           let key = null;
@@ -179,6 +182,8 @@ export async function runJob({ mode = "all", dry = false, verbose = false, clean
     }
     // Forget logs of matches that are over.
     for (const [tid, dates] of Object.entries(log)) if (tid !== "_req") for (const date of Object.keys(dates || {})) if (date < today) logWrites[`pushLog/${tid}/${date}`] = null;
+    // The admin's reminder results: only needed until the match.
+    for (const [tid, team] of Object.entries(teams)) for (const date of Object.keys((team && team.reminded) || {})) if (date < today) logWrites[`teams/${tid}/reminded/${date}`] = null;
     // Answer history: only kept until the match has been played (it stays small: only upcoming matches remain).
     const history = (await db.ref("history").once("value")).val() || {};
     for (const [tid, dates] of Object.entries(history))
