@@ -7,6 +7,7 @@
 // notice: notices/<team>/<id> (an admin called a match off, moved it, or published the selection): a notification to
 // every member's devices at once (for a selection: only the selected players and reserves), then the notice is removed. The rules only accept a notice for a match that really is cancelled / moved.
 // A reminder (k "a"): to the players who haven't answered, by notification or else email (remind.mjs).
+// A request to complete details (k "p"): to the chosen players, by email or else notification (remind.mjs).
 //
 // calendar: GET /cal/<key>.ics: a player's personal calendar feed (read-only). calKeys/<key> = { t: team, p: player,
 // l: language, h: hide "no" matches }. Served through Firebase Hosting (firebase.json rewrite), which caches each feed
@@ -22,7 +23,7 @@ import { getMessaging } from "firebase-admin/messaging";
 import { buildFeed } from "./ics.js";
 import { noticeMessage } from "./notice.js";
 import { runJob } from "./job.mjs";
-import { sendReminder } from "./remind.mjs";
+import { sendReminder, sendProfileAsk } from "./remind.mjs";
 
 initializeApp({ databaseURL: process.env.FIREBASE_DATABASE_EMULATOR_HOST
   ? `http://${process.env.FIREBASE_DATABASE_EMULATOR_HOST}?ns=${process.env.DB_NS || "demo-rostiq"}`
@@ -81,8 +82,8 @@ export const notice = onValueCreated({ ref: "/notices/{tid}/{id}", instance: "wi
   const { tid, id } = event.params, n = event.data.val() || {};
   const done = () => db.ref(`notices/${tid}/${id}`).remove();
   if (!/^[a-z0-9][a-z0-9-]{1,39}$/.test(tid)) return done();
-  if (n.k === "a") { // a reminder: its own recipients, and email for those without notifications
-    try { await sendReminder(db, tid, n); } catch (e) { console.error("reminder failed:", (e && e.code) || "error"); }
+  if (n.k === "a" || n.k === "p") { // a reminder / a request to complete details: own recipients, also by email
+    try { await (n.k === "a" ? sendReminder : sendProfileAsk)(db, tid, n); } catch (e) { console.error(`notice ${n.k} failed:`, (e && e.code) || "error"); }
     return done();
   }
   const T = `teams/${tid}`;

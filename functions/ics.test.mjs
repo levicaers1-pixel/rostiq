@@ -73,4 +73,14 @@ console.log("notice tests ok");
   const noKey = answerLinks("kfc", "2027-02-01", null);
   assert.equal(noKey.no, "https://app.rostiq.be/?t=kfc&ans=no&d=2027-02-01");
 }
+{
+  const { profileMissing, profileEmail } = await import("./remind.mjs");
+  const st = { fields: { c1: "Rugnummer", c3: "Maat" }, fedLabel: "VHL-nr" };
+  assert.deepEqual(profileMissing({}, st, "nl"), ["gsm-nummer", "woonplaats", "Rugnummer", "Maat", "VHL-nr"]);
+  assert.deepEqual(profileMissing({ phone: "+32 470", geo: { lat: 1 }, extra: { c1: "7", c3: " " }, fed: "9" }, st, "en"), ["Maat"], "blank counts as missing");
+  assert.deepEqual(profileMissing({ phone: "1", gemeente: "Gent" }, { fedOff: true }, "fr"), [], "federation number off");
+  assert.deepEqual(profileMissing({}, {}, "fr").slice(0, 2), ["numéro de GSM", "commune"]);
+  const em = profileEmail({ tid: "kfc", brand: "KFC", who: "", missing: ["<x>"] }, "en");
+  assert(em.subject === "KFC: please complete your details" && em.html.includes("&lt;x&gt;") && em.text.includes("https://app.rostiq.be/ploeg.html?t=kfc#me"));
+}
 console.log("reminder tests passed");

@@ -155,6 +155,18 @@
     .mlist li { grid-template-columns: 1fr auto; }
     .mlist .when { grid-column: 1 / -1; }
   }
+  .pa-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 0 0 12px; padding: 10px 12px; border-radius: 12px; background: color-mix(in srgb, var(--accent) 7%, transparent); }
+  .pa-bar .grow { flex: 1; min-width: 180px; font-size: .92rem; }
+  .pa-list { list-style: none; margin: 12px 0 0; padding: 0; max-height: 52vh; overflow: auto; display: grid; gap: 2px; }
+  .pa-list label { display: flex; align-items: center; gap: 10px; padding: 6px 8px; border-radius: 10px; cursor: pointer; }
+  .pa-list label:hover { background: color-mix(in srgb, var(--accent) 6%, transparent); }
+  .pa-list input { width: 18px; height: 18px; flex: none; accent-color: var(--accent); }
+  .pa-list .nobox { width: 18px; flex: none; }
+  .pa-list .grow { flex: 1; min-width: 0; display: grid; }
+  .pa-list small { color: var(--muted); font-size: .8rem; }
+  .pa-list .st { font-size: .8rem; color: var(--muted); text-align: right; }
+  .pa-dlg { overflow-x: hidden; }
+  .pa-result { margin-top: 12px; padding: 10px 12px; border-radius: 10px; background: color-mix(in srgb, var(--accent) 8%, transparent); font-size: .92rem; display: grid; gap: 4px; }
 </style>
 <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/12.12.0/firebase-app.js" crossorigin>
 <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/12.12.0/firebase-auth.js" crossorigin>
@@ -201,6 +213,7 @@
     <section class="panel" id="sec-players">
       <h2 data-i18n="admin.players">Players & accounts</h2>
       <p class="help" data-i18n="admin.playersHelp"></p>
+      <div class="pa-bar" id="pa-bar" hidden></div>
       <ul class="plist" id="players"></ul>
       <form class="form-card" id="add-player" novalidate>
         <label class="ff"><span class="ff-label" data-i18n="admin.addTitle">Add a player</span>
@@ -599,13 +612,109 @@ document.getElementById("requests").addEventListener("click", ev => {
     dropRequest(rej.dataset.reqReject);
 });
 
+// ---- Asking players to complete their details (functions/remind.mjs: email, else a notification; once a week) ----
+const PROFILE_GAP = 7 * 864e5;
+// What a player still misses of what this team asks for (the same as profileMissing in functions/remind.mjs).
+function profileGaps(p) {
+  const s = root.settings || {}, empty = v => v == null || String(v).trim() === "", out = [];
+  if (empty(p.phone)) out.push(t("pa.f.phone"));
+  if (empty(p.gemeente) && !p.geo) out.push(t("pa.f.place"));
+  for (const [c, label] of customFields()) if (empty((p.extra || {})[c])) out.push(label);
+  if (fedOn() && empty(p.fed)) out.push(s.fedLabel || t("pa.f.fed"));
+  return out;
+}
+const paLinked = p => DEMO || !!(p.uid && root.members && root.members[p.uid] === p.id);
+const paRecent = p => { const x = (root.profileAsked || {})[p.id]; return x && Date.now() - x.at < PROFILE_GAP ? x : null; };
+const paCandidates = () => sortedPlayers().filter(p => p.name && profileGaps(p).length);
+const paSendable = p => paLinked(p) && p.id !== session.pid && !paRecent(p);
+function renderPaBar() {
+  const bar = document.getElementById("pa-bar"), list = paCandidates();
+  bar.hidden = !AUTH_ON || !session.admin || !list.length;
+  if (bar.hidden) return;
+  const can = list.filter(paSendable).length;
+  bar.innerHTML = `<span class="grow">${ic("user")} ${esc(t("pa.bar", { n: list.length }))}</span>
+    <button type="button" id="pa-open" ${can ? "" : "disabled"}>${ic("mail")} ${esc(can ? t("pa.open") : t("pa.allAsked"))}</button>`;
+}
+document.body.insertAdjacentHTML("beforeend", `<dialog id="pa-dlg" class="pa-dlg"><form method="dialog">
+  <h3 data-i18n="pa.title"></h3><p class="muted" data-i18n="pa.sub"></p>
+  <ul class="pa-list" id="pa-list"></ul><div class="pa-result" id="pa-result" role="status" hidden></div>
+  <div class="row"><button value="cancel" data-i18n="pa.close"></button><button type="button" class="primary" id="pa-send"></button></div></form></dialog>`);
+const paDlg = document.getElementById("pa-dlg");
+var paState = null; // { off: Set of unticked players, phase, result }
+function renderPaDlg() {
+  if (!paState) return;
+  const players = sortedPlayers(), list = paCandidates();
+  const chosen = list.filter(p => paSendable(p) && !paState.off.has(p.id));
+  document.getElementById("pa-list").innerHTML = list.map(p => {
+    const i = players.indexOf(p), recent = paRecent(p);
+    const st = p.id === session.pid ? t("pa.you") : !paLinked(p) ? t("pa.noAccount")
+      : recent ? t("pa.recent", { when: fmt(new Date(recent.at).toISOString().slice(0, 10), { day: "numeric", month: "short" }), via: t("rem.v." + recent.v) }) : "";
+    const box = paSendable(p) && paState.phase !== "sending" ? `<input type="checkbox" data-pa-pick="${p.id}" ${paState.off.has(p.id) ? "" : "checked"} aria-label="${esc(displayName(p, i))}">` : `<span class="nobox"></span>`;
+    return `<li><label>${box}<span class="av" style="${avatarBg(p)}">${photoOf(p) ? "" : esc(initials0(displayName(p, i)) || "?")}</span>
+      <span class="grow"><span>${esc(displayName(p, i))}</span><small>${esc(t("admin.missing"))}: ${esc(profileGaps(p).join(", "))}</small></span>
+      ${st ? `<span class="st">${esc(st)}</span>` : ""}</label></li>`;
+  }).join("");
+  const btn = document.getElementById("pa-send");
+  btn.disabled = paState.phase === "sending" || !chosen.length;
+  btn.innerHTML = paState.phase === "sending" ? esc(t("rem.sending")) : `${ic("mail")} ${esc(chosen.length ? t("pa.send", { n: chosen.length }) : t("rem.noneTicked"))}`;
+  const box = document.getElementById("pa-result");
+  box.hidden = !paState.result;
+  box.innerHTML = paState.result || "";
+}
+document.addEventListener("click", ev => {
+  if (!ev.target.closest("#pa-open")) return;
+  paState = { off: new Set(), phase: "idle", result: "" };
+  applyStaticTexts();
+  renderPaDlg();
+  paDlg.showModal();
+});
+paDlg.addEventListener("close", () => { paState = null; });
+document.getElementById("pa-list").addEventListener("change", ev => {
+  const id = ev.target.dataset.paPick;
+  if (!id || !paState) return;
+  ev.target.checked ? paState.off.delete(id) : paState.off.add(id);
+  renderPaDlg();
+});
+document.getElementById("pa-send").onclick = async () => {
+  const picked = paCandidates().filter(p => paSendable(p) && !paState.off.has(p.id)).map(p => p.id);
+  if (!picked.length) return;
+  const prevAt = root.profileAskedAt || 0;
+  paState.phase = "sending"; renderPaDlg();
+  if (DEMO) { // nothing is sent in the demo: it shows what the admin would see
+    const now = Date.now(), changes = { profileAskedAt: now };
+    picked.forEach((id, i) => { changes[`profileAsked/${id}`] = { at: now, v: i % 4 === 3 ? "push" : "mail" }; });
+    await update(changes);
+  } else {
+    const ok = await send("PUT", `notices/${TEAM_ID}/${historyId()}`, { k: "p", d: TODAY, p: Object.fromEntries(picked.map(id => [id, true])),
+      by: session.user.uid, at: { ".sv": "timestamp" } }, true, true, true);
+    if (ok !== true) { paState.phase = "idle"; paState.result = `<span>${esc(t("rem.failed"))}</span>`; return renderPaDlg(); }
+  }
+  const t0 = Date.now();
+  while (paState && Date.now() - t0 < 30e3) {
+    if (root.profileAskedAt && root.profileAskedAt !== prevAt) {
+      const names = v => picked.filter(id => ((root.profileAsked || {})[id] || {}).v === v && root.profileAsked[id].at === root.profileAskedAt)
+        .map(id => firstName((root.players[id] || {}).name || "")).join(", ");
+      const lines = [names("mail") && t("rem.viaMail", { names: names("mail") }), names("push") && t("rem.viaPush", { names: names("push") }),
+        names("none") && t("rem.viaNone", { names: names("none") })].filter(Boolean);
+      paState.phase = "done"; paState.result = (lines.length ? lines : [t("pa.nobody")]).map(l => `<span>${esc(l)}</span>`).join("");
+      render(); return renderPaDlg();
+    }
+    await new Promise(res => setTimeout(res, 300));
+  }
+  if (!paState) return;
+  paState.phase = "done"; paState.result = `<span>${esc(t("pa.later"))}</span>`; renderPaDlg();
+};
+
 function renderPlayers() {
+  renderPaBar();
+  if (paState) renderPaDlg();
   const me = session.user && session.user.uid;
   const word = key => t(key).replace(/^\S+\s/, ""); // "📱 number" → "number"
   document.getElementById("players").innerHTML = sortedPlayers().map((p, i) => {
     const isAdm = !!(p.uid && root.admins && root.admins[p.uid]);
     // What's missing, in one muted line (the normal state, linked with a number and a place, needs no mention).
     const miss = [AUTH_ON && !p.uid && t("accounts.notLinked"), !p.phone && word("admin.hasPhone"), !(p.geo || p.gemeente) && word("admin.hasPlace")].filter(Boolean);
+    const asked = ((root.profileAsked || {})[p.id] || {}).at;
     const acts = [
       AUTH_ON && p.uid && (session.platformAdmin || !isAdm) && `<button data-admin="${p.id}">${ic("shield")} ${t(isAdm ? "admin.removeAdmin" : "admin.makeAdmin")}</button>`,
       quickOn() && p.name && `<button data-qlink="${p.id}">${ic("link")} ${t("ql.button")}</button>`,
@@ -622,6 +731,7 @@ function renderPlayers() {
           ${p.email ? `<span>${esc(p.email)}</span>` : ""}
           ${seenHtml(p.uid)}
           ${miss.length ? `<span class="miss">${t("admin.missing")}: ${esc(miss.join(", "))}</span>` : ""}
+          ${asked && profileGaps(p).length ? `<span>${esc(t("pa.askedOn", { when: fmt(new Date(asked).toISOString().slice(0, 10), { day: "numeric", month: "short" }) }))}</span>` : ""}
         </div></div>
       <details class="row-menu"><summary title="${t("admin.actions")}" aria-label="${t("admin.actions")}">${ic("settings")}</summary>
         <div class="menu">${acts.join("")}</div></details>

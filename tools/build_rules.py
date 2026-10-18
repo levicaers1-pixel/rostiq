@@ -204,6 +204,12 @@ team = {
         "p": {"$pid": {"at": {".validate": "newData.isNumber()"},
                        "v": {".validate": "newData.val() === 'push' || newData.val() === 'mail' || newData.val() === 'none'"}, "$other": NO}},
         "$other": NO}},
+    # Who was asked to complete their details, and how (written by the function only; admins may clear it).
+    "profileAsked": {".write": f"{TA} && !newData.exists()", "$pid": {
+        ".write": f"{TA} && !newData.exists()",
+        "at": {".validate": "newData.isNumber()"},
+        "v": {".validate": "newData.val() === 'push' || newData.val() === 'mail' || newData.val() === 'none'"}, "$other": NO}},
+    "profileAskedAt": {".write": f"{TA} && !newData.exists()", ".validate": "newData.isNumber()"},
     # Who started the team (self-service): written once, at creation. Only the account id and date: the creator's
     # name, email and pilot code live in teamCreators/<team> (below), which members can't read.
     "meta": {
@@ -496,7 +502,8 @@ final["rules"]["history"] = {"$tid": {
     },
 }}
 # ---- Match called off / moved / selection / reminder: notices/<team>/<id> = {k: "c" (cancelled) | "m" (moved) | "s" (selection)
-#      | "a" (ask the players who haven't answered; p/<player> = true: only those), d: date, o: old date, by, at} ----
+#      | "a" (ask the players who haven't answered; p/<player> = true: only those)
+#      | "p" (ask the players in p to complete their details; d: today), d: date, o: old date, by, at} ----
 # An admin adds one right after marking the match in the schedule; a Cloud Function (functions/index.js) tells the team
 # at once with a notification, then removes the notice. Only for a match that really is cancelled / moved, so nobody can
 # make the function send something made up. Nobody reads them.
@@ -508,12 +515,13 @@ final["rules"]["notices"] = {"$tid": {"$id": {
                  f" && ((newData.child('k').val() === 'c' && {N_SCHED}.child('cancelled').val() === true)"
                  f" || (newData.child('k').val() === 'm' && {N_SCHED}.child('moved').val() === newData.child('o').val())"
                  " || (newData.child('k').val() === 's' && root.child('teams').child($tid).child('selection').child(newData.child('d').val()).child('pub').val() === true)"
-                 f" || (newData.child('k').val() === 'a' && {N_SCHED}.child('opp').exists() && {N_SCHED}.child('cancelled').val() !== true))",
-    "k": {".validate": "newData.val() === 'c' || newData.val() === 'm' || newData.val() === 's' || newData.val() === 'a'"},
+                 f" || (newData.child('k').val() === 'a' && {N_SCHED}.child('opp').exists() && {N_SCHED}.child('cancelled').val() !== true)"
+                 " || (newData.child('k').val() === 'p' && newData.child('p').exists()))",
+    "k": {".validate": "newData.val() === 'c' || newData.val() === 'm' || newData.val() === 's' || newData.val() === 'a' || newData.val() === 'p'"},
     "d": {".validate": "newData.isString() && newData.val().matches(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/)"},
     "o": {".validate": "newData.isString() && newData.val().matches(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/)"},
     "by": {".validate": "newData.isString()"}, "at": {".validate": "newData.isNumber()"},
-    "p": {".validate": "newData.parent().child('k').val() === 'a'", "$pid": {".validate": "$pid.matches(/^[A-Za-z0-9_-]{1,40}$/) && newData.val() === true"}},
+    "p": {".validate": "newData.parent().child('k').val() === 'a' || newData.parent().child('k').val() === 'p'", "$pid": {".validate": "$pid.matches(/^[A-Za-z0-9_-]{1,40}$/) && newData.val() === true"}},
     "$other": NO,
 }}}
 # ---- Who started a team: teamCreators/<team> = {n: name, e: email, c: pilot code} ----

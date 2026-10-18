@@ -643,6 +643,25 @@
             }
           }
         },
+        "profileAsked": {
+          ".write": "((auth != null && auth.token.email_verified === true && (auth.token.email === 'levicaers1@gmail.com')) || (auth != null && auth.token.email_verified === true && root.child('teams').child($tid).child('admins').child(auth.uid).val() === true)) && !newData.exists()",
+          "$pid": {
+            ".write": "((auth != null && auth.token.email_verified === true && (auth.token.email === 'levicaers1@gmail.com')) || (auth != null && auth.token.email_verified === true && root.child('teams').child($tid).child('admins').child(auth.uid).val() === true)) && !newData.exists()",
+            "at": {
+              ".validate": "newData.isNumber()"
+            },
+            "v": {
+              ".validate": "newData.val() === 'push' || newData.val() === 'mail' || newData.val() === 'none'"
+            },
+            "$other": {
+              ".validate": false
+            }
+          }
+        },
+        "profileAskedAt": {
+          ".write": "((auth != null && auth.token.email_verified === true && (auth.token.email === 'levicaers1@gmail.com')) || (auth != null && auth.token.email_verified === true && root.child('teams').child($tid).child('admins').child(auth.uid).val() === true)) && !newData.exists()",
+          ".validate": "newData.isNumber()"
+        },
         "meta": {
           "createdBy": {
             ".validate": "newData.isString()"
@@ -1089,9 +1108,9 @@
       "$tid": {
         "$id": {
           ".write": "!data.exists() && newData.exists() && ((auth != null && auth.token.email_verified === true && (auth.token.email === 'levicaers1@gmail.com')) || (auth != null && auth.token.email_verified === true && root.child('teams').child($tid).child('admins').child(auth.uid).val() === true))",
-          ".validate": "$id.matches(/^[0-9a-z]{10,24}$/) && newData.hasChildren(['k', 'd', 'by', 'at']) && newData.child('by').val() === auth.uid && newData.child('at').val() === now && ((newData.child('k').val() === 'c' && root.child('teams').child($tid).child('schedule').child(newData.child('d').val()).child('cancelled').val() === true) || (newData.child('k').val() === 'm' && root.child('teams').child($tid).child('schedule').child(newData.child('d').val()).child('moved').val() === newData.child('o').val()) || (newData.child('k').val() === 's' && root.child('teams').child($tid).child('selection').child(newData.child('d').val()).child('pub').val() === true) || (newData.child('k').val() === 'a' && root.child('teams').child($tid).child('schedule').child(newData.child('d').val()).child('opp').exists() && root.child('teams').child($tid).child('schedule').child(newData.child('d').val()).child('cancelled').val() !== true))",
+          ".validate": "$id.matches(/^[0-9a-z]{10,24}$/) && newData.hasChildren(['k', 'd', 'by', 'at']) && newData.child('by').val() === auth.uid && newData.child('at').val() === now && ((newData.child('k').val() === 'c' && root.child('teams').child($tid).child('schedule').child(newData.child('d').val()).child('cancelled').val() === true) || (newData.child('k').val() === 'm' && root.child('teams').child($tid).child('schedule').child(newData.child('d').val()).child('moved').val() === newData.child('o').val()) || (newData.child('k').val() === 's' && root.child('teams').child($tid).child('selection').child(newData.child('d').val()).child('pub').val() === true) || (newData.child('k').val() === 'a' && root.child('teams').child($tid).child('schedule').child(newData.child('d').val()).child('opp').exists() && root.child('teams').child($tid).child('schedule').child(newData.child('d').val()).child('cancelled').val() !== true) || (newData.child('k').val() === 'p' && newData.child('p').exists()))",
           "k": {
-            ".validate": "newData.val() === 'c' || newData.val() === 'm' || newData.val() === 's' || newData.val() === 'a'"
+            ".validate": "newData.val() === 'c' || newData.val() === 'm' || newData.val() === 's' || newData.val() === 'a' || newData.val() === 'p'"
           },
           "d": {
             ".validate": "newData.isString() && newData.val().matches(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/)"
@@ -1106,7 +1125,7 @@
             ".validate": "newData.isNumber()"
           },
           "p": {
-            ".validate": "newData.parent().child('k').val() === 'a'",
+            ".validate": "newData.parent().child('k').val() === 'a' || newData.parent().child('k').val() === 'p'",
             "$pid": {
               ".validate": "$pid.matches(/^[A-Za-z0-9_-]{1,40}$/) && newData.val() === true"
             }

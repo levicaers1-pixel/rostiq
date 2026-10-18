@@ -145,3 +145,99 @@ export async function sendReminder(db, tid, n) {
   await db.ref().update(writes);
   console.log(`reminder: ${stats.push} by notification, ${stats.mail} by email, ${stats.none} unreachable, ${stats.skipped} reminded recently`);
 }
+
+// ---- Asking players to complete their details (notices/<team>/<id> = { k: "p", d: today, p: { <pid>: true }, by }) ----
+// To each chosen linked player who still misses something the team asks for (mobile number, home town, the team's own
+// fields, the federation number): an email to their verified account address listing what's missing, with a button to
+// their own details on the team page; a notification when there's no such address. At most once a week per player.
+// teams/<team>/profileAsked/<pid> = { at, v: "mail" | "push" | "none" } (written here only; admins may clear it).
+export const PROFILE_GAP = 7 * 864e5;
+const PTEXT = {
+  nl: { phone: "gsm-nummer", place: "woonplaats", fed: "federatienummer",
+        subject: brand => `${brand}: vul je gegevens nog even aan`,
+        intro: (who, brand) => `${who ? `${who} van ${brand}` : `De ploegbeheerder van ${brand}`} vraagt je om je gegevens in RostiQ aan te vullen.`,
+        missing: "Nog niet ingevuld:", why: "Zo kan de ploeg je bereiken en werkt de carpool met de juiste afstanden.",
+        button: "Gegevens aanvullen", push: (who, list) => `${who ? `${who} vraagt` : "De ploeg vraagt"} je gegevens aan te vullen: ${list}.`,
+        foot: brand => `Je krijgt deze e-mail omdat de ploegbeheerder van ${brand} je erom vroeg in RostiQ. Je gegevens zijn alleen zichtbaar in je eigen ploeg(en).` },
+  fr: { phone: "numéro de GSM", place: "commune", fed: "numéro de fédération",
+        subject: brand => `${brand} : complète encore tes données`,
+        intro: (who, brand) => `${who ? `${who} de ${brand}` : `L'administrateur de ${brand}`} te demande de compléter tes données dans RostiQ.`,
+        missing: "Pas encore rempli :", why: "Ainsi l'équipe peut te joindre et le covoiturage calcule les bonnes distances.",
+        button: "Compléter mes données", push: (who, list) => `${who ? `${who} te demande` : "L'équipe te demande"} de compléter tes données : ${list}.`,
+        foot: brand => `Tu reçois cet e-mail parce que l'administrateur de ${brand} te l'a demandé dans RostiQ. Tes données ne sont visibles que dans ton/tes équipe(s).` },
+  en: { phone: "mobile number", place: "home town", fed: "federation number",
+        subject: brand => `${brand}: please complete your details`,
+        intro: (who, brand) => `${who ? `${who} from ${brand}` : `The team admin of ${brand}`} asks you to complete your details in RostiQ.`,
+        missing: "Not filled in yet:", why: "That way the team can reach you and carpool works with the right distances.",
+        button: "Complete my details", push: (who, list) => `${who ? `${who} asks` : "Your team asks"} you to complete your details: ${list}.`,
+        foot: brand => `You're getting this email because the team admin of ${brand} asked for it in RostiQ. Your details are only shown in your own team(s).` },
+};
+const empty = v => v === undefined || v === null || String(v).trim() === "";
+/** What a player still misses of what the team asks for (labels in lang; the team's own fields by their own name). */
+export function profileMissing(p, settings, lang) {
+  const L = PTEXT[lang3(lang)], s = settings || {}, out = [];
+  if (empty(p.phone)) out.push(L.phone);
+  if (empty(p.gemeente) && !p.geo) out.push(L.place);
+  for (const [c, label] of Object.entries(s.fields || {}).filter(([k, v]) => /^c[1-4]$/.test(k) && v).sort(([a], [b]) => a.localeCompare(b)))
+    if (empty((p.extra || {})[c])) out.push(String(label).slice(0, 30));
+  if (!s.fedOff && empty(p.fed)) out.push(s.fedLabel ? String(s.fedLabel).slice(0, 30) : L.fed);
+  return out;
+}
+export function profileEmail({ tid, brand, who, missing }, lang) {
+  const L = PTEXT[lang3(lang)], b = brand || "RostiQ", url = `${APP}/ploeg.html?t=${encodeURIComponent(tid)}#me`;
+  const text = [L.intro(who, b), "", L.missing, ...missing.map(x => `• ${x}`), "", L.why, "", `${L.button}: ${url}`, "", L.foot(b)].join("\n");
+  const html = `<div style="font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;font-size:15px;line-height:1.5;color:#111;max-width:520px">
+<p>${esc(L.intro(who, b))}</p>
+<p style="margin-bottom:4px"><b>${esc(L.missing)}</b></p><ul style="margin-top:0">${missing.map(x => `<li>${esc(x)}</li>`).join("")}</ul>
+<p>${esc(L.why)}</p>
+<p><a href="${esc(url)}" style="display:inline-block;padding:12px 20px;border-radius:10px;background:#2f2a8f;color:#fff;font-weight:700;text-decoration:none">${esc(L.button)} →</a></p>
+<p style="color:#777;font-size:12px">${esc(L.foot(b))}</p></div>`;
+  return { subject: L.subject(b), text, html, url };
+}
+
+export async function sendProfileAsk(db, tid, n) {
+  const val = path => db.ref(path).get().then(s => s.val());
+  const T = `teams/${tid}`;
+  const [brand, settings, members, players, asked, subs] = await Promise.all([val(`${T}/info/brand`), val(`${T}/settings`),
+    val(`${T}/members`), val(`${T}/players`), val(`${T}/profileAsked`), val(`inviteSubs/${tid}`)]);
+  const now = Date.now(), mems = members || {}, pl = players || {}, before = asked || {};
+  const who = String(((pl[mems[n.by]] || {}).name || "").trim().split(/\s+/)[0] || "").slice(0, 30);
+  const writes = {}, stats = { mail: 0, push: 0, none: 0, skipped: 0 };
+  let mail;
+  for (const [uid, pid] of Object.entries(mems)) {
+    const p = pl[pid];
+    if (uid === n.by || !p || !p.name || !(n.p || {})[pid]) continue; // only the chosen players, never the sender
+    if (before[pid] && now - Number(before[pid].at || 0) < PROFILE_GAP) { stats.skipped++; continue; }
+    const devices = Object.entries((await val(`pushTokens/${uid}`)) || {}).filter(([, i]) => i && i.token);
+    const lang = (devices[0] && devices[0][1].lang) || ((subs || {})[pid] || {}).l || "nl";
+    const missing = profileMissing(p, settings, lang);
+    if (!missing.length) continue; // filled in meanwhile
+    const msg = profileEmail({ tid, brand, who, missing }, lang);
+    let v = "none";
+    const user = await getAuth().getUser(uid).catch(() => null);
+    if (user && user.email && user.emailVerified) {
+      mail = mail === undefined ? mailer() : mail;
+      if (mail) try {
+        const info = await mail.sendMail({ from: { name: brand ? `${String(brand).slice(0, 40)} via RostiQ` : "RostiQ", address: FROM_ADDR }, to: user.email,
+          subject: msg.subject, text: msg.text, html: msg.html });
+        if (info && info.message && process.env.INVITE_TRANSPORT === "stream") console.log("=====MAIL=====\n" + info.message.toString());
+        v = "mail";
+      } catch (e) { console.warn("profile email failed:", (e && (e.responseCode || e.code)) || "error"); }
+    }
+    if (v === "none") for (const [dev, info] of devices) { // no email address: a notification instead
+      try {
+        await getMessaging().send({ token: info.token, webpush: { headers: { TTL: String(3 * 864e5) } },
+          data: { title: String(brand || "RostiQ").slice(0, 60), body: PTEXT[lang3(info.lang)].push(who, profileMissing(p, settings, info.lang).join(", ")), tag: `${tid}-profile`, link: msg.url } });
+        v = "push";
+      } catch (e) {
+        const code = (e && (e.code || e.errorInfo && e.errorInfo.code)) || "";
+        if (/registration-token-not-registered|invalid-registration-token/.test(code)) writes[`pushTokens/${uid}/${dev}`] = null;
+      }
+    }
+    stats[v]++;
+    writes[`${T}/profileAsked/${pid}`] = { at: now, v };
+  }
+  writes[`${T}/profileAskedAt`] = now; // the admin's screen: handled
+  await db.ref().update(writes);
+  console.log(`profile ask: ${stats.mail} by email, ${stats.push} by notification, ${stats.none} unreachable, ${stats.skipped} asked this week`);
+}
