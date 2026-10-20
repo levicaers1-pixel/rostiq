@@ -13,6 +13,8 @@ import { getMessaging } from "firebase-admin/messaging";
 import crypto from "node:crypto";
 import { runInvites } from "./invites.mjs";
 import { REMIND_GAP } from "./remind.mjs";
+import { wxOn, forecast, wxAlerts, wxMessage } from "./weather.js";
+import { trainingDates } from "./training.js";
 
 const APP = "https://app.rostiq.be";
 const TZ = "Europe/Brussels";
@@ -140,7 +142,40 @@ export async function runJob({ mode = "all", dry = false, verbose = false, clean
     }
   }
 
+  let wxSent = 0, wxChecked = 0;
   if (MODE !== "requests") {
+    // ---- Weather warnings: tomorrow's outdoor matches, at their venue. Only the admins are told (they decide), once per
+    // match: pushLog/<team>/<date>/wx = what was found ("ok" when nothing). ----
+    for (const [tid, team] of Object.entries(teams)) {
+      if (!team || !wxOn(team.settings)) continue;
+      const brand = (team.info || {}).brand || "RostiQ";
+      for (const [date, m] of Object.entries(team.schedule || {})) {
+        if (daysUntil(date) !== 1 || !m || !m.opp || m.cancelled === true || ((log[tid] || {})[date] || {}).wx) continue;
+        const v = ((team.matches || {})[date] || {}).venue;
+        if (!v || v.lat == null || v.lon == null) continue;
+        const alerts = wxAlerts(await forecast(v.lat, v.lon, date).catch(() => null));
+        wxChecked++;
+        logWrites[`pushLog/${tid}/${date}/wx`] = alerts.length ? alerts.map(a => a.k).join(",") : "ok";
+        if (!alerts.length) continue;
+        for (const uid of Object.keys(team.admins || {})) for (const [dev, info] of Object.entries(tokens[uid] || {}))
+          if (await push(uid, dev, info, { title: brand, body: wxMessage(alerts, info.lang, m.opp), tag: `${tid}-wx-${date}`,
+            link: `${APP}/?t=${encodeURIComponent(tid)}&edit=${date}` })) wxSent++;
+      }
+      // Tomorrow's training, at its own place (pushLog/<team>/<date>/wxt).
+      const tomorrow = new Date(Date.parse(today + "T12:00:00Z") + 864e5).toISOString().slice(0, 10);
+      for (const tr of trainingDates((team.settings || {}).train, team.trainings, tomorrow, tomorrow)) {
+        const v = tr.venue;
+        if (tr.off || !v || v.lat == null || v.lon == null || ((log[tid] || {})[tr.date] || {}).wxt) continue;
+        const alerts = wxAlerts(await forecast(v.lat, v.lon, tr.date).catch(() => null));
+        wxChecked++;
+        logWrites[`pushLog/${tid}/${tr.date}/wxt`] = alerts.length ? alerts.map(a => a.k).join(",") : "ok";
+        if (!alerts.length) continue;
+        for (const uid of Object.keys(team.admins || {})) for (const [dev, info] of Object.entries(tokens[uid] || {}))
+          if (await push(uid, dev, info, { title: brand, body: wxMessage(alerts, info.lang, null), tag: `${tid}-wxt-${tr.date}`,
+            link: `${APP}/?t=${encodeURIComponent(tid)}#trainings` })) wxSent++;
+      }
+    }
+
     // ---- Match reminders: players who haven't answered, 3 days and 1 day before ----
     for (const [tid, team] of Object.entries(teams)) {
       if (!team || (team.settings || {}).autoRemind === false) continue;
@@ -182,6 +217,20 @@ export async function runJob({ mode = "all", dry = false, verbose = false, clean
     }
     // Forget logs of matches that are over.
     for (const [tid, dates] of Object.entries(log)) if (tid !== "_req") for (const date of Object.keys(dates || {})) if (date < today) logWrites[`pushLog/${tid}/${date}`] = null;
+    // "Seen" marks of announcements that are gone or no longer shown (two weeks, or their own last day).
+    const seen = (await db.ref("newsSeen").once("value")).val() || {};
+    for (const [tid, items] of Object.entries(seen)) for (const id of Object.keys(items || {})) {
+      const nw = (((teams[tid] || {}).news) || {})[id];
+      const last = nw && (nw.until || new Date((nw.at || 0) + 14 * 864e5).toLocaleDateString("sv-SE", { timeZone: TZ }));
+      if (!nw || last < today) logWrites[`newsSeen/${tid}/${id}`] = null;
+    }
+    // Old announcements themselves: kept a month after their last day, then removed.
+    for (const [tid, team] of Object.entries(teams)) for (const [id, nw] of Object.entries((team && team.news) || {})) {
+      const last = nw && (nw.until || new Date((nw.at || 0) + 14 * 864e5).toLocaleDateString("sv-SE", { timeZone: TZ }));
+      if (!last || daysUntil(last) < -30) logWrites[`teams/${tid}/news/${id}`] = null;
+    }
+    // Training days called off in the past: no longer needed.
+    for (const [tid, team] of Object.entries(teams)) for (const date of Object.keys((team && team.trainings) || {})) if (daysUntil(date) < -60) logWrites[`teams/${tid}/trainings/${date}`] = null;
     // The admin's reminder results: only needed until the match.
     for (const [tid, team] of Object.entries(teams)) for (const date of Object.keys((team && team.reminded) || {})) if (date < today) logWrites[`teams/${tid}/reminded/${date}`] = null;
     // Answer history: only kept until the match has been played (it stays small: only upcoming matches remain).
@@ -216,6 +265,7 @@ export async function runJob({ mode = "all", dry = false, verbose = false, clean
   // Only counts in the log (the repository is public): no names, teams or tokens.
   const would = DRY ? "would be " : "";
   console.log(`${today}: ${inv.stats.sent} invitations, ${inv.stats.updated} updates, ${inv.stats.cancelled} cancellations ${would}sent (${inv.stats.waiting} waiting, ${inv.stats.failed} failed).`);
+  if (wxChecked) console.log(`${wxChecked} forecasts checked for tomorrow, ${wxSent} weather warnings ${would}sent to admins.`);
   if (awayFilled) console.log(`${awayFilled} answers ${would}set to "no" for players on holiday.`);
   if (movedCreators) console.log(`${movedCreators} teams' creator details ${would}moved out of the team data.`);
   if (movedReqs) console.log(`${movedReqs} access requests ${would}moved out of the team data.`);

@@ -133,4 +133,27 @@ console.log("notice tests ok");
   assert.equal(subText("admin", "en", { out: "Jan", sub: null, opp: "Racing" }), "⚠️ Jan can't make it to Racing, and there's no reserve left. Find a replacement.");
   assert.equal(subText("manual", "fr", { out: "Jan", opp: "Racing" }), "⚠️ Jan ne peut plus pour Racing. Choisis un remplaçant dans la sélection.");
 }
+// Weather warnings (weather.js) and trainings (training.js), also in the calendar feed.
+{
+  const { wxAlerts, wxMessage, wxOn } = await import("./weather.js");
+  assert.deepEqual(wxAlerts({ code: 3, max: 18, min: 9, rain: 20, rainSum: 1, gust: 30 }), [], "a normal day");
+  assert.deepEqual(wxAlerts({ code: 95, max: 24, min: 15, rain: 80, rainSum: 12, gust: 75 }).map(a => a.k), ["storm", "wind"]);
+  assert.deepEqual(wxAlerts({ code: 73, max: 1, min: -5, rain: 90, rainSum: 4, gust: 20 }).map(a => a.k), ["snow", "frost"]);
+  assert.deepEqual(wxAlerts({ code: 0, max: 34, min: 20, rain: 0, rainSum: 0, gust: 10 }).map(a => a.k), ["heat"]);
+  assert.equal(wxMessage([{ k: "storm", v: 80 }], "nl", "Racing"), "⚠️ Morgen tegen Racing: onweer (80% kans op neerslag). Afgelasten of verplaatsen?");
+  assert.equal(wxMessage([{ k: "rain", v: 22 }], "en", null), "⚠️ Training tomorrow: heavy rain (22 mm). Call it off?");
+  assert.equal(wxOn({ sport: "hockey" }), true); assert.equal(wxOn({ sport: "padel" }), false); assert.equal(wxOn({ sport: "padel", wx: true }), true);
+  const { trainingDates, trainComing, trainText } = await import("./training.js");
+  const train = { slots: { t1: { wd: 2, start: "20:00", end: "21:30", venue: { name: "Sportpark", lat: 51.2, lon: 4.4 } } }, optOut: true };
+  const list = trainingDates(train, { "2026-10-27": { off: true, note: "Veld dicht" } }, "2026-10-19", "2026-11-04");
+  assert.deepEqual(list.map(x => x.date + (x.off ? "x" : "")), ["2026-10-20", "2026-10-27x", "2026-11-03"]);
+  assert.equal(trainComing(train, undefined), true, "opt-out: counted unless no");
+  assert.equal(trainComing({ slots: {} }, undefined), false);
+  assert.equal(trainText("off", "en", { date: "2026-10-27", note: "Pitch closed." }), "❌ Training on Tuesday 27 October is off. Pitch closed.");
+  const feed = buildFeed({ ...team, settings: { ...team.settings, train }, trainings: { "2026-10-20": { off: true } } }, { ...player, tr: { "2026-10-27": "no" } }, names,
+    { lang: "nl", today: "2026-10-13", now: new Date("2026-10-13T20:00:00Z") }).replace(/\r\n /g, "");
+  assert(feed.includes("SUMMARY:✅ Zuiderpark · Training") && feed.includes("UID:20261103-training-t1@kfc.rostiq"), "a training in the calendar");
+  assert(feed.includes("SUMMARY:❌ Afgelast: Zuiderpark · Training"), "called off");
+  assert(feed.includes("DESCRIPTION:Je komt niet"), "my no");
+}
 console.log("reminder tests passed");

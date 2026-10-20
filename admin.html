@@ -167,6 +167,15 @@
   .pa-list .st { font-size: .8rem; color: var(--muted); text-align: right; }
   .pa-dlg { overflow-x: hidden; }
   .pa-result { margin-top: 12px; padding: 10px 12px; border-radius: 10px; background: color-mix(in srgb, var(--accent) 8%, transparent); font-size: .92rem; display: grid; gap: 4px; }
+  .train-slots { display: grid; gap: 10px; }
+  .train-slot { border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; display: grid; gap: 8px; }
+  .train-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .train-row select, .train-row input { font: inherit; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text); }
+  .train-venue { display: grid; gap: 6px; font-size: .9rem; }
+  .train-venue .result { text-align: left; }
+  .train-season { display: flex; gap: 12px; flex-wrap: wrap; margin: 12px 0 6px; }
+  .train-season label { display: grid; gap: 4px; font-size: .85rem; color: var(--muted); }
+  .train-season input { font: inherit; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text); }
 </style>
 <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/12.12.0/firebase-app.js" crossorigin>
 <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/12.12.0/firebase-auth.js" crossorigin>
@@ -194,6 +203,7 @@
       <a href="#sec-fields" data-i18n="fields.title">Player fields</a>
       <a href="#sec-brand" data-i18n="brand.title">Branding</a>
       <a href="#sec-matches" data-i18n="admin.matches">Matches</a>
+      <a href="#sec-train" data-i18n="tr.admin">Trainings</a>
       <a href="#sec-backup" data-i18n="admin.backup">Backup</a>
       <a href="#sec-season" data-i18n="admin.newSeason">New season</a>
     </nav>
@@ -238,6 +248,7 @@
         </div>
         <label class="ff check push-set"><input type="checkbox" name="quickLinks"> <span><b data-i18n="set.quickLinks">Answer via personal link</b><br><small class="ff-help" data-i18n="set.quickLinksHelp"></small></span></label>
         <label class="ff check push-set"><input type="checkbox" name="autoRemind"> <span><b data-i18n="set.autoRemind">Automatic reminders</b><br><small class="ff-help" data-i18n="set.autoRemindHelp"></small></span></label>
+        <label class="ff check push-set"><input type="checkbox" name="wx"> <span><b data-i18n="set.wx">Weather warning</b><br><small class="ff-help" data-i18n="set.wxHelp"></small></span></label>
         <label class="ff"><span class="ff-label"><span data-i18n="wa.setting">WhatsApp group link</span> <em data-i18n="start.optional"></em></span>
           <input name="wa" type="url" placeholder="https://chat.whatsapp.com/…" autocomplete="off">
           <span class="ff-err" hidden></span><span class="ff-help" data-i18n="set.waHelp"></span></label>
@@ -306,6 +317,21 @@
     </section>
 
     <!-- Matches -->
+    <section class="panel" id="sec-train">
+      <h2 data-i18n="tr.admin">Trainings</h2>
+      <p class="help" data-i18n="tr.adminHelp"></p>
+      <form class="form-card" id="train-form" novalidate>
+        <div class="train-slots" id="train-slots"></div>
+        <button type="button" class="link" id="train-add">+ <span data-i18n="tr.addSlot">Add a training slot</span></button>
+        <div class="train-season">
+          <label><span data-i18n="tr.from">Season from</span><input type="date" name="from"></label>
+          <label><span data-i18n="tr.to">until</span><input type="date" name="to"></label>
+        </div>
+        <label class="ff check"><input type="checkbox" name="optOut"> <span><b data-i18n="tr.optOut">Everyone counts unless they say no</b><br><small class="ff-help" data-i18n="tr.optOutHelp"></small></span></label>
+        <div class="form-actions"><button type="submit" class="primary" data-i18n="admin.save">Save</button><span class="msg" id="train-msg"></span></div>
+      </form>
+    </section>
+
     <section class="panel" id="sec-matches">
       <h2 data-i18n="admin.matches">Matches</h2>
       <p class="help" data-i18n="admin.matchesHelp"></p>
@@ -416,7 +442,70 @@ function render() {
   renderSettings();
   renderBrand();
   renderMatches();
+  renderTrainForm();
 }
+
+// ---- Trainings: weekly slots (settings/train = { slots: { t1: { wd, start, end, venue } }, from, to, optOut }) ----
+let trainDraft = null; // being edited: { slots: [{ wd, start, end, venue, q, results, status }], from, to, optOut }
+const WEEKDAYS = [1, 2, 3, 4, 5, 6, 0];
+const wdName = wd => new Date(2024, 0, 7 + wd).toLocaleDateString(LOCALE, { weekday: "long" }); // 7 Jan 2024 was a Sunday
+function renderTrainForm() {
+  if (!dataLoaded) return;
+  if (!trainDraft) {
+    const c = trainCfg() || {};
+    trainDraft = { slots: Object.keys(c.slots || {}).sort().map(k => ({ ...c.slots[k], q: "", results: [], status: "" })), from: c.from || "", to: c.to || "", optOut: !!c.optOut };
+  }
+  const d = trainDraft, f = document.getElementById("train-form");
+  document.getElementById("train-slots").innerHTML = d.slots.map((s, i) => `<div class="train-slot" data-i="${i}">
+      <div class="train-row">
+        <select data-f="wd" aria-label="${esc(t("tr.day"))}">${WEEKDAYS.map(w => `<option value="${w}" ${s.wd === w ? "selected" : ""}>${esc(wdName(w))}</option>`).join("")}</select>
+        <input type="time" data-f="start" value="${esc(s.start || "")}" aria-label="${esc(t("tr.start"))}"> – <input type="time" data-f="end" value="${esc(s.end || "")}" aria-label="${esc(t("tr.end"))}">
+        <button type="button" class="link err" data-slot-del title="${esc(t("fields.remove"))}" aria-label="${esc(t("fields.remove"))}">${ic("trash")}</button>
+      </div>
+      <div class="train-venue">${s.venue ? `📍 <b>${esc(s.venue.name)}</b>${s.venue.address ? ` <span class="muted">${esc(s.venue.address)}</span>` : ""} <button type="button" class="link" data-venue-clear>${esc(t("tr.change"))}</button>`
+        : `<span class="ff-inline"><input data-f="q" value="${esc(s.q || "")}" placeholder="${esc(t("tr.venuePh"))}"><button type="button" data-venue-find>${esc(t("tr.find"))}</button></span>
+           ${s.status === "loading" ? `<div class="muted">…</div>` : s.status === "none" ? `<div class="muted">${esc(t("tr.noVenue"))}</div>` : ""}
+           ${(s.results || []).map((r, j) => `<button type="button" class="result" data-venue-pick="${j}">📍 <b>${esc(r.name)}</b>${r.address ? ` <span class="muted">${esc(r.address)}</span>` : ""}</button>`).join("")}`}</div>
+    </div>`).join("") || `<p class="muted">${esc(t("tr.none"))}</p>`;
+  if (document.activeElement !== f.from) f.from.value = d.from;
+  if (document.activeElement !== f.to) f.to.value = d.to;
+  f.optOut.checked = d.optOut;
+}
+const trainForm = document.getElementById("train-form");
+trainForm.addEventListener("input", ev => {
+  const row = ev.target.closest(".train-slot"), k = ev.target.dataset.f;
+  if (row && k) { const s = trainDraft.slots[+row.dataset.i]; s[k] = k === "wd" ? +ev.target.value : ev.target.value; return; }
+  if (["from", "to"].includes(ev.target.name)) trainDraft[ev.target.name] = ev.target.value;
+  if (ev.target.name === "optOut") trainDraft.optOut = ev.target.checked;
+});
+trainForm.addEventListener("change", ev => { if (ev.target.name === "optOut") trainDraft.optOut = ev.target.checked; });
+trainForm.addEventListener("click", async ev => {
+  const row = ev.target.closest(".train-slot"), s = row && trainDraft.slots[+row.dataset.i];
+  if (ev.target.closest("#train-add")) { trainDraft.slots.push({ wd: 2, start: "20:00", end: "21:30", venue: (trainDraft.slots[0] || {}).venue || null, q: "", results: [] }); return renderTrainForm(); }
+  if (!s) return;
+  if (ev.target.closest("[data-slot-del]")) { trainDraft.slots.splice(+row.dataset.i, 1); return renderTrainForm(); }
+  if (ev.target.closest("[data-venue-clear]")) { s.venue = null; s.q = ""; s.results = []; return renderTrainForm(); }
+  const pick = ev.target.closest("[data-venue-pick]");
+  if (pick) { const r = s.results[+pick.dataset.venuePick]; s.venue = { name: r.name.slice(0, 120), ...(r.address ? { address: r.address.slice(0, 160) } : {}), lat: r.lat, lon: r.lon }; s.results = []; return renderTrainForm(); }
+  if (ev.target.closest("[data-venue-find]")) {
+    if ((s.q || "").trim().length < 2) return;
+    s.status = "loading"; renderTrainForm();
+    try { s.results = await findVenues(s.q.trim()); s.status = s.results.length ? "" : "none"; } catch { s.status = "none"; }
+    renderTrainForm();
+  }
+});
+trainForm.addEventListener("keydown", ev => { if (ev.key === "Enter" && ev.target.dataset.f === "q") { ev.preventDefault(); ev.target.closest(".train-slot").querySelector("[data-venue-find]").click(); } });
+trainForm.addEventListener("submit", async ev => {
+  ev.preventDefault();
+  const d = trainDraft, msg = document.getElementById("train-msg");
+  if (d.slots.some(s => !/^\d\d:\d\d$/.test(s.start || ""))) { msg.textContent = t("tr.needStart"); msg.className = "msg err"; return; }
+  const slots = Object.fromEntries(d.slots.slice(0, 4).map((s, i) => [`t${i + 1}`, { wd: s.wd, start: s.start, ...(/^\d\d:\d\d$/.test(s.end || "") ? { end: s.end } : {}), ...(s.venue ? { venue: s.venue } : {}) }]));
+  // No season start given: from today, so attendance only counts trainings that were planned in RostiQ.
+  const value = d.slots.length ? { slots, from: d.from || TODAY, ...(d.to ? { to: d.to } : {}), ...(d.optOut ? { optOut: true } : {}) } : null;
+  const ok = await update({ "settings/train": value });
+  msg.textContent = ok ? t("tr.saved") : t("status.saveFailed"); msg.className = "msg" + (ok ? "" : " err");
+  if (ok) { trainDraft = null; renderTrainForm(); }
+});
 
 // ---- Last seen (lastSeen/<team>/<uid>: only admins can read it; each player's app stamps it with the server's clock) ----
 let lastSeen = null, lastSeenLoaded = 0;
@@ -749,6 +838,7 @@ function renderSettings() {
     sf.min.value = s.minPlayers || TEAM.minPlayers || 3;
     sf.wa.value = s.waGroup || "";
     sf.autoRemind.checked = s.autoRemind !== false; // on unless switched off
+    sf.wx.checked = wxOn(); // the team's choice, else on for outdoor sports
     sf.quickLinks.checked = s.quickLinks !== false;
   }
   sf.querySelector("[type=submit]").disabled = !settingsDirty;
@@ -833,7 +923,8 @@ sf.addEventListener("submit", async ev => {
   if (!fieldErr(sf.season, season ? "" : t("set.seasonNeeded"))) return;
   if (!fieldErr(sf.min, n >= 1 && n <= 50 ? "" : t("set.minRange"))) return;
   if (!fieldErr(sf.wa, !link || WA_LINK.test(link) ? "" : t("wa.invalid"))) return;
-  const ok = await update({ "settings/seasonName": season, "settings/minPlayers": n, "settings/waGroup": link || null, "settings/autoRemind": sf.autoRemind.checked ? null : false, "settings/quickLinks": sf.quickLinks.checked ? null : false });
+  const ok = await update({ "settings/seasonName": season, "settings/minPlayers": n, "settings/waGroup": link || null, "settings/autoRemind": sf.autoRemind.checked ? null : false,
+    "settings/wx": sf.wx.checked === WX_OUTDOOR.includes((root.settings || {}).sport || "golf") ? null : sf.wx.checked, "settings/quickLinks": sf.quickLinks.checked ? null : false });
   const msg = document.getElementById("settings-msg");
   if (!ok) { msg.textContent = t("status.saveFailed"); msg.className = "msg err"; return; }
   settingsDirty = false;

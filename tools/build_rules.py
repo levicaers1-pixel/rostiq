@@ -83,6 +83,8 @@ def player_rules(owner):
         # The team's own extra fields (Admin → Player fields): c1…c4.
         "extra": own({"$c": {".validate": "$c.matches(/^c[1-4]$/) && newData.isString() && newData.val().length <= 60"}}),
         "avail": own({"$date": {".validate": "newData.val() === 'yes' || newData.val() === 'maybe' || newData.val() === 'no'"}}),
+        # Trainings: coming or not (tr/<date>).
+        "tr": own({"$date": {".validate": "$date.matches(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/) && (newData.val() === 'yes' || newData.val() === 'no')"}}),
         "$other": NO,
     }
 
@@ -99,6 +101,16 @@ def settings_rules():
         "fedLabel": s(40, 1),
         "fields": {"$c": {".validate": "$c.matches(/^c[1-4]$/) && newData.isString() && newData.val().length >= 1 && newData.val().length <= 30"}},
         "autoRemind": {".validate": "newData.isBoolean()"},
+        "wx": {".validate": "newData.isBoolean()"},  # weather warnings on / off (missing: on for outdoor sports)
+        # Weekly trainings: slots/<id> = { wd: weekday 0 (Sunday) … 6, start, end, venue }, the season (from / to), and
+        # optOut = everyone counts as coming unless they say no.
+        "train": {
+            "slots": {"$id": {".validate": "$id.matches(/^t[0-9]{1,2}$/) && newData.hasChildren(['wd', 'start'])",
+                              "wd": num(0, 6), "start": HHMM, "end": HHMM,
+                              "venue": {".validate": "newData.hasChild('name')", "name": s(120), "address": s(160), **LATLON, "$other": NO},
+                              "$other": NO}},
+            "from": DATE, "to": DATE, "optOut": {".validate": "newData.isBoolean()"},
+            "$other": NO},
         "quickLinks": {".validate": "newData.isBoolean()"},
         # How this team picks a line-up (Selection window): f squad | order | pairs, n starters / players / pairs,
         # b bench places, pos positions on, cap captain on, by sort by handicap | ranking | none. Missing: the sport's default.
@@ -220,6 +232,15 @@ team = {
         "p": {"$pid": {"at": {".validate": "newData.isNumber()"},
                        "v": {".validate": "newData.val() === 'push' || newData.val() === 'mail' || newData.val() === 'none'"}, "$other": NO}},
         "$other": NO}},
+    # One training called off (off = true) or with a note for that day (trainings/<date>).
+    "trainings": {".write": TA, "$date": {
+        ".validate": "$date.matches(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/)",
+        "off": {".validate": "newData.val() === true"}, "note": s(120), "$other": NO}},
+    # Announcements from the admins, shown at the top of the team page (news/<id>; "until" = last day shown).
+    "news": {".write": TA, "$id": {
+        ".validate": "$id.matches(/^[0-9a-z]{10,24}$/) && newData.hasChildren(['text', 'by', 'at'])",
+        "text": s(500, 1), "by": {".validate": "newData.isString()"}, "name": s(40), "at": {".validate": "newData.isNumber()"},
+        "until": {".validate": "newData.isString() && newData.val().matches(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/)"}, "$other": NO}},
     # Who was asked to complete their details, and how (written by the function only; admins may clear it).
     "profileAsked": {".write": f"{TA} && !newData.exists()", "$pid": {
         ".write": f"{TA} && !newData.exists()",
@@ -532,14 +553,28 @@ final["rules"]["notices"] = {"$tid": {"$id": {
                  f" || (newData.child('k').val() === 'm' && {N_SCHED}.child('moved').val() === newData.child('o').val())"
                  " || (newData.child('k').val() === 's' && root.child('teams').child($tid).child('selection').child(newData.child('d').val()).child('pub').val() === true)"
                  f" || (newData.child('k').val() === 'a' && {N_SCHED}.child('opp').exists() && {N_SCHED}.child('cancelled').val() !== true)"
-                 " || (newData.child('k').val() === 'p' && newData.child('p').exists()))",
-    "k": {".validate": "newData.val() === 'c' || newData.val() === 'm' || newData.val() === 's' || newData.val() === 'a' || newData.val() === 'p'"},
+                 " || (newData.child('k').val() === 'p' && newData.child('p').exists())"
+                 " || (newData.child('k').val() === 't' && root.child('teams').child($tid).child('trainings').child(newData.child('d').val()).child('off').val() === true)"
+                 " || (newData.child('k').val() === 'n' && newData.child('i').isString() && root.child('teams').child($tid).child('news').child(newData.child('i').val()).exists()))",
+    "k": {".validate": "newData.val() === 'c' || newData.val() === 'm' || newData.val() === 's' || newData.val() === 'a' || newData.val() === 'p' || newData.val() === 'n' || newData.val() === 't'"},
     "d": {".validate": "newData.isString() && newData.val().matches(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/)"},
     "o": {".validate": "newData.isString() && newData.val().matches(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/)"},
     "by": {".validate": "newData.isString()"}, "at": {".validate": "newData.isNumber()"},
+    "i": {".validate": "newData.parent().child('k').val() === 'n' && newData.isString()"},
     "p": {".validate": "newData.parent().child('k').val() === 'a' || newData.parent().child('k').val() === 'p'", "$pid": {".validate": "$pid.matches(/^[A-Za-z0-9_-]{1,40}$/) && newData.val() === true"}},
     "$other": NO,
 }}}
+# ---- Who has seen an announcement: newsSeen/<team>/<id>/<uid> = time. Each member marks their own; the team's admins
+#      read them all (to see who hasn't read it yet) and may clear them; the daily job removes old ones. ----
+final["rules"]["newsSeen"] = {"$tid": {
+    ".read": f"{PA} || ({VERIFIED} && {TA_OF('$tid')})",
+    "$id": {
+        ".write": f"{PA} || ({VERIFIED} && {TA_OF('$tid')} && !newData.exists())",
+        "$uid": {
+            ".read": "auth != null && auth.uid === $uid",
+            ".write": "auth != null && auth.uid === $uid && root.child('teams').child($tid).child('members').child($uid).exists()"
+                      " && root.child('teams').child($tid).child('news').child($id).exists()",
+            ".validate": "newData.isNumber()"}}}}
 # ---- Who started a team: teamCreators/<team> = {n: name, e: email, c: pilot code} ----
 # Outside the team, so members don't see the creator's email. Written together with the new team (the email must be the
 # creator's own); readable by the creator and the RostiQ admin; the creator may remove it (account deletion).

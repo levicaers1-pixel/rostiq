@@ -347,6 +347,28 @@
   .sel-list label.is-no { opacity: .6; }
   .sel-list input { width: 18px; height: 18px; accent-color: var(--accent); }
   .sel-list .grow { flex: 1; min-width: 0; }
+  .news { display: grid; gap: 10px; margin: 0 0 16px; }
+  .trainings { display: grid; gap: 10px; margin-bottom: 18px; }
+  .tr-card { display: flex; gap: 12px; align-items: flex-start; flex-wrap: wrap; border: 1px solid var(--border); background: var(--surface); border-radius: 16px; padding: 12px 14px; }
+  .tr-card.off { opacity: .7; }
+  .tr-card.off .tr-title b { text-decoration: line-through; }
+  .tr-body { flex: 1; min-width: 180px; display: grid; gap: 3px; font-size: .9rem; }
+  .tr-title { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 1rem; }
+  .tr-sub { color: var(--muted); font-size: .85rem; }
+  .tr-who { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 4px; font-size: .85rem; }
+  .tr-act { display: flex; flex-direction: column; gap: 6px; align-items: flex-end; }
+  .tr-answer button { font-size: .85rem; }
+  .news-card { border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border)); background: color-mix(in srgb, var(--accent) 6%, var(--surface)); border-radius: 16px; padding: 12px 14px; }
+  .news-head { display: flex; align-items: center; gap: 6px; font-size: .88rem; }
+  .news-head > svg.i { color: var(--accent); }
+  .news-del { margin-left: auto; color: var(--muted); }
+  .news-text { margin: 6px 0 8px; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .news-foot { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: .85rem; }
+  .news-stat { color: var(--muted); }
+  .news-not summary { cursor: pointer; color: var(--muted); }
+  .news-new { justify-self: start; font-size: .88rem; }
+  .news-dlg textarea { min-height: 96px; }
+  .news-until, .news-push { display: flex; align-items: center; gap: 8px; margin-top: 10px; font-size: .9rem; }
   .sel-dlg { width: min(560px, calc(100vw - 32px)); overflow-x: hidden; }
   .sel-row { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 10px; min-width: 0; }
   .sel-row.is-on { background: color-mix(in srgb, var(--accent) 7%, transparent); }
@@ -419,6 +441,7 @@
 
   <section class="onboard setup" id="setup" hidden></section>
   <section class="onboard" id="welcome" hidden></section>
+  <section class="news" id="news" hidden aria-live="polite"></section>
   <section class="hero" id="hero" hidden aria-live="polite"></section>
 
   <div class="section-head">
@@ -430,6 +453,12 @@
     </div>
   </div>
   <div class="matches" id="matches"></div>
+
+  <div class="section-head" id="train-head" hidden>
+    <h2 data-i18n="tr.title">Trainings</h2>
+    <button id="tr-more" class="link" hidden></button>
+  </div>
+  <div class="trainings" id="trainings" hidden></div>
 
   <div class="section-head" id="overview-head">
     <h2 data-i18n="overview">Overview</h2>
@@ -512,6 +541,16 @@
       <button type="button" id="details-cancel" data-i18n="details.cancel">Cancel</button>
       <button type="submit" class="primary" data-i18n="details.save">Save</button>
     </div>
+  </form>
+</dialog>
+
+<dialog id="news-dlg" class="details-dlg news-dlg">
+  <form method="dialog" id="news-form">
+    <h3 data-i18n="news.title">Announcement</h3>
+    <textarea name="text" maxlength="500" rows="4" data-i18n-placeholder="news.ph"></textarea>
+    <label class="news-until"><span data-i18n="news.until">Show until</span> <input type="date" name="until"></label>
+    <label class="news-push"><input type="checkbox" name="push" checked> <span data-i18n="news.push">Send everyone a notification</span></label>
+    <div class="row"><button value="cancel" data-i18n="news.cancel">Cancel</button><button type="button" class="primary" id="news-post" data-i18n="news.post">Post</button></div>
   </form>
 </dialog>
 
@@ -893,6 +932,15 @@ const nameTimers = {};
 // saved as the signed-in player once the team's data is there (the address is cleaned up, so a reload doesn't repeat it).
 let deepAnswer = ["yes", "maybe", "no"].includes(QUERY.get("ans")) && /^\d{4}-\d{2}-\d{2}$/.test(QUERY.get("d") || "")
   ? { a: QUERY.get("ans"), d: QUERY.get("d") } : null;
+// ?edit=<date> (the weather warning's link): the admin lands in that match's edit window, once.
+let deepEdit = QUERY.get("edit");
+function applyDeepEdit() {
+  if (!deepEdit || !dataLoaded || !session.ready || !session.admin) return;
+  const e = EVENTS.find(x => x.date === deepEdit);
+  deepEdit = null;
+  history.replaceState(null, "", location.pathname + (TEAM_ID ? `?t=${TEAM_ID}` : ""));
+  if (e) setTimeout(() => openDetails(e), 0);
+}
 function applyDeepAnswer() {
   if (!deepAnswer || !dataLoaded || !session.pid || !root.players || !root.players[session.pid]) return;
   const { a, d } = deepAnswer;
@@ -958,10 +1006,13 @@ function render() {
   const events = shownEvents();
   renderSetup(players);
   renderWelcome(players);
+  renderNews();
   renderHero(players);
   renderMatches(players, events);
+  renderTrainings(players);
   checkComplete(players);
   applyDeepAnswer();
+  applyDeepEdit();
   renderControls();
 
   document.querySelector("#table-view table").style.minWidth = `${180 + events.length * (compact ? 44 : 68)}px`;
@@ -1250,6 +1301,141 @@ async function openHistory(e) {
   });
   list.innerHTML = rows.length ? rows.join("") : `<li class="h-empty">${t(data === null && isOffline() ? "hist.offline" : "hist.empty")}</li>`;
 }
+
+// ---- Announcements: news/<id> = { text, by, name, at, until } from the admins, at the top of the page. Shown until
+// "until" (default two weeks). "Seen" goes to newsSeen/<team>/<id>/<uid>; the admins see who hasn't read it yet. ----
+const NEWS_DAYS = 14;
+const isoDay = ms => new Date(ms).toLocaleDateString("sv-SE");
+const newsList = () => Object.entries(root.news || {}).map(([id, n]) => ({ id, ...n }))
+  .filter(n => n && n.text && (n.until || isoDay((n.at || 0) + NEWS_DAYS * 864e5)) >= TODAY).sort((a, b) => b.at - a.at).slice(0, 3);
+const newsSeenLocal = id => pref.get("newsSeen:" + id, "") === "1";
+let newsSeenAll = {}, newsSeenAt = 0; // admins: newsSeen/<team>, fetched now and then
+async function loadNewsSeen(force) {
+  if (DEMO || !AUTH_ON || !session.admin || (!force && Date.now() - newsSeenAt < 60e3)) return;
+  newsSeenAt = Date.now();
+  newsSeenAll = (await getAbs(`newsSeen/${TEAM_ID}`)) || {};
+  renderNews();
+}
+function agoText(ms) {
+  const min = Math.round((Date.now() - ms) / 60e3);
+  return min < 1 ? t("news.now") : min < 60 ? t("news.min", { n: min }) : min < 24 * 60 ? t("news.hours", { n: Math.round(min / 60) })
+    : fmt(isoDay(ms), { weekday: "short", day: "numeric", month: "short" });
+}
+function renderNews() {
+  const box = document.getElementById("news");
+  if (!box) return;
+  const list = newsList(), admin = AUTH_ON && session.admin;
+  box.hidden = !dataLoaded || (!list.length && !admin);
+  if (box.hidden) return;
+  if (admin) loadNewsSeen();
+  const members = Object.entries(root.members || {}).filter(([uid, pid]) => root.players && root.players[pid]);
+  box.innerHTML = list.map(n => {
+    const mine = DEMO ? newsSeenLocal(n.id) : newsSeenLocal(n.id) || !!(session.user && ((newsSeenAll[n.id] || {})[session.user.uid]));
+    const seen = members.filter(([uid]) => (newsSeenAll[n.id] || {})[uid] || uid === n.by);
+    const notSeen = members.filter(([uid]) => !(newsSeenAll[n.id] || {})[uid] && uid !== n.by).map(([, pid]) => firstName(root.players[pid].name));
+    return `<article class="news-card">
+      <div class="news-head">${ic("megaphone")}<b>${esc(n.name || t("news.admin"))}</b><span class="muted">· ${esc(agoText(n.at))}</span>
+        ${admin ? `<button type="button" class="link news-del" data-news-del="${n.id}" title="${esc(t("news.delete"))}" aria-label="${esc(t("news.delete"))}">${ic("trash")}</button>` : ""}</div>
+      <p class="news-text">${esc(n.text)}</p>
+      <div class="news-foot">${mine || (session.user && n.by === session.user.uid) ? `<span class="muted">${ic("check")} ${esc(t("news.seen"))}</span>`
+        : `<button type="button" class="small" data-news-seen="${n.id}">👍 ${esc(t("news.markSeen"))}</button>`}
+        ${admin && !DEMO ? `<span class="news-stat">${esc(t("news.stat", { n: seen.length, of: members.length }))}</span>
+          ${notSeen.length ? `<details class="news-not"><summary>${esc(t("news.notSeen", { n: notSeen.length }))}</summary>${esc(notSeen.join(", "))}</details>` : ""}` : ""}</div>
+    </article>`;
+  }).join("") + (admin ? `<button type="button" class="news-new" id="news-new">${ic("megaphone")} ${esc(t("news.new"))}</button>` : "");
+}
+const newsDlg = document.getElementById("news-dlg");
+document.getElementById("news").addEventListener("click", async ev => {
+  const seenB = ev.target.closest("[data-news-seen]");
+  if (seenB) {
+    const id = seenB.dataset.newsSeen;
+    pref.set("newsSeen:" + id, "1");
+    if (!DEMO && session.user) send("PUT", `newsSeen/${TEAM_ID}/${id}/${session.user.uid}`, { ".sv": "timestamp" }, true, true, true);
+    return renderNews();
+  }
+  const del = ev.target.closest("[data-news-del]");
+  if (del) {
+    if (!confirm(t("news.deleteConfirm"))) return;
+    await update({ [`news/${del.dataset.newsDel}`]: null });
+    if (!DEMO) send("DELETE", `newsSeen/${TEAM_ID}/${del.dataset.newsDel}`, undefined, true, true, true);
+    return;
+  }
+  if (ev.target.closest("#news-new")) {
+    const f = document.getElementById("news-form");
+    f.reset();
+    f.until.min = TODAY;
+    f.until.value = isoDay(Date.now() + NEWS_DAYS * 864e5);
+    f.push.checked = true;
+    newsDlg.showModal();
+  }
+});
+document.getElementById("news-post").onclick = async () => {
+  const f = document.getElementById("news-form"), text = f.text.value.trim().slice(0, 500);
+  if (!text) return f.text.focus();
+  const id = historyId(), me = session.pid && root.players[session.pid];
+  const item = { text, by: (session.user && session.user.uid) || "demo", name: me ? firstName(me.name).slice(0, 40) : t("news.admin"), at: Date.now(),
+    ...(/^\d{4}-\d{2}-\d{2}$/.test(f.until.value) ? { until: f.until.value } : {}) };
+  newsDlg.close();
+  if (!(await update({ [`news/${id}`]: item }))) return;
+  pref.set("newsSeen:" + id, "1");
+  if (f.push.checked && !DEMO && session.user)
+    if (await send("PUT", `notices/${TEAM_ID}/${historyId()}`, { k: "n", d: TODAY, i: id, by: session.user.uid, at: { ".sv": "timestamp" } }, true, true, true) === true)
+      toast(t("status.notified"), "", 2500);
+};
+
+// ---- Trainings on the team page: the next ones, who's coming, my answer; admins call one off (notices k "t") ----
+let trMore = false;
+const isoPlus = days => new Date(parse(TODAY).getTime() + days * 864e5).toLocaleDateString("sv-SE");
+function renderTrainings(players) {
+  const head = document.getElementById("train-head"), box = document.getElementById("trainings");
+  const all = trainingDates(TODAY, isoPlus(56));
+  head.hidden = box.hidden = !all.length;
+  if (!all.length) return;
+  const opt = !!(trainCfg() || {}).optOut, named = players.filter(p => p.name), me = session.pid && root.players[session.pid];
+  const more = document.getElementById("tr-more");
+  more.hidden = all.length <= 3;
+  more.textContent = t(trMore ? "tr.less" : "tr.more");
+  box.innerHTML = all.slice(0, trMore ? 8 : 3).map(tr => {
+    const coming = named.filter(p => trainComing(p, tr));
+    const no = named.filter(p => !tr.off && ((p.tr || {})[tr.date] === "no" || (opt && awayOn(p, tr.date))));
+    const mine = me ? (me.tr || {})[tr.date] || "" : null, meIn = me ? trainComing(me, tr) : false;
+    const wx = tr.off ? null : weatherAt(tr.venue, tr.date), alerts = wx && wxOn() ? wxAlerts(wx) : [];
+    return `<article class="tr-card${tr.off ? " off" : ""}">
+      <div class="m-date"><span>${fmt(tr.date, { weekday: "short" }).replace(".", "")}</span><b>${parse(tr.date).getDate()}</b><span>${fmt(tr.date, { month: "short" }).replace(".", "")}</span></div>
+      <div class="tr-body">
+        <div class="tr-title"><b>${esc(t("tr.one"))}</b> <span class="muted">${esc(tr.start + (tr.end ? "–" + tr.end : ""))}</span>${tr.off ? ` <span class="pill no">${ic("x")} ${esc(t("off.pill"))}</span>` : ""}</div>
+        ${tr.venue ? `<div class="tr-sub">📍 ${esc(venueShort(tr.venue))} <a href="${mapsUrl(tr.venue)}" target="_blank" rel="noopener">${t("maps")} ↗</a></div>` : ""}
+        ${tr.note ? `<div class="tr-sub">ℹ️ ${esc(tr.note)}</div>` : ""}
+        ${wx ? `<div class="tr-sub">${wxText(wx)}</div>` : ""}
+        ${alerts.length ? `<div class="wx-warn">⚠️ ${esc(t("wx.warn", { list: wxWarnText(alerts) }))}</div>` : ""}
+        ${tr.off ? "" : `<div class="tr-who"><span class="avatars">${coming.slice(0, 8).map(p => avatar(p, players.indexOf(p))).join("")}${coming.length > 8 ? `<span class="av more">+${coming.length - 8}</span>` : ""}</span>
+          <span>${esc(t("tr.count", { n: coming.length }))}${no.length ? ` · <span title="${esc(no.map(p => firstName(p.name)).join(", "))}">${esc(t("tr.no", { n: no.length }))}</span>` : ""}</span></div>`}
+      </div>
+      <div class="tr-act">
+        ${mine !== null && !tr.off ? `<div class="answer tr-answer" role="group" aria-label="${esc(t("tr.one"))}">
+          <button data-tr="yes" data-date="${tr.date}" aria-pressed="${meIn}">${ic("check")} ${esc(t("tr.yes"))}</button>
+          <button data-tr="no" data-date="${tr.date}" aria-pressed="${mine === "no"}">${ic("x")} ${esc(t("tr.noBtn"))}</button></div>` : ""}
+        ${AUTH_ON && session.admin ? `<button class="small" data-tr-off="${tr.date}">${esc(t(tr.off ? "tr.undo" : "tr.cancel"))}</button>` : ""}
+      </div></article>`;
+  }).join("");
+}
+document.getElementById("tr-more").onclick = () => { trMore = !trMore; render(); };
+document.getElementById("trainings").addEventListener("click", async ev => {
+  const b = ev.target.closest("[data-tr]");
+  if (b && session.pid && root.players[session.pid]) {
+    const cur = (root.players[session.pid].tr || {})[b.dataset.date] || "";
+    return write(`players/${session.pid}/tr/${b.dataset.date}`, cur === b.dataset.tr ? null : b.dataset.tr);
+  }
+  const off = ev.target.closest("[data-tr-off]");
+  if (off && session.admin) {
+    const date = off.dataset.trOff;
+    if (((root.trainings || {})[date] || {}).off) return update({ [`trainings/${date}`]: null });
+    const note = prompt(t("tr.cancelAsk"));
+    if (note === null) return;
+    if (!(await update({ [`trainings/${date}`]: { off: true, ...(note.trim() ? { note: note.trim().slice(0, 120) } : {}) } }))) return;
+    if (await notifyTeam("t", date) === true) toast(t("status.notified"), "", 2500);
+  }
+});
 
 // ---- Selection: the admin picks who plays, in the way the team's sport does it ----
 // Formats (settings/sel, else the sport's default below): squad = n starters + b on the bench, optionally with positions
@@ -1709,28 +1895,13 @@ function renderVenue() {
       `<div class="venue-actions">${typed} ${google}</div>` : "";
 }
 
-// Free place search (Photon, built on OpenStreetMap): sports halls, clubs, addresses.
-const SKIP = new Set(["parcel_locker", "vending_machine", "post_box", "atm", "bench", "waste_basket"]);
+// Place search (common.js findVenues: Photon, built on OpenStreetMap): sports halls, clubs, addresses.
 async function findVenue() {
   const q = form.q.value.trim();
   if (q.length < 2) return;
   draft.status = "loading"; renderVenue();
   try {
-    const url = "https://photon.komoot.io/api/?limit=10&lat=50.85&lon=4.35&bbox=2.4,49.4,6.5,51.8&q=" + encodeURIComponent(q);
-    const data = await fetch(url).then(r => r.json());
-    const seen = new Set();
-    draft.results = data.features
-      .filter(f => !SKIP.has(f.properties.osm_value))
-      .map(f => {
-        const p = f.properties;
-        const street = [p.street, p.housenumber].filter(Boolean).join(" ");
-        const town = [p.postcode, p.city || p.locality || p.district].filter(Boolean).join(" ");
-        const name = p.name || street || town;
-        const address = [street !== name ? street : "", town !== name ? town : ""].filter(Boolean).join(", ");
-        return { name, address, lat: f.geometry.coordinates[1], lon: f.geometry.coordinates[0] };
-      })
-      .filter(r => r.name && !seen.has(r.name + r.address) && seen.add(r.name + r.address))
-      .slice(0, 6);
+    draft.results = await findVenues(q);
     draft.status = draft.results.length ? "results" : "none";
   } catch {
     draft.status = "error";

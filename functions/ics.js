@@ -2,6 +2,7 @@
 // Same times and defaults as the app's .ics download (index.html, buildIcs), plus the player's own answer in each
 // title and their carpool in the description. Pure function: easy to test without a database.
 import { roleOf, roleText } from "./lineup.js";
+import { trainingDates, trainComing } from "./training.js";
 
 const VTIMEZONE = [
   "BEGIN:VTIMEZONE", "TZID:Europe/Brussels",
@@ -20,6 +21,7 @@ const APP = "https://app.rostiq.be";
 
 const TEXT = {
   nl: {
+    training: "Training", trOff: "Afgelast", trYes: "Je komt", trNo: "Je komt niet",
     selected: "Geselecteerd",
     yes: "Je bent erbij", maybe: "Je antwoord: misschien", no: "Je kan niet", none: "Je hebt nog niet geantwoord",
     todo: "nog antwoorden", off: "Afgelast", final: "(finale)", home: "Thuiswedstrijd", away: "Uitwedstrijd", meet: "Verzamelen",
@@ -27,6 +29,7 @@ const TEXT = {
     needRide: "Je zoekt nog een lift", seats: n => `${n} vrije ${n === 1 ? "plaats" : "plaatsen"}`, name: b => `${b} · RostiQ`,
   },
   fr: {
+    training: "Entraînement", trOff: "Annulé", trYes: "Tu viens", trNo: "Tu ne viens pas",
     selected: "Sélectionné",
     yes: "Tu es là", maybe: "Ta réponse : peut-être", no: "Tu ne peux pas", none: "Tu n'as pas encore répondu",
     todo: "à répondre", off: "Annulé", final: "(finale)", home: "Match à domicile", away: "Match à l'extérieur", meet: "Rendez-vous",
@@ -34,6 +37,7 @@ const TEXT = {
     needRide: "Tu cherches encore un trajet", seats: n => `${n} ${n < 2 ? "place libre" : "places libres"}`, name: b => `${b} · RostiQ`,
   },
   en: {
+    training: "Training", trOff: "Called off", trYes: "You're coming", trNo: "You're not coming",
     selected: "Selected",
     yes: "You're in", maybe: "Your answer: maybe", no: "You can't make it", none: "You haven't answered yet",
     todo: "answer needed", off: "Called off", final: "(final)", home: "Home match", away: "Away match", meet: "Meeting",
@@ -126,6 +130,29 @@ export function buildFeed(team, player, names, opts) {
       `SUMMARY:${icsText(summary)}`,
       `LOCATION:${icsText(v ? venueText(v) : e.opp)}`,
       ...(v && v.lat != null ? [`GEO:${v.lat};${v.lon}`] : []),
+      `DESCRIPTION:${icsText(desc)}`,
+      `URL:${appUrl}`,
+      "END:VEVENT");
+  }
+  // Trainings for the next eight weeks (settings/train), with the player's own answer; a day called off stays, cancelled.
+  const train = settings.train, ans = player.tr || {};
+  const until = new Date(Date.parse(opts.today + "T12:00:00Z") + 56 * 864e5).toISOString().slice(0, 10);
+  for (const tr of trainingDates(train, team.trainings, opts.today, until)) {
+    const coming = trainComing(train, ans[tr.date]), d = tr.date.replace(/-/g, "");
+    if (opts.hideNo && !tr.off && ans[tr.date] === "no") continue;
+    const end = tr.end || `${String(Math.min(23, Number(tr.start.slice(0, 2)) + 1)).padStart(2, "0")}${tr.start.slice(2)}`;
+    const mark = tr.off ? "❌" : coming ? "✅" : ans[tr.date] === "no" ? "❌" : "❔";
+    const desc = [tr.off ? T.trOff : coming ? T.trYes : ans[tr.date] === "no" ? T.trNo : T.none, tr.note, tr.venue && mapsUrl(tr.venue), `${T.answer}: ${appUrl}`].filter(Boolean).join("\n");
+    lines.push(
+      "BEGIN:VEVENT",
+      `UID:${d}-training-${tr.id}@${uidDomain}`,
+      `DTSTAMP:${stamp}`,
+      `DTSTART;TZID=Europe/Brussels:${d}T${hhmmss(tr.start)}`, `DTEND;TZID=Europe/Brussels:${d}T${hhmmss(end)}`,
+      `STATUS:${tr.off ? "CANCELLED" : "CONFIRMED"}`,
+      `TRANSP:${tr.off || !coming ? "TRANSPARENT" : "OPAQUE"}`,
+      `SUMMARY:${icsText(`${mark} ${tr.off ? T.off + ": " : ""}${label} · ${T.training}`)}`,
+      ...(tr.venue ? [`LOCATION:${icsText(venueText(tr.venue))}`] : []),
+      ...(tr.venue && tr.venue.lat != null ? [`GEO:${tr.venue.lat};${tr.venue.lon}`] : []),
       `DESCRIPTION:${icsText(desc)}`,
       `URL:${appUrl}`,
       "END:VEVENT");

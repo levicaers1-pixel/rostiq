@@ -8,6 +8,8 @@
 // every member's devices at once (for a selection: only the selected players and reserves), then the notice is removed. The rules only accept a notice for a match that really is cancelled / moved.
 // A reminder (k "a"): to the players who haven't answered, by notification or else email (remind.mjs).
 // A request to complete details (k "p"): to the chosen players, by email or else notification (remind.mjs).
+// An announcement (k "n", i: the news id): to every member but the admin who posted it.
+// A training called off (k "t", d: its date): to every member.
 //
 // calendar: GET /cal/<key>.ics: a player's personal calendar feed (read-only). calKeys/<key> = { t: team, p: player,
 // l: language, h: hide "no" matches }. Served through Firebase Hosting (firebase.json rewrite), which caches each feed
@@ -25,6 +27,7 @@ import { noticeMessage } from "./notice.js";
 import { roleOf, roleText, promoteReserve, subText } from "./lineup.js";
 import { runJob } from "./job.mjs";
 import { sendReminder, sendProfileAsk } from "./remind.mjs";
+import { trainText } from "./training.js";
 
 initializeApp({ databaseURL: process.env.FIREBASE_DATABASE_EMULATOR_HOST
   ? `http://${process.env.FIREBASE_DATABASE_EMULATOR_HOST}?ns=${process.env.DB_NS || "demo-rostiq"}`
@@ -49,10 +52,10 @@ export const calendar = onRequest({ region: "europe-west1", memory: "256MiB", ma
     if (!k || typeof k.t !== "string" || typeof k.p !== "string" || !/^[a-z0-9][a-z0-9-]{1,39}$/.test(k.t)) { gone(); return; }
     const T = `teams/${k.t}`;
     // Only what the feed needs: no photos, logos or other players' answers.
-    const [brand, shortName, calendarLabel, sport, schedule, matches, carpool, name, avail, selection] = await Promise.all([
+    const [brand, shortName, calendarLabel, sport, schedule, matches, carpool, name, avail, selection, train, trainings, tr] = await Promise.all([
       val(`${T}/info/brand`), val(`${T}/info/shortName`), val(`${T}/info/calendarLabel`), val(`${T}/settings/sport`),
       val(`${T}/schedule`), val(`${T}/matches`), val(`${T}/carpool`), val(`${T}/players/${k.p}/name`), val(`${T}/players/${k.p}/avail`),
-      val(`${T}/selection`)]);
+      val(`${T}/selection`), val(`${T}/settings/train`), val(`${T}/trainings`), val(`${T}/players/${k.p}/tr`)]);
     if (!name) { gone(); return; }
     // Names of the people in my car / whose car I'm in, and my partner in a pair.
     const ids = new Set();
@@ -68,8 +71,8 @@ export const calendar = onRequest({ region: "europe-west1", memory: "256MiB", ma
     }
     const names = Object.fromEntries(await Promise.all([...ids].filter(id => /^[A-Za-z0-9_-]{1,40}$/.test(id)).map(async id => [id, await val(`${T}/players/${id}/name`)])));
     const today = new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Brussels" });
-    body = buildFeed({ tid: k.t, info: { brand, shortName, calendarLabel }, settings: { sport }, schedule, matches, carpool, selection },
-      { pid: k.p, name, avail }, names, { lang: k.l, hideNo: k.h === true, today });
+    body = buildFeed({ tid: k.t, info: { brand, shortName, calendarLabel }, settings: { sport, train }, schedule, matches, carpool, selection, trainings },
+      { pid: k.p, name, avail, tr }, names, { lang: k.l, hideNo: k.h === true, today });
     memo.set(key, { at: Date.now(), body });
     if (memo.size > 2000) memo.delete(memo.keys().next().value);
   }
@@ -88,6 +91,40 @@ export const notice = onValueCreated({ ref: "/notices/{tid}/{id}", instance: "wi
   const { tid, id } = event.params, n = event.data.val() || {};
   const done = () => db.ref(`notices/${tid}/${id}`).remove();
   if (!/^[a-z0-9][a-z0-9-]{1,39}$/.test(tid)) return done();
+  if (n.k === "t") { // a training called off: to every member but the admin who did it
+    const [off, brand, members] = await Promise.all([val(`teams/${tid}/trainings/${n.d}`), val(`teams/${tid}/info/brand`), val(`teams/${tid}/members`)]);
+    if (off && off.off === true) {
+      let sent = 0;
+      for (const uid of Object.keys(members || {})) {
+        if (uid === n.by) continue;
+        for (const [dev, info] of Object.entries((await val(`pushTokens/${uid}`)) || {})) {
+          if (!info || !info.token) continue;
+          try { await getMessaging().send({ token: info.token, data: { title: String(brand || "RostiQ").slice(0, 60), body: trainText("off", info.lang, { date: n.d, note: off.note }),
+            tag: `${tid}-tr-${n.d}`, link: `https://app.rostiq.be/?t=${encodeURIComponent(tid)}` }, webpush: { headers: { Urgency: "high", TTL: String(24 * 3600) } } }); sent++; }
+          catch (e) { const code = (e && (e.code || e.errorInfo && e.errorInfo.code)) || ""; if (/registration-token-not-registered|invalid-registration-token/.test(code)) await db.ref(`pushTokens/${uid}/${dev}`).remove(); }
+        }
+      }
+      console.log(`notice t: ${sent} notifications sent`);
+    }
+    return done();
+  }
+  if (n.k === "n") { // an announcement: to every member but the admin who posted it
+    const [item, brand, members] = await Promise.all([val(`teams/${tid}/news/${n.i}`), val(`teams/${tid}/info/brand`), val(`teams/${tid}/members`)]);
+    if (item && item.text) {
+      const body = `📣 ${item.name ? item.name + ": " : ""}${String(item.text).replace(/\s+/g, " ").slice(0, 160)}`;
+      let sent = 0;
+      for (const uid of Object.keys(members || {})) {
+        if (uid === n.by) continue;
+        for (const [dev, info] of Object.entries((await val(`pushTokens/${uid}`)) || {})) {
+          if (!info || !info.token) continue;
+          try { await getMessaging().send({ token: info.token, data: { title: String(brand || "RostiQ").slice(0, 60), body, tag: `${tid}-news-${n.i}`, link: `https://app.rostiq.be/?t=${encodeURIComponent(tid)}` }, webpush: { headers: { TTL: String(3 * 864e5) } } }); sent++; }
+          catch (e) { const code = (e && (e.code || e.errorInfo && e.errorInfo.code)) || ""; if (/registration-token-not-registered|invalid-registration-token/.test(code)) await db.ref(`pushTokens/${uid}/${dev}`).remove(); }
+        }
+      }
+      console.log(`notice n: ${sent} notifications sent`);
+    }
+    return done();
+  }
   if (n.k === "a" || n.k === "p") { // a reminder / a request to complete details: own recipients, also by email
     try { await (n.k === "a" ? sendReminder : sendProfileAsk)(db, tid, n); } catch (e) { console.error(`notice ${n.k} failed:`, (e && e.code) || "error"); }
     return done();

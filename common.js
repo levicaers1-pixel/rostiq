@@ -124,8 +124,9 @@ function kmBetween(a, b) {
 const WX_ICON = c => c === 0 ? "☀️" : c <= 2 ? "🌤️" : c === 3 ? "☁️" : c <= 48 ? "🌫️" : c <= 57 ? "🌦️"
   : c <= 67 ? "🌧️" : c <= 77 ? "🌨️" : c <= 82 ? "🌦️" : c <= 86 ? "🌨️" : "⛈️";
 const wxCache = {};
-function weatherFor(e) {
-  const v = matchInfo(e).venue;
+const weatherFor = e => weatherAt(matchInfo(e).venue, e.date);
+function weatherAt(v, date) {
+  const e = { date };
   if (!v || v.lat == null) return null;
   const days = Math.round((parse(e.date) - parse(TODAY)) / 864e5);
   if (days < 0 || days > 15) return null; // forecasts only reach ~16 days ahead
@@ -137,13 +138,14 @@ function weatherFor(e) {
   } catch {}
   wxCache[key] = null; // fetching (or unavailable)
   const url = `https://api.open-meteo.com/v1/forecast?latitude=${v.lat}&longitude=${v.lon}` +
-    "&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,wind_speed_10m_max" +
+    "&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,wind_speed_10m_max,precipitation_sum,wind_gusts_10m_max" +
     `&timezone=Europe%2FBrussels&start_date=${e.date}&end_date=${e.date}`;
   fetch(url).then(r => r.json()).then(j => {
     const d = j.daily;
     if (!d || !d.time || !d.time.length || d.temperature_2m_max[0] == null) return;
     const wx = { code: d.weather_code[0], max: Math.round(d.temperature_2m_max[0]), min: Math.round(d.temperature_2m_min[0]),
-      rain: d.precipitation_probability_max[0], wind: Math.round(d.wind_speed_10m_max[0]) };
+      rain: d.precipitation_probability_max[0], wind: Math.round(d.wind_speed_10m_max[0]),
+      rainSum: (d.precipitation_sum || [])[0], gust: Math.round((d.wind_gusts_10m_max || [])[0] || 0) };
     wxCache[key] = wx;
     pref.set(key, JSON.stringify({ at: Date.now(), wx }));
     render();
@@ -152,6 +154,69 @@ function weatherFor(e) {
 }
 const wxText = wx => `${WX_ICON(wx.code)} ${wx.max}°/${wx.min}° · 💨 ${wx.wind} ${t("unit.kmh")}` +
   (wx.rain != null ? ` · 💧 ${wx.rain}%` : "");
+// Weather that could stop play (the same thresholds as functions/weather.js, which warns the admins the evening before).
+const WX_OUTDOOR = ["golf", "hockey", "football", "tennis"];
+const wxOn = () => { const s = root.settings || {}; return typeof s.wx === "boolean" ? s.wx : WX_OUTDOOR.includes(s.sport || "golf"); };
+function wxAlerts(wx) {
+  if (!wx) return [];
+  const out = [];
+  if (wx.code >= 95) out.push({ k: "storm", v: wx.rain });
+  if (wx.gust >= 70) out.push({ k: "wind", v: wx.gust });
+  if (wx.rainSum >= 15 || ([65, 67, 82].includes(wx.code) && wx.rain >= 70)) out.push({ k: "rain", v: Math.round(wx.rainSum || 0) });
+  if ((wx.code >= 71 && wx.code <= 77) || wx.code === 85 || wx.code === 86) out.push({ k: "snow" });
+  if (wx.min <= -3) out.push({ k: "frost", v: wx.min });
+  if (wx.max >= 32) out.push({ k: "heat", v: wx.max });
+  return out;
+}
+const wxWarnText = alerts => alerts.map(a => t("wx." + a.k, { v: a.v })).join(", ");
+
+// ---- Trainings: weekly slots in settings/train ({ slots: { <id>: { wd 0-6, start, end, venue } }, from, to, optOut }),
+// a day called off in trainings/<date>, answers in players/<pid>/tr/<date> (the same as functions/training.js). ----
+const trainCfg = () => (root.settings || {}).train || null;
+function trainingDates(from, to) {
+  const c = trainCfg();
+  if (!c || !c.slots) return [];
+  const slots = Object.entries(c.slots).filter(([, s]) => s && typeof s.wd === "number" && s.start);
+  const a = c.from && c.from > from ? c.from : from, b = c.to && c.to < to ? c.to : to, out = [];
+  for (let d = parse(a), n = 0; d.toLocaleDateString("sv-SE") <= b && n < 400; d = new Date(d.getTime() + 864e5), n++) {
+    const date = d.toLocaleDateString("sv-SE");
+    for (const [id, s] of slots) if (s.wd === d.getDay()) {
+      const o = (root.trainings || {})[date] || {};
+      out.push({ date, id, wd: s.wd, start: s.start, end: s.end || "", venue: s.venue || null, off: o.off === true, note: o.note || "" });
+    }
+  }
+  return out;
+}
+// Coming? optOut: everyone unless they said no (or are on holiday).
+const trainComing = (p, tr) => { const a = ((p && p.tr) || {})[tr.date]; return !tr.off && (a === "yes" || (!!(trainCfg() || {}).optOut && a !== "no" && !awayOn(p, tr.date))); };
+// This season's trainings so far: { came, of } for one player (days called off don't count).
+function trainStat(p) {
+  const c = trainCfg();
+  if (!c || !c.slots || !c.from) return null;
+  const yesterday = new Date(parse(TODAY).getTime() - 864e5).toLocaleDateString("sv-SE");
+  const past = trainingDates(c.from, yesterday).filter(x => !x.off);
+  return past.length ? { came: past.filter(x => trainComing(p, x)).length, of: past.length } : null;
+}
+
+// Free place search (Photon, built on OpenStreetMap): sports halls, clubs, addresses → [{ name, address, lat, lon }].
+const VENUE_SKIP = new Set(["parcel_locker", "vending_machine", "post_box", "atm", "bench", "waste_basket"]);
+async function findVenues(q) {
+  const url = "https://photon.komoot.io/api/?limit=10&lat=50.85&lon=4.35&bbox=2.4,49.4,6.5,51.8&q=" + encodeURIComponent(q);
+  const data = await fetch(url).then(r => r.json());
+  const seen = new Set();
+  return data.features
+    .filter(f => !VENUE_SKIP.has(f.properties.osm_value))
+    .map(f => {
+      const p = f.properties;
+      const street = [p.street, p.housenumber].filter(Boolean).join(" ");
+      const town = [p.postcode, p.city || p.locality || p.district].filter(Boolean).join(" ");
+      const name = p.name || street || town;
+      const address = [street !== name ? street : "", town !== name ? town : ""].filter(Boolean).join(", ");
+      return { name, address, lat: f.geometry.coordinates[1], lon: f.geometry.coordinates[0] };
+    })
+    .filter(r => r.name && !seen.has(r.name + r.address) && seen.add(r.name + r.address))
+    .slice(0, 6);
+}
 
 // Venue name + town only (last part of the address), for compact lists.
 const venueShort = v => (v ? [v.name, (v.address || "").split(", ").pop()].filter(Boolean).join(", ") : "");
@@ -168,6 +233,8 @@ function detailsHtml(e, extra = "", compact = false) {
   else if (time || place) bits.push(`<div>${[time, place].filter(Boolean).join(" · ")}</div>`);
   const wx = weatherFor(e);
   if (wx) bits.push(`<div title="${t("weather.title")}">${wxText(wx)}</div>`);
+  const alerts = wx && !e.cancelled && wxOn() && Math.round((parse(e.date) - parse(TODAY)) / 864e5) <= 3 ? wxAlerts(wx) : [];
+  if (alerts.length) bits.push(`<div class="wx-warn">⚠️ ${esc(t("wx.warn", { list: wxWarnText(alerts) }))}</div>`);
   if (m.meet) bits.push(`<div>🚩 ${t("meet")}: ${esc(m.meet)}</div>`);
   if (m.info) bits.push(`<div>ℹ️ ${esc(m.info)}</div>`);
   return bits.length ? `<div class="details">${bits.join("")}</div>` : "";
@@ -1351,7 +1418,7 @@ function gateMessage(text, err) { gateMsg = { text, err }; renderAuth(); }
 const appUrl = file => location.href.split(/[?#]/)[0].replace(/[^/]*$/, file);
 
 // ---- Feedback to RostiQ (account menu, footer): only the RostiQ admin reads it ----
-const APP_VERSION = "2026.10.50";
+const APP_VERSION = "2026.10.51";
 function deviceText() {
   const ua = navigator.userAgent;
   const os = /iPhone/.test(ua) ? "iPhone" : /iPad/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1) ? "iPad"
