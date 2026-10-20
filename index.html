@@ -347,6 +347,29 @@
   .sel-list label.is-no { opacity: .6; }
   .sel-list input { width: 18px; height: 18px; accent-color: var(--accent); }
   .sel-list .grow { flex: 1; min-width: 0; }
+  .sel-dlg { width: min(560px, calc(100vw - 32px)); overflow-x: hidden; }
+  .sel-row { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 10px; min-width: 0; }
+  .sel-row.is-on { background: color-mix(in srgb, var(--accent) 7%, transparent); }
+  .sel-row.is-no { opacity: .6; }
+  .sel-row .grow { display: grid; gap: 2px; }
+  .sel-row small { color: var(--muted); font-size: .78rem; display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+  .sel-row small .pill { font-size: .7rem; padding: 1px 6px; }
+  .sel-row select { flex: none; min-width: 0; width: 42%; max-width: 190px; font: inherit; font-size: .85rem; padding: 5px 6px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text); }
+  .sel-cap { flex: none; width: 28px; height: 28px; border-radius: 50%; border: 1px dashed var(--border); background: none; color: var(--muted); font-weight: 800; font-size: .8rem; cursor: pointer; padding: 0; }
+  .sel-cap.on { border: 0; background: var(--accent); color: #fff; }
+  .sel-fmt { margin: 8px 0 0; font-size: .88rem; }
+  .sel-fmt-line { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+  .sel-fmt-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px 12px; margin-top: 8px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 12px; }
+  .sel-fmt-form label { display: grid; gap: 3px; font-size: .82rem; color: var(--muted); }
+  .sel-fmt-form label.chk { display: flex; align-items: center; gap: 6px; color: var(--text); }
+  .sel-fmt-form input[type=number], .sel-fmt-form select { font: inherit; padding: 5px 6px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text); }
+  .sel-fmt-form .primary { grid-column: 1 / -1; justify-self: end; }
+  .sel-preview { margin-top: 10px; padding: 10px 12px; border-radius: 12px; background: color-mix(in srgb, var(--accent) 6%, transparent); display: grid; gap: 4px; font-size: .88rem; }
+  .sel-preview .muted { margin: 0; }
+  .sel-pv-row { display: flex; gap: 8px; }
+  .sel-pv-row b { flex: none; min-width: 84px; }
+  .sel-tools { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
+  .sel-tools small { flex: 1; min-width: 160px; }
   .rem-dlg { overflow-x: hidden; }
   .rem-list label { display: flex; align-items: center; gap: 10px; padding: 6px 8px; border-radius: 10px; cursor: pointer; }
   .rem-list label:hover { background: color-mix(in srgb, var(--accent) 6%, transparent); }
@@ -490,6 +513,9 @@
   <form method="dialog" id="sel-form">
     <h3 id="sel-title"></h3>
     <p class="muted" id="sel-sub"></p>
+    <div class="sel-fmt" id="sel-fmt"></div>
+    <div class="sel-preview" id="sel-preview" aria-live="polite"></div>
+    <div class="sel-tools"><button type="button" id="sel-suggest">✨ <span data-i18n="sel.suggest">Suggest</span></button><small class="muted" id="sel-suggest-help"></small></div>
     <ul class="sel-list" id="sel-list"></ul>
     <div class="row">
       <button type="button" id="sel-clear" class="link-danger" data-i18n="sel.clear">Clear</button>
@@ -1212,74 +1238,297 @@ async function openHistory(e) {
   list.innerHTML = rows.length ? rows.join("") : `<li class="h-empty">${t(data === null && isOffline() ? "hist.offline" : "hist.empty")}</li>`;
 }
 
-// ---- Selection: when more players say yes than there are places, the admin picks who plays ----
-// selection/<date> = { p: { <pid>: "s" selected | "r" reserve }, pub: shown to the team, at }. Publishing tells the
-// players with a notification (notices k "s", sent by the Cloud Function) and opens a ready-made WhatsApp message.
+// ---- Selection: the admin picks who plays, in the way the team's sport does it ----
+// Formats (settings/sel, else the sport's default below): squad = n starters + b on the bench, optionally with positions
+// and a captain (hockey, football…); order = n players in playing order, sorted by handicap or ranking (golf, tennis);
+// pairs = n pairs (padel, doubles), strongest first. selection/<date> = { p: { <pid>: "s" | "r" }, o: playing / reserve
+// order, pos: position or "bench", pair: pair number, cap: captain, pub, at } (functions/lineup.js reads it the same way).
+// Publishing tells the players with a notification that names their role (notices k "s") and opens a WhatsApp message.
+const SEL_PRESETS = {
+  golf: { f: "order", n: 6, by: "handicap" }, tennis: { f: "order", n: 4, by: "ranking" }, padel: { f: "pairs", n: 3, by: "ranking" },
+  hockey: { f: "squad", n: 11, b: 5, pos: true, cap: true }, football: { f: "squad", n: 11, b: 5, pos: true, cap: true },
+  basketball: { f: "squad", n: 5, b: 7, cap: true }, volleyball: { f: "squad", n: 6, b: 6, cap: true }, other: { f: "squad", n: 0, b: 0 },
+};
+const SEL_POS = ["gk", "def", "mid", "fwd"];
+const RESERVES = 5;
+function selFormat() {
+  const f = { b: 0, pos: false, cap: false, by: "none", ...SEL_PRESETS[sportKey()], ...((root.settings || {}).sel || {}) };
+  if (!f.n) f.n = minPlayers();
+  if (f.f !== "squad") Object.assign(f, { b: 0, pos: false, cap: false });
+  return f;
+}
 const selOf = e => (root.selection || {})[e.date] || null;
 const selNames = (e, players, s) => players.filter(p => p.name && ((selOf(e) || {}).p || {})[p.id] === s).map(p => p.name);
+// This player's place (the same as roleOf in functions/lineup.js).
+function roleOf(sel, pid) {
+  const k = ((sel && sel.p) || {})[pid];
+  if (k !== "s" && k !== "r") return null;
+  const o = Number((sel.o || {})[pid]) || null, pair = Number((sel.pair || {})[pid]) || null;
+  const mate = k === "s" && pair ? Object.keys(sel.pair || {}).find(id => id !== pid && Number(sel.pair[id]) === pair && (sel.p || {})[id] === "s") || null : null;
+  return { k, o, pos: k === "s" ? (sel.pos || {})[pid] || null : null, pair: k === "s" ? pair : null, mate, cap: k === "s" && sel.cap === pid };
+}
+// The player's handicap / ranking / preferred position, from the team's sport fields (common.js sportSlots).
+// A team may keep the ranking in the federation field (its label then says "ranking", e.g. "Padel-ranking").
+const RANK_LABEL = /rank|klassement|classement|niveau|level/i;
+function sportValue(p, kind) {
+  let slot = sportSlots(root.settings)[kind];
+  if (!slot && kind === "ranking" && RANK_LABEL.test((root.settings || {}).fedLabel || "")) slot = "fed";
+  const v = slot ? rowValue(p, slot) : null;
+  return v == null || String(v).trim() === "" ? null : String(v).trim();
+}
+// Handicap: lower is better ("+1.5" is better than 0); ranking: the number in it, higher is better (padel P-levels).
+function strength(p, by) {
+  const v = by === "handicap" || by === "ranking" ? sportValue(p, by) : null;
+  if (v == null) return null;
+  const m = /(\+)?\s*(\d+(?:[.,]\d+)?)/.exec(v);
+  if (!m) return null;
+  const x = Number(m[2].replace(",", "."));
+  return by === "handicap" ? -(m[1] ? -x : x) : x; // as a score: higher = stronger
+}
+const byStrength = by => (a, b) => { const x = strength(a, by), y = strength(b, by); return x == null && y == null ? 0 : x == null ? 1 : y == null ? -1 : y - x; };
+function posPref(p) {
+  const v = normLabel(sportValue(p, "position") || "");
+  return /keep|doel|gk|goal|gardien/.test(v) ? "gk" : /verded|def|back|arri/.test(v) ? "def" : /midden|mid|milieu/.test(v) ? "mid"
+    : /aanv|spits|fwd|forw|att|avant|striker/.test(v) ? "fwd" : null;
+}
+// Matches played this season: a published selection counts (in the squad, bench included), otherwise answering yes.
+function playedCount(p) {
+  let n = 0;
+  for (const e of EVENTS) {
+    if (!isPast(e) || e.cancelled) continue;
+    const s = selOf(e);
+    if (s && s.pub ? (s.p || {})[p.id] === "s" : p.avail[e.date] === "yes") n++;
+  }
+  return n;
+}
+
+// The line-up as lines of text (window preview, WhatsApp, match card).
+function lineupLines(sel, f, players) {
+  const P = (sel && sel.p) || {}, name = id => { const p = players.find(x => x.id === id); return p ? displayName(p, players.indexOf(p)) : "?"; };
+  const capped = id => name(id) + (sel.cap === id ? " (C)" : "");
+  const ids = k => Object.keys(P).filter(id => P[id] === k && players.some(p => p.id === id));
+  const byO = (a, b) => (Number((sel.o || {})[a]) || 99) - (Number((sel.o || {})[b]) || 99);
+  const lines = [], s = ids("s");
+  if (f.f === "squad") {
+    const pos = id => (sel.pos || {})[id] || "start";
+    for (const k of [...SEL_POS, "start", "bench"]) {
+      const g = s.filter(id => pos(id) === k);
+      if (g.length) lines.push({ k, label: t(k === "start" ? "sel.group.start" : k === "bench" ? "sel.group.bench" : "sel.pos." + k), text: g.map(capped).join(", ") });
+    }
+  } else if (f.f === "order") {
+    s.sort(byO).forEach((id, i) => lines.push({ k: "o", label: `${i + 1}.`, text: name(id) + (f.by !== "none" && sportValue(players.find(p => p.id === id), f.by) ? ` · ${t("sel.by." + f.by)} ${sportValue(players.find(p => p.id === id), f.by)}` : "") }));
+  } else {
+    const pairs = {};
+    s.forEach(id => { const n = Number((sel.pair || {})[id]) || 0; (pairs[n] = pairs[n] || []).push(id); });
+    Object.keys(pairs).map(Number).sort((a, b) => (a || 99) - (b || 99)).forEach(n => lines.push({ k: "p", label: n ? t("sel.slot.pair", { n }) : t("sel.group.start"), text: pairs[n].map(name).join(" + ") }));
+  }
+  const r = ids("r").sort(byO);
+  if (r.length) lines.push({ k: "r", label: t("sel.group.reserves"), text: r.map((id, i) => `${i + 1}. ${name(id)}`).join(", ") });
+  return lines;
+}
+// Short words about my own place, for the pill on the match card.
+function roleShort(role, players) {
+  if (!role) return "";
+  if (role.k === "r") return role.o ? t("sel.role.reserveN", { n: role.o }) : t("sel.youReserve");
+  const mate = role.mate && players.find(p => p.id === role.mate);
+  const base = role.pos === "bench" ? t("sel.role.bench") : SEL_POS.includes(role.pos) ? t("sel.role.pos", { p: t("sel.pos." + role.pos).toLowerCase() })
+    : role.pair ? t("sel.role.pair", { n: role.pair, m: mate ? firstName(mate.name) : "" }) : role.o ? t("sel.role.order", { n: role.o }) : t("sel.you");
+  return base + (role.cap ? ` · ${t("sel.cap").toLowerCase()}` : "");
+}
 function selLine(e, players) {
   const sel = selOf(e);
   if (!sel || !isOn(e) || (!sel.pub && !session.admin)) return "";
-  const chosen = selNames(e, players, "s"), mine = AUTH_ON && session.pid ? (sel.p || {})[session.pid] : null;
+  const f = selFormat(), mine = AUTH_ON && session.pid ? roleOf(sel, session.pid) : null;
+  const lines = lineupLines(sel, f, players).filter(l => l.k !== "r");
+  const full = selNames(e, players, "s"), firsts = full.map(firstName);
+  const short = full.map((n, i) => firsts.filter(x => x === firsts[i]).length > 1 ? n : firsts[i]); // first names, unless two share one
+  const text = f.f === "squad" ? short.join(", ") : lines.map(l => f.f === "order" ? `${l.label} ${l.text.split(" · ")[0]}` : l.text).join(f.f === "pairs" ? " · " : ", ");
   // Admins: selected players who can't come any more.
   const gone = session.admin ? players.filter(p => (sel.p || {})[p.id] === "s" && p.avail[e.date] === "no").map(p => firstName(p.name)) : [];
-  return `<div class="m-sel">${sel.pub ? ic("check") : ic("pencil")} <span>${sel.pub ? "" : `<i>${t("sel.draftTag")}</i> `}<b>${t("sel.title")}:</b> ${esc(chosen.join(", ")) || "–"}</span>
-    ${sel.pub && mine === "s" ? `<span class="pill yes">${t("sel.you")}</span>` : sel.pub && mine === "r" ? `<span class="pill maybe">${t("sel.youReserve")}</span>` : ""}
+  return `<div class="m-sel">${sel.pub ? ic("check") : ic("pencil")} <span>${sel.pub ? "" : `<i>${t("sel.draftTag")}</i> `}<b>${t("sel.title")}:</b> ${esc(text) || "–"}</span>
+    ${sel.pub && mine ? `<span class="pill ${mine.k === "s" ? "yes" : "maybe"}">${esc(roleShort(mine, players))}</span>` : ""}
     ${gone.length ? `<span class="pill no">${ic("info")} ${esc(t("sel.gone", { names: gone.join(", ") }))}</span>` : ""}</div>`;
 }
 
+// The window: one choice per player (position / number / pair, bench, reserve), a preview, a suggestion, the format.
 const selDlg = document.getElementById("sel");
-let selDraft = null; // { e, chosen: Set of player ids }
+let selDraft = null; // { e, f, slots: Map pid -> slot ("gk"… "start" "bench" "o3" "p2" "r1"), cap, fmtOpen }
+const isStart = v => SEL_POS.includes(v) || v === "start";
+function slotsFrom(sel, f) {
+  const m = new Map(), s = sel || {}, P = s.p || {};
+  const byO = (a, b) => (Number((s.o || {})[a]) || 99) - (Number((s.o || {})[b]) || 99);
+  const ids = k => Object.keys(P).filter(id => P[id] === k && root.players && root.players[id]).sort(byO);
+  ids("r").slice(0, RESERVES).forEach((id, i) => m.set(id, "r" + (i + 1)));
+  const pairFill = {};
+  ids("s").forEach((id, i) => {
+    if (f.f === "squad") { const p = (s.pos || {})[id]; m.set(id, p === "bench" ? (f.b ? "bench" : "start") : f.pos && SEL_POS.includes(p) ? p : "start"); }
+    else if (f.f === "order") { if (i < f.n) m.set(id, "o" + (i + 1)); }
+    else {
+      let n = Number((s.pair || {})[id]);
+      if (!(n >= 1 && n <= f.n) || (pairFill[n] || 0) >= 2) n = [...Array(f.n)].map((_, j) => j + 1).find(j => (pairFill[j] || 0) < 2);
+      if (n) { pairFill[n] = (pairFill[n] || 0) + 1; m.set(id, "p" + n); }
+    }
+  });
+  return m;
+}
+function slotOptions(f) {
+  const o = [["", t("sel.slot.none")]];
+  if (f.f === "squad") {
+    if (f.pos) SEL_POS.forEach(k => o.push([k, t("sel.pos." + k)]));
+    o.push(["start", t(f.pos ? "sel.slot.startOpen" : "sel.slot.start")]);
+    if (f.b) o.push(["bench", t("sel.slot.bench")]);
+  } else for (let i = 1; i <= f.n; i++) o.push([(f.f === "order" ? "o" : "p") + i, t(f.f === "order" ? "sel.slot.order" : "sel.slot.pair", { n: i })]);
+  for (let i = 1; i <= RESERVES; i++) o.push(["r" + i, t("sel.slot.reserve", { n: i })]);
+  return o;
+}
+// Picking a place someone else has: they get the place you came from (a swap). A full pair: its first player moves.
+function setSlot(id, v) {
+  const m = selDraft.slots, old = m.get(id) || "";
+  const move = other => old ? m.set(other, old) : m.delete(other);
+  if (/^[or]\d+$/.test(v)) for (const [o2, s2] of [...m]) if (o2 !== id && s2 === v) move(o2);
+  if (/^p\d+$/.test(v)) { const mates = [...m].filter(([o2, s2]) => o2 !== id && s2 === v); if (mates.length >= 2) move(mates[0][0]); }
+  v ? m.set(id, v) : m.delete(id);
+  if (selDraft.cap && !isStart(m.get(selDraft.cap) || "")) selDraft.cap = null;
+}
+function selSuggest() {
+  const { e, f } = selDraft, ans = { yes: 0, maybe: 1 };
+  const pool = sortedPlayers().filter(p => p.name && ans[p.avail[e.date]] !== undefined && !awayOn(p, e.date));
+  const byAns = (a, b) => ans[a.avail[e.date]] - ans[b.avail[e.date]];
+  const m = new Map();
+  let rest;
+  if (f.f === "squad") {
+    const list = [...pool].sort((a, b) => byAns(a, b) || playedCount(a) - playedCount(b)); // fair: who played least first
+    list.slice(0, f.n).forEach(p => m.set(p.id, f.pos ? posPref(p) || "start" : "start"));
+    list.slice(f.n, f.n + f.b).forEach(p => m.set(p.id, "bench"));
+    rest = list.slice(f.n + f.b);
+  } else {
+    const list = [...pool].sort((a, b) => byAns(a, b) || byStrength(f.by)(a, b)), k = f.f === "order" ? f.n : f.n * 2;
+    list.slice(0, k).sort(byStrength(f.by)).forEach((p, i) => m.set(p.id, f.f === "order" ? "o" + (i + 1) : "p" + (Math.floor(i / 2) + 1)));
+    rest = list.slice(k);
+  }
+  rest.slice(0, 3).forEach((p, i) => m.set(p.id, "r" + (i + 1)));
+  selDraft.slots = m;
+  if (selDraft.cap && !isStart(m.get(selDraft.cap) || "")) selDraft.cap = null;
+}
+function selRecord(pub) {
+  const { slots, cap } = selDraft, p = {}, o = {}, pos = {}, pair = {}, res = [], ord = [];
+  for (const [id, v] of slots) {
+    if (!root.players || !root.players[id]) continue;
+    if (/^r\d+$/.test(v)) { p[id] = "r"; res.push([id, +v.slice(1)]); }
+    else if (/^o\d+$/.test(v)) { p[id] = "s"; ord.push([id, +v.slice(1)]); }
+    else if (/^p\d+$/.test(v)) { p[id] = "s"; pair[id] = +v.slice(1); }
+    else if (v === "start") p[id] = "s";
+    else if (v === "bench" || SEL_POS.includes(v)) { p[id] = "s"; pos[id] = v; }
+  }
+  // Numbers without gaps: 1, 2, 3 (the playing order and the reserves).
+  for (const list of [ord, res]) list.sort((a, b) => a[1] - b[1]).forEach(([id], i) => { o[id] = i + 1; });
+  const some = x => Object.keys(x).length > 0;
+  return { ...(some(p) ? { p } : {}), ...(some(o) ? { o } : {}), ...(some(pos) ? { pos } : {}), ...(some(pair) ? { pair } : {}),
+    ...(cap && p[cap] === "s" ? { cap } : {}), pub, at: Date.now() };
+}
 function openSelection(e) {
   if (!e) return;
-  const sel = selOf(e) || {};
-  selDraft = { e, chosen: new Set(Object.entries(sel.p || {}).filter(([, v]) => v === "s").map(([k]) => k)) };
+  const f = selFormat(), sel = selOf(e) || {};
+  selDraft = { e, f, slots: slotsFrom(sel, f), cap: sel.cap || null, fmtOpen: false };
   document.getElementById("sel-title").textContent = t("sel.dlgTitle", { opp: e.opp, when: fmt(e.date, { weekday: "long", day: "numeric", month: "long" }) });
   document.getElementById("sel-clear").hidden = !selOf(e);
   renderSelection();
   selDlg.showModal();
 }
+function selCounts() {
+  const { f, slots } = selDraft, v = [...slots.values()];
+  const start = v.filter(isStart).length, bench = v.filter(x => x === "bench").length, res = v.filter(x => /^r/.test(x)).length;
+  const order = v.filter(x => /^o/.test(x)).length, pairs = [...Array(f.n)].filter((_, i) => v.filter(x => x === "p" + (i + 1)).length === 2).length;
+  return { start, bench, res, order, pairs, have: f.f === "squad" ? start : f.f === "order" ? order : pairs };
+}
 function renderSelection() {
-  const { e, chosen } = selDraft, players = sortedPlayers().filter(p => p.name);
+  const { e, f, slots, cap } = selDraft, players = sortedPlayers().filter(p => p.name), all = sortedPlayers();
   const rank = { yes: 0, maybe: 1, "": 2, no: 3 };
-  const list = players.map((p, i) => ({ p, i, a: p.avail[e.date] || "" })).sort((x, y) => rank[x.a] - rank[y.a] || x.i - y.i);
-  const yes = players.filter(p => p.avail[e.date] === "yes").length;
-  document.getElementById("sel-sub").textContent = t("sel.count", { n: chosen.size, yes, min: minPlayers() });
-  document.getElementById("sel-list").innerHTML = list.map(({ p, i, a }) => `<li><label class="${a === "no" ? "is-no" : ""}">
-      <input type="checkbox" data-pick="${p.id}" ${chosen.has(p.id) ? "checked" : ""}>
-      ${avatar(p, i)}<span class="grow">${esc(displayName(p, i))}</span>
-      <span class="pill ${a || "gray"}">${esc(a ? t("answer." + a) : t("hist.none"))}</span></label></li>`).join("");
+  const list = players.map(p => ({ p, i: all.indexOf(p), a: p.avail[e.date] || "" })).sort((x, y) => rank[x.a] - rank[y.a] || x.i - y.i);
+  const c = selCounts(), yes = players.filter(p => p.avail[e.date] === "yes").length;
+  document.getElementById("sel-sub").textContent = f.f === "squad" ? t("sel.sum.squad", { s: c.start, n: f.n, b: c.bench, B: f.b, r: c.res, yes })
+    : t(f.f === "order" ? "sel.sum.order" : "sel.sum.pairs", { k: c.have, n: f.n, r: c.res, yes });
+  // Format line, and the form to change it.
+  const by = f.by !== "none" ? t("sel.by." + f.by) : "";
+  const desc = f.f === "squad" ? t("sel.fmt.squad", { n: f.n, b: f.b }) + (f.pos ? `, ${t("sel.fmt.withPos")}` : "") : t(f.f === "order" ? "sel.fmt.order" : "sel.fmt.pairs", { n: f.n, by });
+  const fmtBox = document.getElementById("sel-fmt");
+  fmtBox.innerHTML = `<div class="sel-fmt-line"><span>${esc(t("sel.fmt.line", { desc }))}</span><button type="button" class="link" data-sel-fmt>${ic("settings")} ${esc(t(selDraft.fmtOpen ? "sel.fmt.close" : "sel.fmt.edit"))}</button></div>
+    ${selDraft.fmtOpen ? `<div class="sel-fmt-form">
+      <label><span>${esc(t("sel.fmt.type"))}</span><select name="f">${["squad", "order", "pairs"].map(k => `<option value="${k}" ${f.f === k ? "selected" : ""}>${esc(t("sel.fmt.type." + k))}</option>`).join("")}</select></label>
+      <label><span>${esc(t("sel.fmt.n." + f.f))}</span><input name="n" type="number" min="1" max="30" value="${f.n}"></label>
+      ${f.f === "squad" ? `<label><span>${esc(t("sel.fmt.b"))}</span><input name="b" type="number" min="0" max="20" value="${f.b}"></label>
+        <label class="chk"><input name="pos" type="checkbox" ${f.pos ? "checked" : ""}> ${esc(t("sel.fmt.pos"))}</label>
+        <label class="chk"><input name="cap" type="checkbox" ${f.cap ? "checked" : ""}> ${esc(t("sel.fmt.cap"))}</label>`
+      : `<label><span>${esc(t("sel.fmt.by"))}</span><select name="by">${["handicap", "ranking", "none"].map(k => `<option value="${k}" ${f.by === k ? "selected" : ""}>${esc(t(k === "none" ? "sel.fmt.byNone" : "sel.fmt.by." + k))}</option>`).join("")}</select></label>`}
+      <button type="button" class="primary" data-sel-fmt-save>${esc(t("sel.fmt.save"))}</button></div>` : ""}`;
+  // Preview of the line-up as it stands.
+  const lines = lineupLines(selRecord(false), f, all);
+  document.getElementById("sel-preview").innerHTML = lines.length
+    ? lines.map(l => `<div class="sel-pv-row"><b>${esc(l.label)}</b><span>${esc(l.text)}</span></div>`).join("") : `<p class="muted">${esc(t("sel.empty"))}</p>`;
+  document.getElementById("sel-suggest-help").textContent = t("sel.suggestHelp." + f.f, { by });
+  const opts = slotOptions(f);
+  document.getElementById("sel-list").innerHTML = list.map(({ p, i, a }) => {
+    const v = slots.get(p.id) || "", info = [a ? t("answer." + a) : t("hist.none"), t("sel.played", { n: playedCount(p) })];
+    if (f.f !== "squad" && f.by !== "none" && sportValue(p, f.by)) info.push(`${t("sel.by." + f.by)} ${sportValue(p, f.by)}`);
+    if (f.f === "squad" && f.pos && sportValue(p, "position")) info.push(sportValue(p, "position"));
+    if (awayOn(p, e.date)) info.push(t("sel.away"));
+    const capBtn = f.f === "squad" && f.cap && isStart(v) ? `<button type="button" class="sel-cap${cap === p.id ? " on" : ""}" data-cap="${p.id}" title="${esc(t("sel.cap"))}" aria-label="${esc(t("sel.cap"))}" aria-pressed="${cap === p.id}">C</button>` : "";
+    return `<li class="sel-row${a === "no" ? " is-no" : ""}${v ? " is-on" : ""}">${avatar(p, i)}
+      <span class="grow"><span class="nm">${esc(displayName(p, i))}</span><small><span class="pill ${a || "gray"}">${esc(info[0])}</span> ${esc(info.slice(1).join(" · "))}</small></span>
+      ${capBtn}<select data-slot="${p.id}" aria-label="${esc(displayName(p, i))}">${opts.map(([k, l]) => `<option value="${k}" ${k === v ? "selected" : ""}>${esc(l)}</option>`).join("")}</select></li>`;
+  }).join("");
 }
 document.getElementById("sel-list").addEventListener("change", ev => {
-  const id = ev.target.dataset.pick;
+  const id = ev.target.dataset.slot;
   if (!id) return;
-  ev.target.checked ? selDraft.chosen.add(id) : selDraft.chosen.delete(id);
+  setSlot(id, ev.target.value);
   renderSelection();
 });
-// Everyone who said yes or maybe but isn't chosen is a reserve.
-function selRecord(pub) {
-  const { e, chosen } = selDraft, p = {};
-  for (const pl of sortedPlayers()) {
-    if (chosen.has(pl.id)) p[pl.id] = "s";
-    else if (["yes", "maybe"].includes(pl.avail[e.date])) p[pl.id] = "r";
+document.getElementById("sel-form").addEventListener("click", async ev => {
+  const capB = ev.target.closest("[data-cap]");
+  if (capB) { selDraft.cap = selDraft.cap === capB.dataset.cap ? null : capB.dataset.cap; return renderSelection(); }
+  if (ev.target.closest("[data-sel-fmt]")) { // closing without saving: back to the saved format
+    selDraft.fmtOpen = !selDraft.fmtOpen;
+    if (!selDraft.fmtOpen) selDraft.f = selFormat();
+    return renderSelection();
   }
-  return { ...(Object.keys(p).length ? { p } : {}), pub, at: Date.now() };
-}
+  if (ev.target.closest("#sel-suggest")) { selSuggest(); return renderSelection(); }
+  if (ev.target.closest("[data-sel-fmt-save]")) {
+    const box = document.getElementById("sel-fmt"), val = n => box.querySelector(`[name="${n}"]`);
+    const type = val("f").value, n = Math.max(1, Math.min(30, parseInt(val("n").value, 10) || selDraft.f.n));
+    const next = type === "squad" ? { f: type, n, b: Math.max(0, Math.min(20, parseInt((val("b") || {}).value, 10) || 0)), pos: !!(val("pos") || {}).checked, cap: !!(val("cap") || {}).checked }
+      : { f: type, n, by: (val("by") || {}).value || (type === "pairs" ? "ranking" : "handicap") };
+    const keep = selRecord(false);
+    if (!(await update({ "settings/sel": next }))) return;
+    selDraft.f = selFormat();
+    selDraft.slots = slotsFrom(keep, selDraft.f);
+    selDraft.fmtOpen = false;
+    renderSelection();
+  }
+});
+// Switching type in the format form: show the matching fields straight away (saved only with the button).
+document.getElementById("sel-form").addEventListener("change", ev => {
+  if (ev.target.name !== "f" || !ev.target.closest("#sel-fmt")) return;
+  const type = ev.target.value, saved = selFormat();
+  selDraft.f = type === saved.f ? saved : type === "squad" ? { f: type, n: 11, b: 5, pos: true, cap: true, by: "none" }
+    : { f: type, n: type === "order" ? 6 : 3, b: 0, pos: false, cap: false, by: type === "order" ? "handicap" : "ranking" };
+  renderSelection();
+});
 document.getElementById("sel-draft").onclick = () => { update({ [`selection/${selDraft.e.date}`]: selRecord(false) }); selDlg.close(); };
 document.getElementById("sel-clear").onclick = () => {
   if (!confirm(t("sel.clearConfirm"))) return;
   update({ [`selection/${selDraft.e.date}`]: null }); selDlg.close();
 };
 document.getElementById("sel-pub").onclick = async () => {
-  const e = selDraft.e;
-  if (!selDraft.chosen.size) return alert(t("sel.none"));
+  const { e, f } = selDraft, rec = selRecord(true), c = selCounts();
+  if (!Object.values(rec.p || {}).includes("s")) return alert(t("sel.none"));
+  if (c.have < f.n && !confirm(t("sel.incomplete", { have: c.have, need: f.n }))) return;
   selDlg.close();
-  const ok = await update({ [`selection/${e.date}`]: selRecord(true) });
+  const ok = await update({ [`selection/${e.date}`]: rec });
   if (!ok) return;
   if (await notifyTeam("s", e.date) === true) toast(t("status.notified"), "", 2500);
-  const players = sortedPlayers();
-  openShare(t("status.shareTitle"), t("msg.selection", { team: teamName(), opp: e.opp, when: whenLong(e.date, matchInfo(e).start),
-    names: selNames(e, players, "s").join(", "), reserves: selNames(e, players, "r").join(", "), url: pageUrl("") }));
+  const lineup = lineupLines(rec, f, sortedPlayers()).map(l => `${l.k === "r" ? "🔁" : l.k === "bench" ? "🪑" : "✅"} *${l.label}* ${l.text}`).join("\n");
+  openShare(t("status.shareTitle"), t("msg.selection", { team: teamName(), opp: e.opp, when: whenLong(e.date, matchInfo(e).start), lineup, url: pageUrl("") }));
 };
 
 // ---- Admin: match details (time, venue via place search, meeting point) ----

@@ -1,6 +1,7 @@
 // RostiQ: a player's personal calendar feed (iCalendar), built from the team's data.
 // Same times and defaults as the app's .ics download (index.html, buildIcs), plus the player's own answer in each
 // title and their carpool in the description. Pure function: easy to test without a database.
+import { roleOf, roleText } from "./lineup.js";
 
 const VTIMEZONE = [
   "BEGIN:VTIMEZONE", "TZID:Europe/Brussels",
@@ -19,18 +20,21 @@ const APP = "https://app.rostiq.be";
 
 const TEXT = {
   nl: {
+    selected: "Geselecteerd",
     yes: "Je bent erbij", maybe: "Je antwoord: misschien", no: "Je kan niet", none: "Je hebt nog niet geantwoord",
     todo: "nog antwoorden", off: "Afgelast", final: "(finale)", home: "Thuiswedstrijd", away: "Uitwedstrijd", meet: "Verzamelen",
     answer: "Antwoorden of aanpassen", driving: "Jij rijdt", drivingWith: n => `Jij rijdt, met ${n}`, ridingWith: n => `Je rijdt mee met ${n}`,
     needRide: "Je zoekt nog een lift", seats: n => `${n} vrije ${n === 1 ? "plaats" : "plaatsen"}`, name: b => `${b} · RostiQ`,
   },
   fr: {
+    selected: "Sélectionné",
     yes: "Tu es là", maybe: "Ta réponse : peut-être", no: "Tu ne peux pas", none: "Tu n'as pas encore répondu",
     todo: "à répondre", off: "Annulé", final: "(finale)", home: "Match à domicile", away: "Match à l'extérieur", meet: "Rendez-vous",
     answer: "Répondre ou modifier", driving: "Tu conduis", drivingWith: n => `Tu conduis, avec ${n}`, ridingWith: n => `Tu montes avec ${n}`,
     needRide: "Tu cherches encore un trajet", seats: n => `${n} ${n < 2 ? "place libre" : "places libres"}`, name: b => `${b} · RostiQ`,
   },
   en: {
+    selected: "Selected",
     yes: "You're in", maybe: "Your answer: maybe", no: "You can't make it", none: "You haven't answered yet",
     todo: "answer needed", off: "Called off", final: "(final)", home: "Home match", away: "Away match", meet: "Meeting",
     answer: "Answer or change", driving: "You're driving", drivingWith: n => `You're driving, with ${n}`, ridingWith: n => `You ride with ${n}`,
@@ -52,6 +56,7 @@ const nameList = (names, lang) => names.length < 2 ? names.join("") : names.slic
  * team: { tid, info, settings, schedule, matches, carpool }, player: { pid, name, avail }, names: { pid: name },
  * opts: { lang, hideNo, today: "YYYY-MM-DD", now: Date }
  */
+// A published selection adds the player's role ("Selected. Position: defence."; "You're reserve 1.").
 export function buildFeed(team, player, names, opts) {
   const lang = TEXT[opts.lang] ? opts.lang : "nl", T = TEXT[lang];
   const info = team.info || {}, settings = team.settings || {};
@@ -93,6 +98,9 @@ export function buildFeed(team, player, names, opts) {
       ride = drv ? T.ridingWith(nameOf(drv)) + (cp[drv].note ? ` · ${cp[drv].note}` : "") : T.needRide;
     }
 
+    const sm = (team.selection || {})[date], role = sm && sm.pub && !e.cancelled ? roleOf(sm, player.pid) : null;
+    const sel = role ? (role.k === "s" ? [T.selected + ".", roleText(role, lang, role.mate ? String(nameOf(role.mate)).split(/\s+/)[0] : "")].filter(Boolean).join(" ") : roleText(role, lang)) : "";
+
     // Called off: stays in the calendar, marked as cancelled (most apps strike it through).
     const off = e.cancelled === true;
     const summary = off ? `❌ ${T.off}: ${label} · ${e.opp}${e.final ? " " + T.final : ""}`
@@ -102,6 +110,7 @@ export function buildFeed(team, player, names, opts) {
       e.home === true ? T.home : e.home === false ? T.away : "",
       m.meet && `${T.meet}: ${m.meet}`,
       ride && `🚗 ${ride}`,
+      sel && `📋 ${sel}`,
       m.info,
       v && mapsUrl(v),
       `${T.answer}: ${appUrl}`,

@@ -22,6 +22,7 @@ import { getDatabase } from "firebase-admin/database";
 import { getMessaging } from "firebase-admin/messaging";
 import { buildFeed } from "./ics.js";
 import { noticeMessage } from "./notice.js";
+import { roleOf } from "./lineup.js";
 import { runJob } from "./job.mjs";
 import { sendReminder, sendProfileAsk } from "./remind.mjs";
 
@@ -48,12 +49,17 @@ export const calendar = onRequest({ region: "europe-west1", memory: "256MiB", ma
     if (!k || typeof k.t !== "string" || typeof k.p !== "string" || !/^[a-z0-9][a-z0-9-]{1,39}$/.test(k.t)) { gone(); return; }
     const T = `teams/${k.t}`;
     // Only what the feed needs: no photos, logos or other players' answers.
-    const [brand, shortName, calendarLabel, sport, schedule, matches, carpool, name, avail] = await Promise.all([
+    const [brand, shortName, calendarLabel, sport, schedule, matches, carpool, name, avail, selection] = await Promise.all([
       val(`${T}/info/brand`), val(`${T}/info/shortName`), val(`${T}/info/calendarLabel`), val(`${T}/settings/sport`),
-      val(`${T}/schedule`), val(`${T}/matches`), val(`${T}/carpool`), val(`${T}/players/${k.p}/name`), val(`${T}/players/${k.p}/avail`)]);
+      val(`${T}/schedule`), val(`${T}/matches`), val(`${T}/carpool`), val(`${T}/players/${k.p}/name`), val(`${T}/players/${k.p}/avail`),
+      val(`${T}/selection`)]);
     if (!name) { gone(); return; }
-    // Names of the people in my car / whose car I'm in.
+    // Names of the people in my car / whose car I'm in, and my partner in a pair.
     const ids = new Set();
+    for (const sm of Object.values(selection || {})) {
+      const mine = sm && sm.pair && sm.pair[k.p];
+      if (mine) for (const [id, n] of Object.entries(sm.pair)) if (id !== k.p && n === mine) ids.add(id);
+    }
     for (const cp of Object.values(carpool || {})) {
       const mine = cp && cp[k.p];
       if (!mine) continue;
@@ -62,7 +68,7 @@ export const calendar = onRequest({ region: "europe-west1", memory: "256MiB", ma
     }
     const names = Object.fromEntries(await Promise.all([...ids].filter(id => /^[A-Za-z0-9_-]{1,40}$/.test(id)).map(async id => [id, await val(`${T}/players/${id}/name`)])));
     const today = new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Brussels" });
-    body = buildFeed({ tid: k.t, info: { brand, shortName, calendarLabel }, settings: { sport }, schedule, matches, carpool },
+    body = buildFeed({ tid: k.t, info: { brand, shortName, calendarLabel }, settings: { sport }, schedule, matches, carpool, selection },
       { pid: k.p, name, avail }, names, { lang: k.l, hideNo: k.h === true, today });
     memo.set(key, { at: Date.now(), body });
     if (memo.size > 2000) memo.delete(memo.keys().next().value);
@@ -91,7 +97,12 @@ export const notice = onValueCreated({ ref: "/notices/{tid}/{id}", instance: "wi
     val(`${T}/matches/${n.d}`), val(`${T}/settings/quickLinks`), val(`${T}/members`), val(`quickIndex/${tid}`), val(`${T}/selection/${n.d}`)]);
   // Still the way the notice says (not undone in the meantime)?
   if (!sched || (n.k === "c" && sched.cancelled !== true) || (n.k === "m" && sched.moved !== n.o) || (n.k === "s" && !(selection && selection.pub))) return done();
-  const placeOf = pid => ((selection || {}).p || {})[pid] || null;
+  // For a selection: each player's full role (position, number, pair with whom), so the message can say it.
+  const names = n.k === "s" ? (await val(`${T}/players`)) || {} : {};
+  const placeOf = pid => {
+    const r = roleOf(selection, pid);
+    return r ? { ...r, mateName: r.mate ? String((names[r.mate] || {}).name || "").trim().split(/\s+/)[0] : "" } : null;
+  };
   const team = { brand, opp: sched.opp, start: (match || {}).start, quickLinks };
   let sent = 0, gone = {};
   for (const [uid, pid] of Object.entries(members || {})) {

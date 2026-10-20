@@ -216,6 +216,29 @@
           "quickLinks": {
             ".validate": "newData.isBoolean()"
           },
+          "sel": {
+            "f": {
+              ".validate": "newData.val() === 'squad' || newData.val() === 'order' || newData.val() === 'pairs'"
+            },
+            "n": {
+              ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 30"
+            },
+            "b": {
+              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 20"
+            },
+            "pos": {
+              ".validate": "newData.isBoolean()"
+            },
+            "cap": {
+              ".validate": "newData.isBoolean()"
+            },
+            "by": {
+              ".validate": "newData.val() === 'handicap' || newData.val() === 'ranking' || newData.val() === 'none'"
+            },
+            "$other": {
+              ".validate": false
+            }
+          },
           "$other": {
             ".validate": false
           }
@@ -292,6 +315,24 @@
               "$pid": {
                 ".validate": "newData.val() === 's' || newData.val() === 'r'"
               }
+            },
+            "o": {
+              "$pid": {
+                ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 60"
+              }
+            },
+            "pos": {
+              "$pid": {
+                ".validate": "newData.val() === 'gk' || newData.val() === 'def' || newData.val() === 'mid' || newData.val() === 'fwd' || newData.val() === 'bench'"
+              }
+            },
+            "pair": {
+              "$pid": {
+                ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 10"
+              }
+            },
+            "cap": {
+              ".validate": "newData.isString() && newData.val().matches(/^[A-Za-z0-9_-]{1,40}$/)"
             },
             "pub": {
               ".validate": "newData.isBoolean()"

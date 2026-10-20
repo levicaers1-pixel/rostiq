@@ -99,7 +99,14 @@ def settings_rules():
         "fedLabel": s(40, 1),
         "fields": {"$c": {".validate": "$c.matches(/^c[1-4]$/) && newData.isString() && newData.val().length >= 1 && newData.val().length <= 30"}},
         "autoRemind": {".validate": "newData.isBoolean()"},
-        "quickLinks": {".validate": "newData.isBoolean()"},  # false = personal answer links don't work for this team  # false = no automatic push reminders for this team
+        "quickLinks": {".validate": "newData.isBoolean()"},
+        # How this team picks a line-up (Selection window): f squad | order | pairs, n starters / players / pairs,
+        # b bench places, pos positions on, cap captain on, by sort by handicap | ranking | none. Missing: the sport's default.
+        "sel": {"f": {".validate": "newData.val() === 'squad' || newData.val() === 'order' || newData.val() === 'pairs'"},
+                "n": num(1, 30), "b": num(0, 20),
+                "pos": {".validate": "newData.isBoolean()"}, "cap": {".validate": "newData.isBoolean()"},
+                "by": {".validate": "newData.val() === 'handicap' || newData.val() === 'ranking' || newData.val() === 'none'"},
+                "$other": NO},  # false = personal answer links don't work for this team  # false = no automatic push reminders for this team
         "$other": NO,
     }
 
@@ -188,10 +195,16 @@ team = {
     "settings": {".write": TA, **settings_rules()},
     "schedule": {".write": TA, **schedule_rules()},
     "matches": {".write": TA, **matches_rules()},
-    # Selection per match (admins): p/<player> = "s" selected | "r" reserve; pub = shown to the team.
+    # Selection per match (admins): p/<player> = "s" selected | "r" reserve; pub = shown to the team;
+    # o/<player> = playing order or reserve order, pos/<player> = position (squad sports) or bench, pair/<player> = pair
+    # number (padel, doubles), cap = the captain's player id.
     "selection": {".write": TA, "$date": {
         ".validate": "$date.matches(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/)",
         "p": {"$pid": {".validate": "newData.val() === 's' || newData.val() === 'r'"}},
+        "o": {"$pid": num(1, 60)},
+        "pos": {"$pid": {".validate": "newData.val() === 'gk' || newData.val() === 'def' || newData.val() === 'mid' || newData.val() === 'fwd' || newData.val() === 'bench'"}},
+        "pair": {"$pid": num(1, 10)},
+        "cap": {".validate": "newData.isString() && newData.val().matches(/^[A-Za-z0-9_-]{1,40}$/)"},
         "pub": {".validate": "newData.isBoolean()"}, "at": {".validate": "newData.isNumber()"},
         "$other": NO}},
     "carpool": carpool_rules(f"{TA} || {OWNER}", MYPID),

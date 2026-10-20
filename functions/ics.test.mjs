@@ -83,4 +83,27 @@ console.log("notice tests ok");
   const em = profileEmail({ tid: "kfc", brand: "KFC", who: "", missing: ["<x>"] }, "en");
   assert(em.subject === "KFC: please complete your details" && em.html.includes("&lt;x&gt;") && em.text.includes("https://app.rostiq.be/ploeg.html?t=kfc#me"));
 }
+// Line-ups (lineup.js): roles, the selection notification and the calendar line.
+{
+  const { roleOf, roleText } = await import("./lineup.js");
+  const sel = { p: { a: "s", b: "s", c: "s", d: "r", e: "r", f: "s" }, o: { d: 2, e: 1, c: 3 }, pos: { a: "def", b: "bench" }, pair: { f: 1, a: 1 }, cap: "a", pub: true };
+  assert.deepEqual(roleOf(sel, "a"), { k: "s", o: null, pos: "def", pair: 1, mate: "f", cap: true });
+  assert.equal(roleOf(sel, "zz"), null);
+  assert.equal(roleText(roleOf({ p: { a: "s" }, pos: { a: "def" }, cap: "a" }, "a"), "nl"), "Positie: verdediging. Jij bent kapitein.");
+  assert.equal(roleText(roleOf(sel, "b"), "en"), "You start on the bench.");
+  assert.equal(roleText(roleOf(sel, "c"), "fr"), "Tu joues en numéro 3.");
+  assert.equal(roleText(roleOf({ p: { x: "s", y: "s" }, pair: { x: 2, y: 2 } }, "x"), "nl", "Jan"), "Je speelt in paar 2 met Jan.");
+  assert.equal(roleText(roleOf(sel, "d"), "nl"), "Je bent reserve 2.");
+  const tm2 = { brand: "HC", opp: "Racing", start: "15:00" };
+  const r1 = roleOf({ p: { a: "s" }, pos: { a: "mid" } }, "a");
+  assert.equal(noticeMessage("kfc", { k: "s", d: "2026-11-01" }, tm2, null, "nl", r1).body, "✅ Je bent geselecteerd voor Racing op zondag 1 november om 15:00. Positie: middenveld.");
+  assert.equal(noticeMessage("kfc", { k: "s", d: "2026-11-01" }, tm2, null, "nl", { ...roleOf(sel, "d") }).body, "🔁 Je bent reserve 2 voor Racing op zondag 1 november. We laten het weten als er een plaats vrijkomt.");
+  assert.equal(noticeMessage("kfc", { k: "s", d: "2026-11-01" }, tm2, null, "en", { ...roleOf({ p: { x: "s", y: "s" }, pair: { x: 1, y: 1 } }, "x"), mateName: "Lisa" }).body,
+    "✅ You're selected for Racing on Sunday 1 November at 15:00. You play in pair 1 with Lisa.");
+  // Calendar: the role in the description once the selection is published
+  const feed = buildFeed({ ...team, selection: { "2026-10-25": { p: { p1: "s", p5: "s" }, pair: { p1: 1, p5: 1 }, pub: true }, "2026-10-18": { p: { p1: "s" }, o: { p1: 2 }, pub: false } } },
+    player, names, { lang: "nl", today: "2026-10-13", now: new Date("2026-10-13T20:00:00Z") }).replace(/\r\n /g, "");
+  assert(feed.includes("📋 Geselecteerd. Je speelt in paar 1 met Lisa."), "pair in the calendar");
+  assert(!feed.includes("nummer 2"), "a draft selection stays out of the calendar");
+}
 console.log("reminder tests passed");

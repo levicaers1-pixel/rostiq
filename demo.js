@@ -89,7 +89,8 @@
       players[id] = {
         order: i + 1, name, gemeente: town[0], geo: { label: `${town[0]} (Antwerpen)`, lat: town[1], lon: town[2] },
         ...(i === 0 ? { phone: "32470000000", email: "demo@rostiq.be" } : i % 4 === 1 ? {} : { email: `${name.split(" ")[0].toLowerCase()}@example.com` }),
-        ...(i % 3 ? { fed: String(100000 + Math.floor(r() * 899999)) } : {}),
+        // Padel: the "federation number" field is the padel ranking (P-level); the other sports: a member number.
+        ...(S.sport === "padel" ? { fed: "P" + [500, 300, 300, 200, 200, 100, 100][i % 7] } : i % 3 ? { fed: String(100000 + Math.floor(r() * 899999)) } : {}),
         extra: S.extra(i), avail: {},
       };
       if (i < S.players - 2) { players[id].uid = i === 0 ? "demo" : "d" + i; if (i) members["d" + i] = id; } // two not linked yet
