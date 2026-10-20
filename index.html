@@ -364,6 +364,12 @@
   .sel-fmt-form label.chk { display: flex; align-items: center; gap: 6px; color: var(--text); }
   .sel-fmt-form input[type=number], .sel-fmt-form select { font: inherit; padding: 5px 6px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text); }
   .sel-fmt-form .primary { grid-column: 1 / -1; justify-self: end; }
+  .sel-fmt-form label.wide { grid-column: 1 / -1; }
+  .sel-checks { margin-top: 8px; padding: 8px 12px; border-radius: 12px; display: grid; gap: 4px; font-size: .85rem; }
+  .sel-checks div { display: flex; gap: 6px; align-items: flex-start; }
+  .sel-checks svg.i { flex: none; margin-top: 2px; width: 15px; height: 15px; }
+  .sel-checks.warn { background: color-mix(in srgb, var(--maybe, #b7791f) 14%, transparent); }
+  .sel-checks.ok { background: color-mix(in srgb, var(--yes, #1f8a4c) 12%, transparent); }
   .sel-preview { margin-top: 10px; padding: 10px 12px; border-radius: 12px; background: color-mix(in srgb, var(--accent) 6%, transparent); display: grid; gap: 4px; font-size: .88rem; }
   .sel-preview .muted { margin: 0; }
   .sel-pv-row { display: flex; gap: 8px; }
@@ -515,6 +521,7 @@
     <p class="muted" id="sel-sub"></p>
     <div class="sel-fmt" id="sel-fmt"></div>
     <div class="sel-preview" id="sel-preview" aria-live="polite"></div>
+    <div class="sel-checks" id="sel-checks" role="status" hidden></div>
     <div class="sel-tools"><button type="button" id="sel-suggest">✨ <span data-i18n="sel.suggest">Suggest</span></button><small class="muted" id="sel-suggest-help"></small></div>
     <ul class="sel-list" id="sel-list"></ul>
     <div class="row">
@@ -842,6 +849,12 @@ function onMatchClick(ev) {
   const ans = ev.target.closest("[data-answer]");
   if (ans && session.pid && root.players[session.pid]) {
     const cur = (root.players[session.pid].avail || {})[ans.dataset.date] || "";
+    const sel = (root.selection || {})[ans.dataset.date];
+    if (ans.dataset.answer === "no" && cur !== "no" && sel && sel.pub && (sel.p || {})[session.pid] === "s") {
+      const res = Object.keys(sel.p).filter(id => sel.p[id] === "r" && root.players[id]).sort((a, b) => ((sel.o || {})[a] || 99) - ((sel.o || {})[b] || 99))[0];
+      const msg = selFormat().auto === false ? t("sel.dropManual") : res ? t("sel.dropReserve", { name: firstName(root.players[res].name) }) : t("sel.dropNone");
+      if (!confirm(t("sel.dropAsk") + "\n\n" + msg)) return;
+    }
     write(`players/${session.pid}/avail/${ans.dataset.date}`, cur === ans.dataset.answer ? null : ans.dataset.answer);
   }
   const chip = ev.target.closest(".chip[data-pid]");
@@ -1252,7 +1265,7 @@ const SEL_PRESETS = {
 const SEL_POS = ["gk", "def", "mid", "fwd"];
 const RESERVES = 5;
 function selFormat() {
-  const f = { b: 0, pos: false, cap: false, by: "none", ...SEL_PRESETS[sportKey()], ...((root.settings || {}).sel || {}) };
+  const f = { b: 0, pos: false, cap: false, by: "none", auto: true, ...SEL_PRESETS[sportKey()], ...((root.settings || {}).sel || {}) };
   if (!f.n) f.n = minPlayers();
   if (f.f !== "squad") Object.assign(f, { b: 0, pos: false, cap: false });
   return f;
@@ -1326,6 +1339,56 @@ function lineupLines(sel, f, players) {
   if (r.length) lines.push({ k: "r", label: t("sel.group.reserves"), text: r.map((id, i) => `${i + 1}. ${name(id)}`).join(", ") });
   return lines;
 }
+// Checks before publishing: what a federation (or common sense) would object to. Only warnings: the admin decides.
+function selChecks(e, f, rec) {
+  const all = sortedPlayers(), P = rec.p || {}, s = Object.keys(P).filter(id => P[id] === "s" && root.players[id]);
+  const nm = id => { const p = root.players[id]; return p ? firstName(p.name) : "?"; }, list = ids => ids.map(nm).join(", ");
+  const out = [];
+  const no = s.filter(id => root.players[id].avail && root.players[id].avail[e.date] === "no");
+  const away = s.filter(id => !no.includes(id) && awayOn(root.players[id], e.date));
+  const open = s.filter(id => !no.includes(id) && !away.includes(id) && !(root.players[id].avail || {})[e.date]);
+  if (no.length) out.push(t("sel.chk.no", { names: list(no) }));
+  if (away.length) out.push(t("sel.chk.away", { names: list(away) }));
+  if (open.length) out.push(t("sel.chk.open", { names: list(open) }));
+  if (f.f === "squad") {
+    const start = s.filter(id => ((rec.pos || {})[id] || "start") !== "bench"), bench = s.length - start.length;
+    if (start.length !== f.n) out.push(t("sel.chk.starters", { s: start.length, n: f.n }));
+    if (bench > f.b) out.push(t("sel.chk.bench", { b: bench, B: f.b }));
+    if (f.pos && start.length) {
+      const gk = start.filter(id => (rec.pos || {})[id] === "gk").length;
+      if (!gk) out.push(t("sel.chk.noKeeper"));
+      if (gk > 1) out.push(t("sel.chk.keepers", { n: gk }));
+    }
+    if (f.cap && start.length && !rec.cap) out.push(t("sel.chk.noCap"));
+  } else {
+    const missing = s.filter(id => f.by !== "none" && strength(root.players[id], f.by) == null);
+    if (missing.length) out.push(t("sel.chk.noValue", { by: t("sel.fmt.by." + f.by).toLowerCase(), names: list(missing) }));
+    if (f.f === "order") {
+      if (s.length < f.n) out.push(t("sel.chk.players", { k: s.length, n: f.n }));
+      const ord = s.filter(id => !missing.includes(id)).sort((a, b) => (rec.o || {})[a] - (rec.o || {})[b]);
+      for (let i = 1; i < ord.length && f.by !== "none"; i++) {
+        const a = root.players[ord[i - 1]], b = root.players[ord[i]];
+        if (strength(a, f.by) < strength(b, f.by)) { // a higher number is stronger than a lower one
+          out.push(t("sel.chk.order", { a: (rec.o || {})[ord[i - 1]], an: nm(ord[i - 1]), av: sportValue(a, f.by), b: (rec.o || {})[ord[i]], bn: nm(ord[i]), bv: sportValue(b, f.by) }));
+          break;
+        }
+      }
+    } else {
+      const pairs = {};
+      s.forEach(id => { const n = (rec.pair || {})[id]; if (n) (pairs[n] = pairs[n] || []).push(id); });
+      const full = Object.keys(pairs).filter(n => pairs[n].length === 2).length;
+      if (full < f.n) out.push(t("sel.chk.pairs", { k: full, n: f.n }));
+      const single = Object.keys(pairs).filter(n => pairs[n].length === 1);
+      if (single.length) out.push(t("sel.chk.single", { n: single.join(", ") }));
+      if (f.by !== "none") {
+        const sum = n => pairs[n].reduce((x, id) => x + (strength(root.players[id], f.by) ?? NaN), 0);
+        const ns = Object.keys(pairs).filter(n => pairs[n].length === 2 && !Number.isNaN(sum(n))).map(Number).sort((a, b) => a - b);
+        for (let i = 1; i < ns.length; i++) if (sum(ns[i]) > sum(ns[i - 1])) { out.push(t("sel.chk.pairOrder", { a: ns[i], b: ns[i - 1] })); break; }
+      }
+    }
+  }
+  return out;
+}
 // Short words about my own place, for the pill on the match card.
 function roleShort(role, players) {
   if (!role) return "";
@@ -1347,7 +1410,10 @@ function selLine(e, players) {
   const gone = session.admin ? players.filter(p => (sel.p || {})[p.id] === "s" && p.avail[e.date] === "no").map(p => firstName(p.name)) : [];
   return `<div class="m-sel">${sel.pub ? ic("check") : ic("pencil")} <span>${sel.pub ? "" : `<i>${t("sel.draftTag")}</i> `}<b>${t("sel.title")}:</b> ${esc(text) || "–"}</span>
     ${sel.pub && mine ? `<span class="pill ${mine.k === "s" ? "yes" : "maybe"}">${esc(roleShort(mine, players))}</span>` : ""}
-    ${gone.length ? `<span class="pill no">${ic("info")} ${esc(t("sel.gone", { names: gone.join(", ") }))}</span>` : ""}</div>`;
+    ${gone.length ? `<span class="pill no">${ic("info")} ${esc(t("sel.gone", { names: gone.join(", ") }))}</span>` : ""}
+    ${sel.pub && sel.chg && root.players[sel.chg.out] ? `<span class="pill ${sel.chg.in ? "maybe" : "no"}">${ic("switch")} ${esc(sel.chg.in && root.players[sel.chg.in]
+      ? t("sel.chg.in", { in: firstName(root.players[sel.chg.in].name), out: firstName(root.players[sel.chg.out].name) })
+      : t("sel.chg.none", { out: firstName(root.players[sel.chg.out].name) }))}</span>` : ""}</div>`;
 }
 
 // The window: one choice per player (position / number / pair, bench, reserve), a preview, a suggestion, the format.
@@ -1460,11 +1526,16 @@ function renderSelection() {
         <label class="chk"><input name="pos" type="checkbox" ${f.pos ? "checked" : ""}> ${esc(t("sel.fmt.pos"))}</label>
         <label class="chk"><input name="cap" type="checkbox" ${f.cap ? "checked" : ""}> ${esc(t("sel.fmt.cap"))}</label>`
       : `<label><span>${esc(t("sel.fmt.by"))}</span><select name="by">${["handicap", "ranking", "none"].map(k => `<option value="${k}" ${f.by === k ? "selected" : ""}>${esc(t(k === "none" ? "sel.fmt.byNone" : "sel.fmt.by." + k))}</option>`).join("")}</select></label>`}
+      <label class="chk wide"><input name="auto" type="checkbox" ${f.auto !== false ? "checked" : ""}> ${esc(t("sel.fmt.auto"))}</label>
       <button type="button" class="primary" data-sel-fmt-save>${esc(t("sel.fmt.save"))}</button></div>` : ""}`;
   // Preview of the line-up as it stands.
   const lines = lineupLines(selRecord(false), f, all);
   document.getElementById("sel-preview").innerHTML = lines.length
     ? lines.map(l => `<div class="sel-pv-row"><b>${esc(l.label)}</b><span>${esc(l.text)}</span></div>`).join("") : `<p class="muted">${esc(t("sel.empty"))}</p>`;
+  const checks = selChecks(e, f, selRecord(false)), chk = document.getElementById("sel-checks");
+  chk.hidden = !c.start && !c.order && !c.pairs && !c.res && !c.bench;
+  chk.className = "sel-checks" + (checks.length ? " warn" : " ok");
+  chk.innerHTML = checks.length ? checks.map(x => `<div>${ic("info")} <span>${esc(x)}</span></div>`).join("") : `<div>${ic("check")} <span>${esc(t("sel.chk.ok"))}</span></div>`;
   document.getElementById("sel-suggest-help").textContent = t("sel.suggestHelp." + f.f, { by });
   const opts = slotOptions(f);
   document.getElementById("sel-list").innerHTML = list.map(({ p, i, a }) => {
@@ -1498,6 +1569,7 @@ document.getElementById("sel-form").addEventListener("click", async ev => {
     const type = val("f").value, n = Math.max(1, Math.min(30, parseInt(val("n").value, 10) || selDraft.f.n));
     const next = type === "squad" ? { f: type, n, b: Math.max(0, Math.min(20, parseInt((val("b") || {}).value, 10) || 0)), pos: !!(val("pos") || {}).checked, cap: !!(val("cap") || {}).checked }
       : { f: type, n, by: (val("by") || {}).value || (type === "pairs" ? "ranking" : "handicap") };
+    next.auto = !!(val("auto") || {}).checked;
     const keep = selRecord(false);
     if (!(await update({ "settings/sel": next }))) return;
     selDraft.f = selFormat();
@@ -1510,8 +1582,8 @@ document.getElementById("sel-form").addEventListener("click", async ev => {
 document.getElementById("sel-form").addEventListener("change", ev => {
   if (ev.target.name !== "f" || !ev.target.closest("#sel-fmt")) return;
   const type = ev.target.value, saved = selFormat();
-  selDraft.f = type === saved.f ? saved : type === "squad" ? { f: type, n: 11, b: 5, pos: true, cap: true, by: "none" }
-    : { f: type, n: type === "order" ? 6 : 3, b: 0, pos: false, cap: false, by: type === "order" ? "handicap" : "ranking" };
+  selDraft.f = type === saved.f ? saved : type === "squad" ? { f: type, n: 11, b: 5, pos: true, cap: true, by: "none", auto: saved.auto }
+    : { f: type, n: type === "order" ? 6 : 3, b: 0, pos: false, cap: false, by: type === "order" ? "handicap" : "ranking", auto: saved.auto };
   renderSelection();
 });
 document.getElementById("sel-draft").onclick = () => { update({ [`selection/${selDraft.e.date}`]: selRecord(false) }); selDlg.close(); };
@@ -1522,7 +1594,8 @@ document.getElementById("sel-clear").onclick = () => {
 document.getElementById("sel-pub").onclick = async () => {
   const { e, f } = selDraft, rec = selRecord(true), c = selCounts();
   if (!Object.values(rec.p || {}).includes("s")) return alert(t("sel.none"));
-  if (c.have < f.n && !confirm(t("sel.incomplete", { have: c.have, need: f.n }))) return;
+  const checks = selChecks(e, f, rec);
+  if (checks.length && !confirm(t("sel.chk.confirm") + "\n\n• " + checks.join("\n• "))) return;
   selDlg.close();
   const ok = await update({ [`selection/${e.date}`]: rec });
   if (!ok) return;

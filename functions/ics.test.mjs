@@ -106,4 +106,31 @@ console.log("notice tests ok");
   assert(feed.includes("📋 Geselecteerd. Je speelt in paar 1 met Lisa."), "pair in the calendar");
   assert(!feed.includes("nummer 2"), "a draft selection stays out of the calendar");
 }
+// Dropout chain (lineup.js promoteReserve): reserve 1 takes the exact place, reserves move up, the change is recorded.
+{
+  const { promoteReserve, subText, roleOf } = await import("./lineup.js");
+  const golf = { p: { a: "s", b: "s", r1: "r", r2: "r" }, o: { a: 1, b: 2, r1: 1, r2: 2 }, pub: true };
+  const g = promoteReserve(golf, "a", 7);
+  assert.equal(g.in, "r1");
+  assert.deepEqual(g.sel.p, { b: "s", r1: "s", r2: "r" });
+  assert.deepEqual(g.sel.o, { b: 2, r1: 1, r2: 1 }, "r1 plays as number 1, r2 becomes reserve 1");
+  assert.deepEqual(g.sel.chg, { out: "a", in: "r1", at: 7 });
+  const hockey = { p: { k: "s", d: "s", r: "r" }, pos: { k: "gk", d: "def" }, cap: "k", o: { r: 1 }, pub: true };
+  const h = promoteReserve(hockey, "k", 1);
+  assert.equal(h.sel.pos.r, "gk", "the reserve goes in goal");
+  assert.equal(h.sel.cap, undefined, "no captain any more");
+  assert.equal(h.sel.o, undefined, "no reserve numbers left");
+  assert.equal(roleOf(h.sel, "r").pos, "gk");
+  const padel = { p: { x: "s", y: "s", r: "r" }, pair: { x: 1, y: 1 }, o: { r: 1 }, pub: true };
+  const pd = promoteReserve(padel, "y", 1);
+  assert.equal(roleOf(pd.sel, "r").mate, "x", "the reserve joins pair 1 with x");
+  const none = promoteReserve({ p: { a: "s" }, pub: true }, "a", 1);
+  assert.equal(none.in, null);
+  assert.deepEqual(none.sel.chg, { out: "a", at: 1 });
+  assert.equal(promoteReserve(golf, "r1"), null, "a reserve leaving changes nothing here");
+  assert.equal(promoteReserve(golf, "zz"), null);
+  assert.equal(subText("in", "nl", { out: "Jan", opp: "Racing", when: "zondag 1 november" }), "✅ Jan kan niet meer: jij speelt nu mee tegen Racing op zondag 1 november.");
+  assert.equal(subText("admin", "en", { out: "Jan", sub: null, opp: "Racing" }), "⚠️ Jan can't make it to Racing, and there's no reserve left. Find a replacement.");
+  assert.equal(subText("manual", "fr", { out: "Jan", opp: "Racing" }), "⚠️ Jan ne peut plus pour Racing. Choisis un remplaçant dans la sélection.");
+}
 console.log("reminder tests passed");

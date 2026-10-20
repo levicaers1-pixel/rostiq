@@ -14,7 +14,7 @@
 // for 15 minutes: calendar apps polling every hour mostly hit that cache, not this function or the database.
 // Capped at a few instances, so even a flood of requests can't run up the bill.
 import { onRequest } from "firebase-functions/v2/https";
-import { onValueCreated } from "firebase-functions/v2/database";
+import { onValueCreated, onValueWritten } from "firebase-functions/v2/database";
 import { onSchedule } from "firebase-functions/v2/scheduler";
 import { defineSecret } from "firebase-functions/params";
 import { initializeApp } from "firebase-admin/app";
@@ -22,7 +22,7 @@ import { getDatabase } from "firebase-admin/database";
 import { getMessaging } from "firebase-admin/messaging";
 import { buildFeed } from "./ics.js";
 import { noticeMessage } from "./notice.js";
-import { roleOf } from "./lineup.js";
+import { roleOf, roleText, promoteReserve, subText } from "./lineup.js";
 import { runJob } from "./job.mjs";
 import { sendReminder, sendProfileAsk } from "./remind.mjs";
 
@@ -120,6 +120,66 @@ export const notice = onValueCreated({ ref: "/notices/{tid}/{id}", instance: "wi
   if (Object.keys(gone).length) await db.ref().update(gone);
   console.log(`notice ${n.k}: ${sent} notifications sent`);
   return done();
+});
+
+// dropout: a selected player switches to "no" (or a holiday sets it) for a match with a published selection: reserve 1
+// takes their exact place (position, number, pair), and gets a notification with their role; the admins hear who left and
+// who stepped in (or that no reserve is left); riders of a driver who left hear their lift is gone. Teams can switch it
+// off (settings/sel/auto = false): then only the admins are told.
+export const dropout = onValueWritten({ ref: "/teams/{tid}/players/{pid}/avail/{date}", instance: "wintermidam-default-rtdb",
+  region: process.env.FUNCTIONS_EMULATOR === "true" ? "us-central1" : "europe-west1",
+  memory: "256MiB", maxInstances: 3, timeoutSeconds: 60 }, async event => {
+  const { tid, pid, date } = event.params;
+  if (event.data.after.val() !== "no" || event.data.before.val() === "no") return;
+  if (!/^[a-z0-9][a-z0-9-]{1,39}$/.test(tid) || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return;
+  const T = `teams/${tid}`, today = new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Brussels" });
+  if (date < today) return;
+  const [sched, match, brand, auto, players, admins, members, carpool] = await Promise.all([val(`${T}/schedule/${date}`), val(`${T}/matches/${date}`),
+    val(`${T}/info/brand`), val(`${T}/settings/sel/auto`), val(`${T}/players`), val(`${T}/admins`), val(`${T}/members`), val(`${T}/carpool/${date}`)]);
+  if (!sched || !sched.opp || sched.cancelled === true) return;
+  // In a transaction, so two players dropping out at the same moment can't both get the same reserve.
+  let result = null;
+  const tx = await db.ref(`${T}/selection/${date}`).transaction(sel => {
+    result = null;
+    if (sel === null) return null; // first try may run before the data is known: "no change", Firebase retries with the real value
+    if (!sel.pub || !sel.p || sel.p[pid] !== "s") return; // not selected: nothing to do
+    if (auto === false) { result = { sel, in: null, manual: true }; return; } // no change; just tell the admins
+    result = promoteReserve(sel, pid);
+    return result.sel;
+  });
+  if (!result || (!tx.committed && !result.manual)) return;
+  const first = id => String(((players || {})[id] || {}).name || "").trim().split(/\s+/)[0] || "?";
+  const out = first(pid), sub = result.in ? first(result.in) : null, opp = String(sched.opp).slice(0, 60);
+  const uidOf = id => Object.keys(members || {}).find(u => members[u] === id);
+  const when = lang => new Date(date + "T12:00:00Z").toLocaleDateString({ nl: "nl-BE", fr: "fr-BE", en: "en-GB" }[lang] || "nl-BE", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" });
+  const base = { title: String(brand || "RostiQ").slice(0, 60), link: `https://app.rostiq.be/?t=${encodeURIComponent(tid)}` };
+  let sent = 0;
+  const pushTo = async (uid, body) => {
+    for (const [dev, info] of Object.entries((uid && (await val(`pushTokens/${uid}`))) || {})) {
+      if (!info || !info.token) continue;
+      try { await getMessaging().send({ token: info.token, data: { ...base, tag: `${tid}-sel-${date}`, body: body(info.lang) }, webpush: { headers: { Urgency: "high", TTL: String(24 * 3600) } } }); sent++; }
+      catch (e) { const code = (e && (e.code || e.errorInfo && e.errorInfo.code)) || ""; if (/registration-token-not-registered|invalid-registration-token/.test(code)) await db.ref(`pushTokens/${uid}/${dev}`).remove(); }
+    }
+  };
+  // The reserve: you're in, with your role.
+  if (result.in) {
+    const role = roleOf(result.sel, result.in), mate = role && role.mate ? first(role.mate) : "";
+    await pushTo(uidOf(result.in), lang => [subText("in", lang, { out, opp, when: when(lang) }), roleText(role, lang, mate)].filter(Boolean).join(" "));
+  }
+  // The admins (not the player who left, if they're an admin themselves).
+  for (const uid of Object.keys(admins || {})) if (admins[uid] === true && members && members[uid] !== pid)
+    await pushTo(uid, lang => subText(result.manual ? "manual" : "admin", lang, { out, sub, opp }));
+  // A driver who left: their riders need a new lift (the ride itself is cleared).
+  const cp = carpool || {}, mine = cp[pid], fix = {};
+  if (!result.manual && mine) {
+    fix[`${T}/carpool/${date}/${pid}`] = null;
+    if (mine.role === "driver") for (const [id, x] of Object.entries(cp)) if (x && x.role === "rider" && x.with === pid) {
+      fix[`${T}/carpool/${date}/${id}/with`] = null;
+      await pushTo(uidOf(id), lang => subText("ride", lang, { out, opp }));
+    }
+  }
+  if (Object.keys(fix).length) await db.ref().update(fix);
+  console.log(`dropout: ${result.manual ? "admins told (automatic replacement off)" : result.in ? "reserve stepped in" : "no reserve left"}, ${sent} notifications`);
 });
 
 // Every 10 minutes at :05, :15, … (so it never runs at the same moment as the daily job at :30).

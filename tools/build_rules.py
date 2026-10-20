@@ -105,6 +105,7 @@ def settings_rules():
         "sel": {"f": {".validate": "newData.val() === 'squad' || newData.val() === 'order' || newData.val() === 'pairs'"},
                 "n": num(1, 30), "b": num(0, 20),
                 "pos": {".validate": "newData.isBoolean()"}, "cap": {".validate": "newData.isBoolean()"},
+                "auto": {".validate": "newData.isBoolean()"},  # false = a reserve doesn't step in by itself (admins are told)
                 "by": {".validate": "newData.val() === 'handicap' || newData.val() === 'ranking' || newData.val() === 'none'"},
                 "$other": NO},  # false = personal answer links don't work for this team  # false = no automatic push reminders for this team
         "$other": NO,
@@ -205,6 +206,8 @@ team = {
         "pos": {"$pid": {".validate": "newData.val() === 'gk' || newData.val() === 'def' || newData.val() === 'mid' || newData.val() === 'fwd' || newData.val() === 'bench'"}},
         "pair": {"$pid": num(1, 10)},
         "cap": {".validate": "newData.isString() && newData.val().matches(/^[A-Za-z0-9_-]{1,40}$/)"},
+        # The last change by the dropout function (who left, who stepped in); the admin's own save simply leaves it out.
+        "chg": {"out": {".validate": "newData.isString()"}, "in": {".validate": "newData.isString()"}, "at": {".validate": "newData.isNumber()"}, "$other": NO},
         "pub": {".validate": "newData.isBoolean()"}, "at": {".validate": "newData.isNumber()"},
         "$other": NO}},
     "carpool": carpool_rules(f"{TA} || {OWNER}", MYPID),

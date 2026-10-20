@@ -38,3 +38,46 @@ export function roleText(role, lang, mateName) {
   if (role.cap) bits.push(T.cap);
   return bits.join(" ");
 }
+
+// ---- A selected player drops out: reserve 1 takes their exact place (position, number or pair) ----
+/** Returns { sel: the new selection, in: the reserve who comes in (or null) } for player pid leaving; null when pid wasn't
+ *  selected. Reserves move up (reserve 2 becomes reserve 1); a captain who drops out leaves the team without one. */
+export function promoteReserve(sel, pid, at = Date.now()) {
+  if (!sel || !sel.p || sel.p[pid] !== "s") return null;
+  const next = JSON.parse(JSON.stringify(sel)), o = next.o || {};
+  const reserves = Object.keys(next.p).filter(id => next.p[id] === "r").sort((a, b) => (Number(o[a]) || 99) - (Number(o[b]) || 99));
+  const sub = reserves[0] || null;
+  if (sub) {
+    next.p[sub] = "s";
+    for (const k of ["pos", "pair"]) if (next[k] && next[k][pid] != null) next[k][sub] = next[k][pid];
+    if (o[pid] != null) o[sub] = o[pid]; else delete o[sub]; // the playing number (order format), not the reserve number
+  }
+  delete next.p[pid];
+  for (const k of ["o", "pos", "pair"]) if (next[k]) delete next[k][pid];
+  if (next.cap === pid) delete next.cap;
+  reserves.slice(1).forEach((id, i) => { o[id] = i + 1; });
+  next.o = o;
+  for (const k of ["o", "pos", "pair"]) if (next[k] && !Object.keys(next[k]).length) delete next[k];
+  next.chg = { out: pid, ...(sub ? { in: sub } : {}), at };
+  return { sel: next, in: sub };
+}
+
+const SUB = {
+  nl: { in: (out, opp, when) => `✅ ${out} kan niet meer: jij speelt nu mee tegen ${opp} op ${when}.`,
+        admin: (out, sub, opp) => sub ? `🔁 ${out} kan niet meer voor ${opp}. ${sub} (reserve) valt in.` : `⚠️ ${out} kan niet meer voor ${opp}, en er is geen reserve meer. Zoek een vervanger.`,
+        ride: (out, opp) => `🚗 ${out} rijdt niet meer naar ${opp}. Zoek een nieuwe lift in RostiQ.`,
+        manual: (out, opp) => `⚠️ ${out} kan niet meer voor ${opp}. Kies een vervanger in de selectie.` },
+  fr: { in: (out, opp, when) => `✅ ${out} ne peut plus : tu joues maintenant contre ${opp} le ${when}.`,
+        admin: (out, sub, opp) => sub ? `🔁 ${out} ne peut plus pour ${opp}. ${sub} (réserve) le remplace.` : `⚠️ ${out} ne peut plus pour ${opp}, et il n'y a plus de réserve. Trouve un remplaçant.`,
+        ride: (out, opp) => `🚗 ${out} ne conduit plus vers ${opp}. Cherche un nouveau trajet dans RostiQ.`,
+        manual: (out, opp) => `⚠️ ${out} ne peut plus pour ${opp}. Choisis un remplaçant dans la sélection.` },
+  en: { in: (out, opp, when) => `✅ ${out} can't make it: you're now playing against ${opp} on ${when}.`,
+        admin: (out, sub, opp) => sub ? `🔁 ${out} can't make it to ${opp}. ${sub} (reserve) steps in.` : `⚠️ ${out} can't make it to ${opp}, and there's no reserve left. Find a replacement.`,
+        ride: (out, opp) => `🚗 ${out} is no longer driving to ${opp}. Find a new lift in RostiQ.`,
+        manual: (out, opp) => `⚠️ ${out} can't make it to ${opp}. Pick a replacement in the selection.` },
+};
+/** Texts for the dropout chain: kind "in" (the reserve), "admin", "manual" (admins, automatic replacement off), "ride". */
+export function subText(kind, lang, v) {
+  const T = SUB[SUB[lang] ? lang : "nl"];
+  return kind === "in" ? T.in(v.out, v.opp, v.when) : kind === "admin" ? T.admin(v.out, v.sub, v.opp) : kind === "manual" ? T.manual(v.out, v.opp) : T.ride(v.out, v.opp);
+}

@@ -212,6 +212,9 @@
         "cap": {
           ".validate": "newData.isBoolean()"
         },
+        "auto": {
+          ".validate": "newData.isBoolean()"
+        },
         "by": {
           ".validate": "newData.val() === 'handicap' || newData.val() === 'ranking' || newData.val() === 'none'"
         },
@@ -541,6 +544,9 @@
             "cap": {
               ".validate": "newData.isBoolean()"
             },
+            "auto": {
+              ".validate": "newData.isBoolean()"
+            },
             "by": {
               ".validate": "newData.val() === 'handicap' || newData.val() === 'ranking' || newData.val() === 'none'"
             },
@@ -642,6 +648,20 @@
             },
             "cap": {
               ".validate": "newData.isString() && newData.val().matches(/^[A-Za-z0-9_-]{1,40}$/)"
+            },
+            "chg": {
+              "out": {
+                ".validate": "newData.isString()"
+              },
+              "in": {
+                ".validate": "newData.isString()"
+              },
+              "at": {
+                ".validate": "newData.isNumber()"
+              },
+              "$other": {
+                ".validate": false
+              }
             },
             "pub": {
               ".validate": "newData.isBoolean()"
