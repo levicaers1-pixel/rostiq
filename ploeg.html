@@ -59,6 +59,49 @@
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .empty { color: var(--muted); }
 
+  /* RostiQ next: ring, status dot, tags (tiles on phones), season leaderboard, player sheet */
+  .av-wrap { position: relative; flex-shrink: 0; }
+  .av-wrap .dot { position: absolute; right: -2px; bottom: -2px; width: 14px; height: 14px; border-radius: 50%; border: 3px solid var(--surface); background: var(--yes); }
+  .av-wrap .dot.away { background: var(--maybe); }
+  .av-wrap .dot.off { background: color-mix(in srgb, var(--muted) 60%, var(--surface)); }
+  .card.me .av-wrap .dot { border-color: var(--brand); }
+  .p-ring { display: none; position: absolute; right: 10px; top: 10px; width: 42px; height: 42px; border-radius: 50%; place-items: center;
+    background: conic-gradient(var(--pampas) 0 var(--p), color-mix(in srgb, var(--muted) 18%, transparent) var(--p)); }
+  .p-ring::after { content: ""; position: absolute; inset: 5px; border-radius: 50%; background: var(--surface); }
+  .p-ring b { position: relative; z-index: 1; font-size: .62rem; font-weight: 800; }
+  .card.me .p-ring::after { background: var(--brand); }
+  .p-tags { display: none; gap: 4px; flex-wrap: wrap; }
+  .p-tags span { font-size: .64rem; font-weight: 800; padding: 3px 7px; border-radius: 7px; background: color-mix(in srgb, var(--muted) 12%, var(--surface)); color: var(--muted); }
+  .card.me .p-tags span { background: color-mix(in srgb, var(--brand-text) 14%, transparent); color: var(--pampas); }
+  @media (max-width: 700px) {
+    #grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+    #grid .card { position: relative; gap: 0; cursor: pointer; }
+    #grid .card .head { flex-direction: column; align-items: flex-start; gap: 8px; padding: 12px; background: none; min-height: 100%; }
+    #grid .card.me { background: var(--brand); border-color: var(--brand); }
+    #grid .card.me .head { color: var(--brand-text); }
+    #grid .card .avatar { width: 54px; height: 54px; border-radius: 18px; box-shadow: none; }
+    #grid .card .name { font-size: .9rem; line-height: 1.2; }
+    #grid .card .you { display: none; }
+    #grid .card .place { font-size: .72rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+    #grid .card .who { width: 100%; }
+    #grid .card .icons, #grid .card > .facts, #grid .card > .fill-in, #grid .card > .stats { display: none; }
+    #grid .card .p-ring { display: grid; }
+    #grid .card .p-tags { display: flex; }
+  }
+  .season-top { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(min(280px, 100%), 1fr)); margin-top: 22px; }
+  .season-top h3 { margin: 0 0 8px; font-size: .7rem; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+  .lb { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; overflow: hidden; box-shadow: var(--shadow-sm); }
+  .lb-row { display: flex; align-items: center; gap: 12px; padding: 11px 14px; font-size: .88rem; font-weight: 700; }
+  .lb-row + .lb-row { border-top: 1px solid var(--border); }
+  .lb-row .rk { width: 18px; font-family: var(--font-display); font-weight: 400; font-size: 1.1rem; color: var(--muted); }
+  .lb-row .avatar { width: 30px; height: 30px; font-size: .7rem; box-shadow: none; }
+  .lb-row .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .lb-row .v { font-family: var(--font-display); font-weight: 400; font-size: 1.15rem; }
+  .p-sheet { padding: 16px; }
+  .p-sheet .card { box-shadow: none; border: 0; }
+  .p-sheet .p-ring, .p-sheet .p-tags { display: none !important; }
+  .p-sheet .sheet-close { display: flex; justify-content: flex-end; margin-top: 10px; }
+
   /* Edit dialog: photo */
   .photo-row { display: flex; align-items: center; gap: 16px; margin: 4px 0 6px; }
   .avatar.big { width: 72px; height: 72px; font-size: 1.6rem; }
@@ -95,6 +138,7 @@
     <button id="export" hidden data-i18n="team.export">⬇️ Export member list</button>
   </div>
   <div class="grid" id="grid"></div>
+  <div class="season-top" id="season-top"></div>
 </main>
 
 <dialog id="edit" class="edit-dlg">
@@ -173,11 +217,18 @@ let render = function () {
       fedOn() && p.fed && `<span><span class="lbl">${esc(fedLabel())}</span> <span class="fed">${esc(p.fed)}</span><button class="copy" data-copy="${esc(p.fed)}" title="${t("copy")}" aria-label="${t("copy")}">${ic("clipboard")}</button></span>`,
     ].filter(Boolean);
     const missing = mine && (!p.email || customFields().some(([k]) => !(p.extra || {})[k]) || (fedOn() && !p.fed));
+    const awayNow = !!awayNext(p) && awayNext(p).f <= TODAY;
+    const dot = awayNow ? "away" : AUTH_ON && !p.uid ? "off" : AUTH_ON ? "on" : "";
+    const pct = EVENTS.length ? Math.round(100 * st.yes / EVENTS.length) : 0;
+    const f1 = customFields().find(([k]) => (p.extra || {})[k]);
+    const tags = [f1 && `<span>${esc(p.extra[f1[0]])}</span>`, st.drove && `<span>🚗 ${st.drove}</span>`].filter(Boolean);
     return `<article class="card ${mine ? "me" : ""}">
       <div class="head">
-        <div class="avatar" style="${avatarBg(p)}">${photoOf(p) ? "" : esc(initials(p.name))}</div>
+        <span class="av-wrap"><div class="avatar" style="${avatarBg(p)}">${photoOf(p) ? "" : esc(initials(p.name))}</div>${dot ? `<span class="dot ${dot}"></span>` : ""}</span>
         <div class="who"><div class="name">${esc(p.name)}${mine ? `<span class="you">${t("team.you")}</span>` : ""}</div>
-          <div class="place">${place ? esc(place) : ""}</div></div>
+          <div class="place">${awayNow ? esc(t("away.label", { when: awayText(awayNext(p)) })) : place ? esc(place) : ""}</div>
+          ${tags.length ? `<div class="p-tags">${tags.join("")}</div>` : ""}</div>
+        <div class="p-ring" style="--p:${pct}%" title="${esc(t("team.statYes"))}"><b>${pct}%</b></div>
         <div class="icons">
           ${p.phone && !mine ? `<a class="icon-btn wa" href="https://wa.me/${p.phone}" target="_blank" rel="noopener" title="WhatsApp" aria-label="WhatsApp">${ic("message")}</a>` : ""}
           ${editable ? `<button class="icon-btn" data-edit="${p.id}" title="${t(mine ? "team.editMine" : "team.edit")}" aria-label="${t(mine ? "team.editMine" : "team.edit")}">${ic("pencil")}</button>` : ""}
@@ -192,7 +243,33 @@ let render = function () {
       </div>
     </article>`;
   }).join("");
+  renderSeasonTop();
 };
+function renderSeasonTop() {
+  const box = document.getElementById("season-top");
+  const all = sortedPlayers().filter(p => p.name).map(p => ({ p, st: statsFor(p) }));
+  if (!dataLoaded || filterText || !EVENTS.length || !all.length) { box.innerHTML = ""; return; }
+  const list = (key, val) => all.filter(x => x.st[key] > 0).sort((a, b) => b.st[key] - a.st[key] || a.p.name.localeCompare(b.p.name)).slice(0, 3)
+    .map((x, i) => `<div class="lb-row"><span class="rk">${i + 1}</span><div class="avatar" style="${avatarBg(x.p)}">${photoOf(x.p) ? "" : esc(initials(x.p.name))}</div>
+      <span class="nm">${esc(x.p.name)}</span><span class="v">${val(x)}</span></div>`).join("");
+  const yes = list("yes", x => `${x.st.yes}/${EVENTS.length}`), drove = list("drove", x => `🚗 ${x.st.drove}`);
+  box.innerHTML = (yes ? `<div><h3>${t("team.topYes")}</h3><div class="lb">${yes}</div></div>` : "") +
+    (drove ? `<div><h3>${t("team.topDrove")}</h3><div class="lb">${drove}</div></div>` : "");
+}
+// Phones: a tap on a tile opens a sheet with the whole card (contact, fields, numbers, edit).
+const sheet = document.createElement("dialog");
+sheet.className = "p-sheet";
+document.body.appendChild(sheet);
+sheet.addEventListener("click", ev => {
+  if (ev.target === sheet || ev.target.closest("[data-sheet-close]")) return sheet.close();
+  const e = ev.target.closest("[data-edit]");
+  if (e) { sheet.close(); openEdit(e.dataset.edit); }
+});
+function openSheet(card) {
+  sheet.innerHTML = `<article class="${card.className}">${card.innerHTML}</article>
+    <div class="sheet-close"><button type="button" data-sheet-close>${t("close")}</button></div>`;
+  sheet.showModal();
+}
 
 document.getElementById("filter").addEventListener("input", ev => { filterText = ev.target.value.trim(); render(); });
 document.addEventListener("click", ev => {
@@ -206,7 +283,9 @@ document.getElementById("grid").addEventListener("click", async ev => {
     try { await navigator.clipboard.writeText(c.dataset.copy); c.textContent = "✓"; setTimeout(() => (c.textContent = "📋"), 1200); } catch {}
   }
   const e = ev.target.closest("[data-edit]");
-  if (e) openEdit(e.dataset.edit);
+  if (e) return openEdit(e.dataset.edit);
+  const card = ev.target.closest(".card");
+  if (card && !c && !ev.target.closest("a, button") && matchMedia("(max-width: 700px)").matches) openSheet(card);
 });
 
 // ---- Edit my (or, for the admin, anyone's) details ----

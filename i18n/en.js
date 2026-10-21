@@ -580,6 +580,8 @@ T.en = {
   "me.appTitle": "Notifications & app", "me.addAway": "Add time away", "me.awayNone": "No time away planned.",
   "cal.all": "All", "cal.todo": "To answer", "cal.noneTodo": "You've answered everything.", "cal.noneFilter": "No matches for this filter.",
   "cal.count": ({ n }) => `${n} ${n === 1 ? "match" : "matches"}`,
+  "cp.seatsFree": ({ n }) => n === 1 ? "free seat" : "free seats",
+  "team.topYes": "Most reliable", "team.topDrove": "Most rides given",
   "rem.title": ({ n, opp, when }) => `${n} without an answer · ${opp}, ${when}`,
   "rem.sub": "A personal reminder arrives as a notification on their phone, or else by email, with Yes / No / Maybe in it. One tap and their answer is in. Untick anyone you want to skip.",
   "rem.you": "That's you: answer above",

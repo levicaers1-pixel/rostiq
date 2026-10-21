@@ -576,6 +576,8 @@ T.nl = {
   "me.appTitle": "Meldingen & app", "me.addAway": "Afwezigheid toevoegen", "me.awayNone": "Geen afwezigheid gepland.",
   "cal.all": "Alles", "cal.todo": "Te beantwoorden", "cal.noneTodo": "Je hebt alles beantwoord.", "cal.noneFilter": "Geen wedstrijden voor deze filter.",
   "cal.count": ({ n }) => `${n} ${n === 1 ? "wedstrijd" : "wedstrijden"}`,
+  "cp.seatsFree": ({ n }) => n === 1 ? "vrije plaats" : "vrije plaatsen",
+  "team.topYes": "Trouwste spelers", "team.topDrove": "Meeste ritten",
   "rem.title": ({ n, opp, when }) => `${n} zonder antwoord · ${opp}, ${when}`,
   "rem.sub": "Een persoonlijke herinnering komt als melding op hun gsm, of anders per e-mail, met Ja / Nee / Misschien erin. Eén tik en hun antwoord staat erin. Vink uit wie je overslaat.",
   "rem.you": "Dat ben jij: antwoord hierboven",

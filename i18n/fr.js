@@ -580,6 +580,8 @@ T.fr = {
   "me.appTitle": "Notifications & app", "me.addAway": "Ajouter une absence", "me.awayNone": "Aucune absence prévue.",
   "cal.all": "Tout", "cal.todo": "À répondre", "cal.noneTodo": "Tu as tout répondu.", "cal.noneFilter": "Aucun match pour ce filtre.",
   "cal.count": ({ n }) => `${n} ${plural(n, "match", "matchs")}`,
+  "cp.seatsFree": ({ n }) => n === 1 ? "place libre" : "places libres",
+  "team.topYes": "Les plus fidèles", "team.topDrove": "Le plus de trajets",
   "rem.title": ({ n, opp, when }) => `${n} sans réponse · ${opp}, ${when}`,
   "rem.sub": "Un rappel personnel arrive en notification sur leur téléphone, sinon par e-mail, avec Oui / Non / Peut-être. Un geste et leur réponse est enregistrée. Décoche ceux que tu veux passer.",
   "rem.you": "C'est toi : réponds plus haut",

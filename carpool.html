@@ -147,6 +147,32 @@
   .list li .av { width: 28px; height: 28px; font-size: .62rem; border: none; }
   .stats { display: grid; gap: 6px; }
   .stats h3 { display: flex; align-items: center; gap: 8px; }
+  /* RostiQ next */
+  .match { border-radius: 22px; }
+  .cp-route { position: relative; height: 112px; border-radius: 20px; overflow: hidden;
+    background: radial-gradient(120% 120% at 100% 0, color-mix(in srgb, var(--pampas) 26%, transparent), transparent 60%),
+      linear-gradient(135deg, color-mix(in srgb, var(--brand) 12%, var(--surface)), color-mix(in srgb, var(--brand) 24%, var(--surface))); }
+  .cp-route svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .cp-route .from, .cp-route .to { position: absolute; width: 14px; height: 14px; border-radius: 50%; border: 3px solid var(--surface); }
+  .cp-route .from { left: 18%; top: 66%; background: var(--pampas); }
+  .cp-route .to { left: 80%; top: 22%; background: var(--brand); }
+  .cp-route .tag { position: absolute; left: 12px; bottom: 12px; display: flex; align-items: baseline; gap: 6px; padding: 8px 12px; border-radius: 14px;
+    background: var(--surface); box-shadow: 0 6px 16px -8px rgb(0 0 0 / .35); font-size: .8rem; font-weight: 700; }
+  .cp-route .tag b { font-family: var(--font-display); font-weight: 400; font-size: 1.25rem; }
+  .cp-route .tag2 { position: absolute; right: 12px; top: 12px; display: flex; gap: 6px; }
+  .cp-route .tag2 span { padding: 5px 10px; border-radius: 999px; font-size: .7rem; font-weight: 800; background: var(--brand); color: var(--brand-text); }
+  .cp-route .tag2 span.wait { background: var(--maybe); color: #fff; }
+  .mine .segmented { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; padding: 0; background: none; border: 0; }
+  .mine .segmented button { display: grid; justify-items: center; gap: 6px; padding: 12px 6px; border-radius: 16px; border: 1px solid var(--border);
+    background: var(--surface); color: var(--muted); font-size: .8rem; font-weight: 700; line-height: 1.2; }
+  .mine .segmented button svg.i { width: 22px; height: 22px; }
+  .mine .segmented button[aria-pressed="true"] { background: var(--pampas); color: var(--brand); border-color: transparent; box-shadow: 0 8px 18px -10px rgb(0 0 0 / .5); }
+  html.dark .mine .segmented button[aria-pressed="true"] { color: #0b0d14; }
+  .car { border-radius: 18px; padding: 14px; }
+  .car.me { box-shadow: 0 0 0 1px var(--accent); }
+  .seat-row .av, .seat-empty { width: 32px; height: 32px; border-radius: 11px; }
+  .seat-empty { border-width: 1.5px; }
+  .car .action { background: var(--brand); color: var(--brand-text); border-color: transparent; border-radius: 12px; font-weight: 800; }
 </style>
 <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/12.12.0/firebase-app.js" crossorigin>
 <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/12.12.0/firebase-auth.js" crossorigin>
@@ -452,10 +478,11 @@ function renderMatch(e) {
       </div>
       <button class="ghost" data-act="share" title="${t("share.carpool")}" aria-label="${t("share.carpool")}">${ic("share")}</button>
     </div>
-    ${e.home === true && !showHomeCarpool.has(e.date) && !Object.keys(st.all).length ? "" : `<div class="cp-pills">
-      <span class="pill gray">${ic("car")} ${t("cp.cars", { n: st.cars.length })}</span>
-      <span class="pill ${freeSeats ? "yes" : "gray"}">${t("cp.free", { n: freeSeats })}</span>
-      ${st.waiting.length ? `<span class="pill maybe">${t("cp.waiting", { n: st.waiting.length })}</span>` : ""}
+    ${e.home === true && !showHomeCarpool.has(e.date) && !Object.keys(st.all).length ? "" : `<div class="cp-route" aria-label="${esc(t("cp.free", { n: freeSeats }))}">
+      <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><path d="M20 70 C 42 82, 52 22, 82 26" fill="none" stroke="var(--brand)" stroke-width="1.6" stroke-dasharray="3 3" opacity=".55" vector-effect="non-scaling-stroke"/></svg>
+      <span class="from"></span><span class="to"></span>
+      <span class="tag2"><span>${ic("car")} ${t("cp.cars", { n: st.cars.length })}</span>${st.waiting.length ? `<span class="wait">${t("cp.waiting", { n: st.waiting.length })}</span>` : ""}</span>
+      <div class="tag"><b>${freeSeats}</b>${t("cp.seatsFree", { n: freeSeats })}</div>
     </div>`}`;
 
   // Home match: usually no carpool needed, unless someone asks for it (or already arranged something).
@@ -475,7 +502,7 @@ function renderMatch(e) {
       <div class="segmented" role="group" aria-label="${t("carpool.myPlan")}">
         <button data-act="role" data-role="driver" aria-pressed="${myRole === "driver"}">${t("carpool.drive")}</button>
         <button data-act="role" data-role="rider" aria-pressed="${myRole === "rider"}">${t("carpool.ride")}</button>
-        <button data-act="role" data-role="" aria-pressed="${!myRole}">${t("carpool.notNeeded")}</button>
+        <button data-act="role" data-role="" aria-pressed="${!myRole}">${/^\p{Extended_Pictographic}/u.test(t("carpool.notNeeded")) ? "" : ic("check")}${t("carpool.notNeeded")}</button>
       </div>`;
     if (myRole === "driver") {
       html += `<div class="extra">${t("carpool.seats")}
