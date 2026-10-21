@@ -21,11 +21,32 @@ const adminName = () => (window.TEAM && TEAM.adminName) || ({ nl: "de ploegbehee
 // The texts themselves are in i18n/<lang>.js; only the one for this language is downloaded.
 // It is written into the page right here, so it runs before the scripts that follow (common.js…).
 const T = {};
-document.write(`<script src="${new URL(`i18n/${LANG}.js`, document.currentScript.src).href}"><\/script>`);
+const TEXTS_URL = new URL(`i18n/${LANG}.js`, document.currentScript.src).href;
+document.write(`<script src="${TEXTS_URL}"><\/script>`);
 
+// Right after an update a browser can still hold the previous language file for a few minutes, while the page itself
+// is already new. A text that isn't there yet: fetch the file once more, fresh, and redraw (meanwhile show nothing
+// rather than the key). Still missing after that: show the key, so a real omission stays visible.
+let textsRefresh = "";
+function refreshTexts() {
+  if (textsRefresh) return;
+  textsRefresh = "loading";
+  const s = document.createElement("script");
+  s.src = `${TEXTS_URL}?r=${Date.now()}`;
+  s.onload = s.onerror = () => {
+    textsRefresh = "done";
+    applyStaticTexts();
+    if (typeof render === "function") try { render(); } catch {}
+  };
+  document.head.append(s);
+}
 function t(key, vars = {}) {
   const v = T[LANG] && T[LANG][key];
-  if (v === undefined) return key;
+  if (v === undefined) {
+    if (textsRefresh === "done" || !T[LANG]) return key;
+    refreshTexts();
+    return "";
+  }
   return typeof v === "function" ? v(vars) : v;
 }
 

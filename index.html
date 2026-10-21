@@ -365,6 +365,10 @@
   .news-text { margin: 6px 0 8px; white-space: pre-wrap; overflow-wrap: anywhere; }
   .news-foot { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: .85rem; }
   .news-stat { color: var(--muted); }
+  .news-mail { margin-left: auto; display: inline-flex; align-items: center; gap: 5px; font: inherit; font-size: .8rem; font-weight: 600; color: var(--muted);
+               background: none; border: 1px solid var(--border); border-radius: 999px; padding: 3px 11px; cursor: pointer; box-shadow: none; }
+  .news-mail:hover { color: var(--accent); border-color: var(--accent); }
+  .news-mail svg.i { width: 14px; height: 14px; }
   .news-not summary { cursor: pointer; color: var(--muted); }
   .news-new { justify-self: start; font-size: .88rem; }
   .news-dlg textarea { min-height: 96px; }
@@ -1342,10 +1346,10 @@ function renderNews() {
       <p class="news-text">${esc(n.text)}</p>
       <div class="news-foot">${mine || (session.user && n.by === session.user.uid) ? `<span class="muted">${ic("check")} ${esc(t("news.seen"))}</span>`
         : `<button type="button" class="small" data-news-seen="${n.id}">👍 ${esc(t("news.markSeen"))}</button>`}
-        ${admin && n.mailed != null ? `<span class="news-stat">✉️ ${esc(t("news.mailed", { n: n.mailed }))}${n.mailedAt ? ` · ${esc(agoText(n.mailedAt))}` : ""}</span>` : ""}
-        ${admin && !DEMO ? `<button type="button" class="small" data-news-mail="${n.id}">✉️ ${esc(t(n.mailed != null ? "news.mailAgain" : "news.mailNow"))}</button>` : ""}
         ${admin && !DEMO ? `<span class="news-stat">${esc(t("news.stat", { n: seen.length, of: members.length }))}</span>
-          ${notSeen.length ? `<details class="news-not"><summary>${esc(t("news.notSeen", { n: notSeen.length }))}</summary>${esc(notSeen.join(", "))}</details>` : ""}` : ""}</div>
+          ${notSeen.length ? `<details class="news-not"><summary>${esc(t("news.notSeen", { n: notSeen.length }))}</summary>${esc(notSeen.join(", "))}</details>` : ""}` : ""}
+        ${admin && n.mailed != null ? `<span class="news-stat">✉️ ${esc(t("news.mailed", { n: n.mailed }))}${n.mailedAt ? ` · ${esc(agoText(n.mailedAt))}` : ""}</span>` : ""}
+        ${admin && !DEMO ? `<button type="button" class="news-mail" data-news-mail="${n.id}">${ic("mail")} ${esc(t(n.mailed != null ? "news.mailAgain" : "news.mailNow"))}</button>` : ""}</div>
     </article>`;
   }).join("") + (admin ? `<button type="button" class="news-new" id="news-new">${ic("megaphone")} ${esc(t("news.new"))}</button>` : "");
 }
