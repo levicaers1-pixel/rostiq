@@ -156,4 +156,15 @@ console.log("notice tests ok");
   assert(feed.includes("SUMMARY:❌ Afgelast: Zuiderpark · Training"), "called off");
   assert(feed.includes("DESCRIPTION:Je komt niet"), "my no");
 }
+// An announcement by email (remind.mjs newsEmail).
+{
+  const { newsEmail } = await import("./remind.mjs");
+  const m = newsEmail({ tid: "kfc", brand: "KFC", item: { text: "Teamfoto zondag om 10u.\nWitte shirts!", name: "Anna" } }, "nl");
+  assert.equal(m.subject, "📣 KFC: Teamfoto zondag om 10u. Witte shirts!");
+  assert(m.text.startsWith("Anna van KFC heeft een mededeling:\n\nTeamfoto zondag om 10u.\nWitte shirts!"), m.text);
+  assert(m.html.includes("https://app.rostiq.be/?t=kfc") && m.html.includes("white-space:pre-wrap"));
+  const long = newsEmail({ tid: "kfc", brand: "KFC", item: { text: "x".repeat(200) } }, "en");
+  assert(long.subject.length < 80 && long.subject.endsWith("…") && long.text.startsWith("The team admin of KFC has an announcement:"));
+  assert(!newsEmail({ tid: "kfc", brand: "KFC", item: { text: "<script>" } }, "fr").html.includes("<script>"), "escaped");
+}
 console.log("reminder tests passed");

@@ -514,6 +514,8 @@ T.en = {
   "pa.nobody": "Nobody new: the others filled it in meanwhile or already got an email this week.",
   "pa.later": "Sent. You'll see who was reached with the players shortly.",
   "pa.f.phone": "mobile number", "pa.f.place": "home town", "pa.f.fed": "federation number",
+  "news.mail": "Also send it by email", "news.mailHelp": "To the email address each player signs in with (not to players without an account).",
+  "news.sentMail": "Sent: notification and/or email.", "news.mailed": ({ n }) => `emailed to ${n}`,
   "news.title": "Announcement", "news.ph": "e.g. Pick up the new shirts on Saturday after the match", "news.until": "Show until",
   "news.push": "Send everyone a notification", "news.cancel": "Cancel", "news.post": "Post", "news.new": "New announcement",
   "news.admin": "Team admin", "news.seen": "Seen", "news.markSeen": "Seen", "news.delete": "Delete announcement",

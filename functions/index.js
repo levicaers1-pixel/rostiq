@@ -26,7 +26,7 @@ import { buildFeed } from "./ics.js";
 import { noticeMessage } from "./notice.js";
 import { roleOf, roleText, promoteReserve, subText } from "./lineup.js";
 import { runJob } from "./job.mjs";
-import { sendReminder, sendProfileAsk } from "./remind.mjs";
+import { sendReminder, sendProfileAsk, sendNewsMail } from "./remind.mjs";
 import { trainText } from "./training.js";
 
 initializeApp({ databaseURL: process.env.FIREBASE_DATABASE_EMULATOR_HOST
@@ -113,7 +113,7 @@ export const notice = onValueCreated({ ref: "/notices/{tid}/{id}", instance: "wi
     if (item && item.text) {
       const body = `📣 ${item.name ? item.name + ": " : ""}${String(item.text).replace(/\s+/g, " ").slice(0, 160)}`;
       let sent = 0;
-      for (const uid of Object.keys(members || {})) {
+      for (const uid of n.np ? [] : Object.keys(members || {})) { // np: no notification, only the email
         if (uid === n.by) continue;
         for (const [dev, info] of Object.entries((await val(`pushTokens/${uid}`)) || {})) {
           if (!info || !info.token) continue;
@@ -121,7 +121,12 @@ export const notice = onValueCreated({ ref: "/notices/{tid}/{id}", instance: "wi
           catch (e) { const code = (e && (e.code || e.errorInfo && e.errorInfo.code)) || ""; if (/registration-token-not-registered|invalid-registration-token/.test(code)) await db.ref(`pushTokens/${uid}/${dev}`).remove(); }
         }
       }
-      console.log(`notice n: ${sent} notifications sent`);
+      let mailed = 0;
+      if (n.m) { // also by email: to every linked player's verified address, and the admin sees how many
+        try { mailed = await sendNewsMail(db, tid, n, item, brand); } catch (e) { console.error("announcement email failed:", (e && e.code) || "error"); }
+        await db.ref(`teams/${tid}/news/${n.i}/mailed`).set(mailed);
+      }
+      console.log(`notice n: ${sent} notifications sent, ${mailed} emails`);
     }
     return done();
   }

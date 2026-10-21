@@ -510,6 +510,8 @@ T.nl = {
   "pa.nobody": "Niemand nieuw: de anderen vulden het intussen aan of kregen deze week al een e-mail.",
   "pa.later": "Verstuurd. Wie bereikt is, zie je zo bij de spelers.",
   "pa.f.phone": "gsm-nummer", "pa.f.place": "woonplaats", "pa.f.fed": "federatienummer",
+  "news.mail": "Ook per e-mail sturen", "news.mailHelp": "Naar het e-mailadres waarmee elke speler aanmeldt (spelers zonder account niet).",
+  "news.sentMail": "Verstuurd: melding en/of e-mail.", "news.mailed": ({ n }) => `gemaild naar ${n}`,
   "news.title": "Mededeling", "news.ph": "bv. Nieuwe shirts ophalen zaterdag na de match", "news.until": "Zichtbaar tot",
   "news.push": "Iedereen een melding sturen", "news.cancel": "Annuleren", "news.post": "Plaatsen", "news.new": "Nieuwe mededeling",
   "news.admin": "Ploegbeheerder", "news.seen": "Gezien", "news.markSeen": "Gezien", "news.delete": "Mededeling verwijderen",

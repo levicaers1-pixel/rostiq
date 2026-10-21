@@ -877,6 +877,9 @@
             "until": {
               ".validate": "newData.isString() && newData.val().matches(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/)"
             },
+            "mailed": {
+              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 500"
+            },
             "$other": {
               ".validate": false
             }
@@ -1365,6 +1368,12 @@
           },
           "i": {
             ".validate": "newData.parent().child('k').val() === 'n' && newData.isString()"
+          },
+          "m": {
+            ".validate": "newData.parent().child('k').val() === 'n' && newData.val() === true"
+          },
+          "np": {
+            ".validate": "newData.parent().child('k').val() === 'n' && newData.val() === true"
           },
           "p": {
             ".validate": "newData.parent().child('k').val() === 'a' || newData.parent().child('k').val() === 'p'",

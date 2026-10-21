@@ -514,6 +514,8 @@ T.fr = {
   "pa.nobody": "Personne de nouveau : les autres ont complété entre-temps ou ont déjà reçu un e-mail cette semaine.",
   "pa.later": "Envoyé. Qui a été atteint s'affichera bientôt chez les joueurs.",
   "pa.f.phone": "numéro de GSM", "pa.f.place": "commune", "pa.f.fed": "numéro de fédération",
+  "news.mail": "Envoyer aussi par e-mail", "news.mailHelp": "À l'adresse e-mail avec laquelle chaque joueur se connecte (pas aux joueurs sans compte).",
+  "news.sentMail": "Envoyé : notification et/ou e-mail.", "news.mailed": ({ n }) => `envoyé par e-mail à ${n}`,
   "news.title": "Annonce", "news.ph": "p. ex. Récupérer les nouveaux maillots samedi après le match", "news.until": "Visible jusqu'au",
   "news.push": "Envoyer une notification à tous", "news.cancel": "Annuler", "news.post": "Publier", "news.new": "Nouvelle annonce",
   "news.admin": "Administrateur", "news.seen": "Vu", "news.markSeen": "Vu", "news.delete": "Supprimer l'annonce",

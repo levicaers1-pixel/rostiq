@@ -241,3 +241,48 @@ export async function sendProfileAsk(db, tid, n) {
   await db.ref().update(writes);
   console.log(`profile ask: ${stats.mail} by email, ${stats.push} by notification, ${stats.none} unreachable, ${stats.skipped} asked this week`);
 }
+
+
+// ---- An announcement by email (notices k "n" with m: true): to every linked player's verified account address ----
+const NTEXT = {
+  nl: { subject: (brand, text) => `📣 ${brand}: ${text}`, from: (who, brand) => `${who ? `${who} van ${brand}` : `De ploegbeheerder van ${brand}`} heeft een mededeling:`,
+        button: "Open de ploeg in RostiQ", foot: brand => `Je krijgt deze e-mail omdat de ploegbeheerder van ${brand} een mededeling naar de hele ploeg stuurde in RostiQ.` },
+  fr: { subject: (brand, text) => `📣 ${brand} : ${text}`, from: (who, brand) => `${who ? `${who} de ${brand}` : `L'administrateur de ${brand}`} a une annonce :`,
+        button: "Ouvrir l'équipe dans RostiQ", foot: brand => `Tu reçois cet e-mail parce que l'administrateur de ${brand} a envoyé une annonce à toute l'équipe dans RostiQ.` },
+  en: { subject: (brand, text) => `📣 ${brand}: ${text}`, from: (who, brand) => `${who ? `${who} from ${brand}` : `The team admin of ${brand}`} has an announcement:`,
+        button: "Open the team in RostiQ", foot: brand => `You're getting this email because the team admin of ${brand} sent an announcement to the whole team in RostiQ.` },
+};
+export function newsEmail({ tid, brand, item }, lang) {
+  const T = NTEXT[lang3(lang)], b = brand || "RostiQ", text = String(item.text || ""), url = `${APP}/?t=${encodeURIComponent(tid)}`;
+  const short = text.replace(/\s+/g, " ").trim();
+  const subject = T.subject(b, short.length > 60 ? short.slice(0, 57) + "…" : short);
+  const plain = [T.from(item.name, b), "", text, "", `${T.button}: ${url}`, "", T.foot(b)].join("\n");
+  const html = `<div style="font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;font-size:15px;line-height:1.5;color:#111;max-width:520px">
+<p>${esc(T.from(item.name, b))}</p>
+<div style="border-left:4px solid #2f2a8f;padding:8px 14px;margin:0 0 16px;background:#f5f4fb;white-space:pre-wrap">${esc(text)}</div>
+<p><a href="${esc(url)}" style="display:inline-block;padding:12px 20px;border-radius:10px;background:#2f2a8f;color:#fff;font-weight:700;text-decoration:none">${esc(T.button)} →</a></p>
+<p style="color:#777;font-size:12px">${esc(T.foot(b))}</p></div>`;
+  return { subject, text: plain, html };
+}
+/** Emails the announcement to every linked player but the sender; returns how many emails went out. */
+export async function sendNewsMail(db, tid, n, item, brand) {
+  const val = path => db.ref(path).get().then(s => s.val());
+  const [members, subs] = await Promise.all([val(`teams/${tid}/members`), val(`inviteSubs/${tid}`)]);
+  const mail = mailer();
+  if (!mail) { console.log("announcement email: Brevo not set up"); return 0; }
+  let sent = 0;
+  for (const [uid, pid] of Object.entries(members || {})) {
+    if (uid === n.by) continue;
+    const user = await getAuth().getUser(uid).catch(() => null);
+    if (!user || !user.email || !user.emailVerified) continue;
+    const devices = Object.values((await val(`pushTokens/${uid}`)) || {}).filter(x => x && x.lang);
+    const lang = (devices[0] && devices[0].lang) || ((subs || {})[pid] || {}).l || "nl";
+    const msg = newsEmail({ tid, brand, item }, lang);
+    try {
+      const info = await mail.sendMail({ from: { name: brand ? `${String(brand).slice(0, 40)} via RostiQ` : "RostiQ", address: FROM_ADDR }, to: user.email, ...msg });
+      if (info && info.message && process.env.INVITE_TRANSPORT === "stream") console.log("=====MAIL=====\n" + info.message.toString());
+      sent++;
+    } catch (e) { console.warn("announcement email failed:", (e && (e.responseCode || e.code)) || "error"); }
+  }
+  return sent;
+}

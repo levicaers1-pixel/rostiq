@@ -369,6 +369,7 @@
   .news-new { justify-self: start; font-size: .88rem; }
   .news-dlg textarea { min-height: 96px; }
   .news-until, .news-push { display: flex; align-items: center; gap: 8px; margin-top: 10px; font-size: .9rem; }
+  .news-mail-help { margin: 2px 0 0 26px; font-size: .8rem; }
   .sel-dlg { width: min(560px, calc(100vw - 32px)); overflow-x: hidden; }
   .sel-row { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 10px; min-width: 0; }
   .sel-row.is-on { background: color-mix(in srgb, var(--accent) 7%, transparent); }
@@ -550,6 +551,8 @@
     <textarea name="text" maxlength="500" rows="4" data-i18n-placeholder="news.ph"></textarea>
     <label class="news-until"><span data-i18n="news.until">Show until</span> <input type="date" name="until"></label>
     <label class="news-push"><input type="checkbox" name="push" checked> <span data-i18n="news.push">Send everyone a notification</span></label>
+    <label class="news-push"><input type="checkbox" name="mail"> <span data-i18n="news.mail">Also send it by email</span></label>
+    <p class="muted news-mail-help" data-i18n="news.mailHelp"></p>
     <div class="row"><button value="cancel" data-i18n="news.cancel">Cancel</button><button type="button" class="primary" id="news-post" data-i18n="news.post">Post</button></div>
   </form>
 </dialog>
@@ -1339,6 +1342,7 @@ function renderNews() {
       <p class="news-text">${esc(n.text)}</p>
       <div class="news-foot">${mine || (session.user && n.by === session.user.uid) ? `<span class="muted">${ic("check")} ${esc(t("news.seen"))}</span>`
         : `<button type="button" class="small" data-news-seen="${n.id}">👍 ${esc(t("news.markSeen"))}</button>`}
+        ${admin && n.mailed != null ? `<span class="news-stat">✉️ ${esc(t("news.mailed", { n: n.mailed }))}</span>` : ""}
         ${admin && !DEMO ? `<span class="news-stat">${esc(t("news.stat", { n: seen.length, of: members.length }))}</span>
           ${notSeen.length ? `<details class="news-not"><summary>${esc(t("news.notSeen", { n: notSeen.length }))}</summary>${esc(notSeen.join(", "))}</details>` : ""}` : ""}</div>
     </article>`;
@@ -1366,6 +1370,7 @@ document.getElementById("news").addEventListener("click", async ev => {
     f.until.min = TODAY;
     f.until.value = isoDay(Date.now() + NEWS_DAYS * 864e5);
     f.push.checked = true;
+    f.mail.checked = false;
     newsDlg.showModal();
   }
 });
@@ -1378,9 +1383,10 @@ document.getElementById("news-post").onclick = async () => {
   newsDlg.close();
   if (!(await update({ [`news/${id}`]: item }))) return;
   pref.set("newsSeen:" + id, "1");
-  if (f.push.checked && !DEMO && session.user)
-    if (await send("PUT", `notices/${TEAM_ID}/${historyId()}`, { k: "n", d: TODAY, i: id, by: session.user.uid, at: { ".sv": "timestamp" } }, true, true, true) === true)
-      toast(t("status.notified"), "", 2500);
+  if ((f.push.checked || f.mail.checked) && !DEMO && session.user)
+    if (await send("PUT", `notices/${TEAM_ID}/${historyId()}`, { k: "n", d: TODAY, i: id, ...(f.push.checked ? {} : { np: true }), ...(f.mail.checked ? { m: true } : {}),
+      by: session.user.uid, at: { ".sv": "timestamp" } }, true, true, true) === true)
+      toast(t(f.mail.checked ? "news.sentMail" : "status.notified"), "", 2500);
 };
 
 // ---- Trainings on the team page: the next ones, who's coming, my answer; admins call one off (notices k "t") ----

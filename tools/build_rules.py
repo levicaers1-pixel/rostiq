@@ -240,7 +240,9 @@ team = {
     "news": {".write": TA, "$id": {
         ".validate": "$id.matches(/^[0-9a-z]{10,24}$/) && newData.hasChildren(['text', 'by', 'at'])",
         "text": s(500, 1), "by": {".validate": "newData.isString()"}, "name": s(40), "at": {".validate": "newData.isNumber()"},
-        "until": {".validate": "newData.isString() && newData.val().matches(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/)"}, "$other": NO}},
+        "until": {".validate": "newData.isString() && newData.val().matches(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/)"},
+        "mailed": num(0, 500),  # how many players got it by email (written by the function)
+        "$other": NO}},
     # Who was asked to complete their details, and how (written by the function only; admins may clear it).
     "profileAsked": {".write": f"{TA} && !newData.exists()", "$pid": {
         ".write": f"{TA} && !newData.exists()",
@@ -561,6 +563,8 @@ final["rules"]["notices"] = {"$tid": {"$id": {
     "o": {".validate": "newData.isString() && newData.val().matches(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/)"},
     "by": {".validate": "newData.isString()"}, "at": {".validate": "newData.isNumber()"},
     "i": {".validate": "newData.parent().child('k').val() === 'n' && newData.isString()"},
+    "m": {".validate": "newData.parent().child('k').val() === 'n' && newData.val() === true"},   # announcement: also by email
+    "np": {".validate": "newData.parent().child('k').val() === 'n' && newData.val() === true"},  # announcement: no notification
     "p": {".validate": "newData.parent().child('k').val() === 'a' || newData.parent().child('k').val() === 'p'", "$pid": {".validate": "$pid.matches(/^[A-Za-z0-9_-]{1,40}$/) && newData.val() === true"}},
     "$other": NO,
 }}}
