@@ -113,6 +113,40 @@
   /* Match cards: date, details, progress towards the minimum, who's coming, my answer, the whole team */
   .matches { display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(min(380px, 100%), 1fr)); align-items: start; }
   .matches > .empty-state { grid-column: 1 / -1; }
+  /* Kalender: filters, month strip, month headings; on phones a timeline */
+  .cal-filters { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; margin: 4px -16px 12px; padding: 0 16px; }
+  .cal-filters::-webkit-scrollbar, .cal-months::-webkit-scrollbar { display: none; }
+  .cal-filters button { flex: none; font-size: .8rem; font-weight: 700; padding: 7px 13px; border-radius: 999px; background: var(--surface); border: 1px solid var(--border); color: var(--muted); }
+  .cal-filters button[aria-pressed="true"] { background: var(--brand); color: var(--brand-text); border-color: var(--brand); }
+  .cal-filters button i { font-style: normal; margin-left: 5px; padding: 0 6px; border-radius: 999px; background: var(--no); color: #fff; font-size: .68rem; }
+  .cal-months { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; margin: 0 -16px 6px; padding: 0 16px 2px; }
+  .cal-months button { flex: none; width: 60px; padding: 8px 0 7px; border-radius: 16px; background: var(--surface); border: 1px solid var(--border); color: var(--text);
+    display: grid; justify-items: center; gap: 1px; line-height: 1.05; }
+  .cal-months small { font-size: .6rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+  .cal-months b { font-family: var(--font-display); font-weight: 400; font-size: 1.2rem; }
+  .cal-months .dots { display: flex; gap: 3px; height: 5px; margin-top: 3px; }
+  .cal-months .dots span { width: 5px; height: 5px; border-radius: 50%; background: var(--pampas); }
+  .cal-months .dots span.need { background: var(--no); }
+  .cal-months button.on { background: var(--brand); border-color: var(--brand); color: var(--brand-text); }
+  .cal-months button.on small { color: var(--pampas); }
+  .cal-month { grid-column: 1 / -1; display: flex; justify-content: space-between; margin: 14px 0 -4px; scroll-margin-top: 16px;
+    font-size: .7rem; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+  .cal-month:first-child { margin-top: 4px; }
+  .cal-empty { grid-column: 1 / -1; display: flex; gap: 10px; align-items: center; padding: 16px; border-radius: 18px; border: 1.5px dashed var(--border); color: var(--muted); font-size: .9rem; }
+  .cal-empty svg.i { color: var(--yes); }
+  @media (max-width: 700px) {
+    .matches { position: relative; padding-left: 20px; gap: 12px; }
+    .matches::before { content: ""; position: absolute; left: 5px; top: 10px; bottom: 10px; width: 2px; border-radius: 2px; background: var(--border); }
+    .matches > .empty-state, .matches > .cal-empty { margin-left: -20px; }
+    .cal-month { margin-left: -20px; position: relative; z-index: 1; padding: 6px 0; background: var(--bg); }
+    #view-cal .section-head .head-actions button { font-size: .8rem; padding: 6px 11px; }
+    .matches > .match { position: relative; }
+    .matches > .match::after { content: ""; position: absolute; left: -21px; top: 26px; width: 12px; height: 12px; border-radius: 50%;
+      background: var(--bg); border: 3px solid var(--pampas); }
+    .matches > .match.tl-done::after { background: var(--yes); border-color: var(--yes); }
+    .matches > .match.tl-need::after { border-color: var(--no); }
+    .matches > .match.off::after, .matches > .match.past::after { border-color: var(--border); }
+  }
   .match { display: grid; grid-template-columns: 58px 1fr auto; gap: 14px; }
   .m-body { min-width: 0; }
   .m-meta .details { display: grid; gap: 3px; margin-top: 6px; }
@@ -585,6 +619,8 @@
       <button id="ics-all" class="primary" data-i18n="ics.all" data-i18n-title="ics.allTitle">📅 Add all to calendar</button>
     </div>
   </div>
+  <div class="cal-filters" id="cal-filters" role="group" hidden></div>
+  <div class="cal-months" id="cal-months" hidden></div>
   <div class="matches" id="matches"></div>
 
   <div class="section-head" id="train-head" hidden>
@@ -735,6 +771,7 @@ const LABEL = { "": "", yes: t("label.yes"), maybe: t("label.maybe"), no: t("lab
 
 let compact = pref.get("compact", "") === "1";
 let showPast = pref.get("showPast", "0") === "1";
+let calFilter = "all"; // all | todo | home | away (Kalender chips)
 
 // Avatars: initials on a colour that stays the same for a name.
 const initials = n => initials0(n) || "?";
@@ -779,6 +816,7 @@ const animStyle = (key, ms, extra = "") => {
 
 function renderMatches(players, events) {
   const box = document.getElementById("matches");
+  document.getElementById("cal-filters").hidden = document.getElementById("cal-months").hidden = true; // shown again below when there's a list
   // No matches yet: one clear empty state instead of an empty list and an empty table.
   const none = dataLoaded && !EVENTS.length;
   document.getElementById("table-view").hidden = !dataLoaded || none;
@@ -796,11 +834,36 @@ function renderMatches(players, events) {
   const pct = n => Math.min(100, n / total * 100);
   const me = AUTH_ON ? players.find(p => p.id === session.pid) : null;
   const order = { yes: 0, maybe: 1, no: 2, "": 3 };
-  // The next match is the big card at the top: the list continues after it (unless past matches are shown too).
-  const heroDate = !showPast && (EVENTS.find(isOn) || {}).date;
-  const listed = events.filter(e => e.date !== heroDate);
-  if (!listed.length) { box.innerHTML = ""; return; }
+  const todo = e => !!me && isOn(e) && !e.cancelled && !me.avail[e.date];
+  const keep = { all: () => true, todo, home: e => e.home === true, away: e => e.home === false };
+  if (calFilter === "todo" && !me) calFilter = "all";
+  const listed = events.filter(keep[calFilter] || keep.all);
+  // Filter chips (only the ones that make sense for this team) and a month strip.
+  const nTodo = events.filter(todo).length, hasHome = events.some(e => e.home === true), hasAway = events.some(e => e.home === false);
+  const chip = (k, label, extra = "") => `<button data-calf="${k}" aria-pressed="${calFilter === k}">${label}${extra}</button>`;
+  const fl = document.getElementById("cal-filters");
+  fl.hidden = !(me || (hasHome && hasAway));
+  fl.innerHTML = chip("all", t("cal.all")) + (me ? chip("todo", t("cal.todo"), nTodo ? `<i>${nTodo}</i>` : "") : "") +
+    (hasHome && hasAway ? chip("home", t("match.home")) + chip("away", t("match.away")) : "");
+  const months = [];
+  for (const e of listed) {
+    const k = e.date.slice(0, 7), m = months.find(x => x.k === k) || (months.push({ k, list: [] }), months[months.length - 1]);
+    m.list.push(e);
+  }
+  const ms = document.getElementById("cal-months");
+  ms.hidden = months.length < 2;
+  ms.innerHTML = months.map(m => `<button type="button" data-mo="${m.k}"${m.k === TODAY.slice(0, 7) ? ' class="on"' : ""}>
+    <small>${esc(fmt(m.k + "-01", { month: "short" }).replace(".", ""))}</small><b>${m.list.length}</b>
+    <span class="dots">${m.list.slice(0, 4).map(e => `<span${todo(e) ? ' class="need"' : ""}></span>`).join("")}</span></button>`).join("");
+  if (!listed.length) {
+    box.innerHTML = `<div class="cal-empty">${ic(calFilter === "todo" ? "check" : "calendar")} ${t(calFilter === "todo" ? "cal.noneTodo" : "cal.noneFilter")}</div>`;
+    return;
+  }
+  let lastMonth = "";
   box.innerHTML = listed.map(e => {
+    const mk = e.date.slice(0, 7), head = mk !== lastMonth
+      ? `<h3 class="cal-month" id="mo-${mk}"><span>${esc(fmt(e.date, { month: "long", year: mk.slice(0, 4) === TODAY.slice(0, 4) ? undefined : "numeric" }))}</span><span>${t("cal.count", { n: months.find(x => x.k === mk).list.length })}</span></h3>` : "";
+    lastMonth = mk;
     const c = tally(e, players);
     const coming = players.filter(p => p.avail[e.date] === "yes");
     const mine = me ? me.avail[e.date] || "" : null;
@@ -817,7 +880,8 @@ function renderMatches(players, events) {
       .sort((a, b) => order[a.s] - order[b.s] || a.i - b.i);
     const glow = animStyle("done:" + e.date, 1200);
     const off = !!e.cancelled, open = isOn(e);
-    return `<article class="match${e.final ? " final" : ""}${isPast(e) ? " past" : ""}${off ? " off" : ""}${glow ? " complete" : ""}"${glow ? ` style="${glow}"` : ""}>
+    const tl = mine ? " tl-done" : todo(e) ? " tl-need" : "";
+    return `${head}<article class="match${e.final ? " final" : ""}${isPast(e) ? " past" : ""}${off ? " off" : ""}${glow ? " complete" : ""}${tl}"${glow ? ` style="${glow}"` : ""}>
       <div class="m-date"><span>${fmt(e.date, { weekday: "short" }).replace(".", "")}</span><b>${parse(e.date).getDate()}</b><span>${fmt(e.date, { month: "short" }).replace(".", "")}</span></div>
       <div class="m-body">
         <div class="m-title"><a class="m-opp" href="#m/${e.date}">${esc(e.opp)}</a>${statusPill(e)}${homePill(e)}${e.final ? `<span class="pill violet">${ic("trophy")} ${t("final")}</span>` : ""}</div>
@@ -1449,6 +1513,18 @@ function renderControls() {
 
 
 document.getElementById("compact").onclick = () => { compact = !compact; pref.set("compact", compact ? "1" : ""); render(); };
+document.getElementById("cal-filters").addEventListener("click", ev => {
+  const b = ev.target.closest("[data-calf]");
+  if (!b || b.dataset.calf === calFilter) return;
+  calFilter = b.dataset.calf; render();
+});
+document.getElementById("cal-months").addEventListener("click", ev => {
+  const b = ev.target.closest("[data-mo]");
+  const h = b && document.getElementById("mo-" + b.dataset.mo);
+  if (!h) return;
+  document.querySelectorAll("#cal-months button").forEach(x => x.classList.toggle("on", x === b));
+  h.scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" });
+});
 document.getElementById("past").onclick = () => {
   showPast = !showPast; pref.set("showPast", showPast ? "1" : "0"); render();
 };
