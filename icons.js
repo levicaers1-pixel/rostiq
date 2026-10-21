@@ -32,6 +32,7 @@ const ICONS = {
   send: '<path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/>',
   check: '<path d="M20 6 9 17l-5-5"/>',
   megaphone: '<path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/>',
+  moon: '<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9z"/>',
   globe: '<circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>',
   help: '<circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3M12 17h.01"/>',
   x: '<path d="M18 6 6 18M6 6l12 12"/>',
@@ -52,7 +53,7 @@ function ic(name, cls = "") {
 
 // Emoji in the interface → icon.
 const EMOJI_ICONS = {
-  "🚗": "car", "👥": "users", "⚙": "settings", "📅": "calendar-plus", "🗓": "calendar-check", "📲": "share", "✏": "pencil",
+  "🚗": "car", "👥": "users", "🏠": "home", "⚙": "settings", "📅": "calendar-plus", "🗓": "calendar-check", "📲": "share", "✏": "pencil",
   "💬": "message", "📣": "bell", "⬇": "download", "📍": "pin", "🕘": "clock", "🗺": "map", "📋": "clipboard", "✉": "mail",
   "📱": "phone", "🔗": "link", "🏆": "trophy", "⛳": "flag", "🖼": "image", "➕": "plus", "🗑": "trash", "🏌": "hash",
   "⇄": "switch", "🌱": "leaf", "📤": "send", "🙋": "user", "↗": "external", "🚩": "flag", "ℹ": "info",

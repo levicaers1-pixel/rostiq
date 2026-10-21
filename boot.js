@@ -1,6 +1,8 @@
 // RostiQ: runs in <head>, before the page is drawn: shows the team's last-known branding (saved on
 // this device by common.js) straight away, so switching tabs doesn't flash the default RostiQ look.
 // common.js takes over once the team's data arrives.
+// Light by default; dark only when chosen in the account menu (saved on this device).
+try { if (localStorage.getItem("theme") === "dark") document.documentElement.classList.add("dark"); } catch (e) {}
 (function () {
   try {
     const q = new URLSearchParams(location.search);
@@ -15,7 +17,7 @@
         .map(([k, v]) => `${k}: ${v};`).join(" ");
       const style = document.createElement("style");
       style.id = "team-colors";
-      style.textContent = `:root { ${vars(c.light)} } @media (prefers-color-scheme: dark) { :root { ${vars(c.dark)} } }`;
+      style.textContent = `:root { ${vars(c.light)} } html.dark { ${vars(c.dark)} }`;
       document.head.append(style);
     }
     if (info && info.font === "serif") document.documentElement.classList.add("font-serif");

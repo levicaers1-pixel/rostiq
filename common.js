@@ -1129,6 +1129,17 @@ const avColor = n => AV_COLORS[[...(n || "")].reduce((h, c) => (h * 31 + c.codeP
 const ROSTIQ_LOGO = `<img class="logo rostiq-logo" src="assets/rostiq-logo-header.webp" alt="RostiQ">`;
 // brandPreview: unsaved changes on the Admin page, shown live until saved or cancelled.
 let brandPreview = null;
+// The current tab, in the header and the bottom bar. The main page holds Home and Kalender (#kalender).
+function markTabs() {
+  const page = (location.pathname.split("/").pop() || "index.html").replace(/^$/, "index.html");
+  const cal = /^#(kalender|trainings)/.test(location.hash);
+  document.querySelectorAll(".tabs a, .bottom-nav a").forEach(a => {
+    const tab = a.dataset.tab, href = (a.getAttribute("href") || "").split(/[?#]/)[0].replace(/^\.\/$/, "index.html").replace(/^$/, "index.html");
+    const on = tab === "home" ? page === "index.html" && !cal : tab === "cal" ? page === "index.html" && cal : href === page;
+    on ? a.setAttribute("aria-current", "page") : a.removeAttribute("aria-current");
+  });
+}
+window.addEventListener("hashchange", markTabs);
 function applyBranding() {
   const B = { ...TEAM, ...(brandPreview || {}) };
   const home = document.querySelector(".brand-inner > a");
@@ -1145,8 +1156,8 @@ function applyBranding() {
   const tabs = document.querySelector(".tabs");
   if (tabs) tabs.hidden = !TEAM_ID; // no team chosen yet: nothing to navigate to
   document.querySelectorAll(".tabs a").forEach(a => {
-    const file = (a.getAttribute("href") || "").split("?")[0];
-    a.setAttribute("href", file + teamQuery());
+    const href = a.getAttribute("href") || "", hash = href.includes("#") ? "#" + href.split("#")[1] : "";
+    a.setAttribute("href", href.split(/[?#]/)[0] + teamQuery() + hash); // page, then ?team, then #view
   });
   // Phones: the same tabs as an app-style bar at the bottom (CSS shows one or the other).
   if (tabs) {
@@ -1154,8 +1165,7 @@ function applyBranding() {
     if (!bar) { bar = document.createElement("nav"); bar.className = "bottom-nav"; document.body.append(bar); }
     bar.innerHTML = tabs.innerHTML;
     bar.hidden = tabs.hidden;
-    const home = bar.querySelector('a[data-i18n="tab.availability"]');
-    if (home) home.textContent = "🗓️ " + t("matches"); // shorter label under the icon (icons.js turns the emoji into the icon)
+    markTabs();
     document.body.classList.toggle("has-bottom-nav", !tabs.hidden);
   }
   // Only "--name: #rrggbb" pairs reach the style sheet (the database rules allow nothing else either).
@@ -1163,7 +1173,7 @@ function applyBranding() {
     .map(([k, v]) => `${k}: ${v};`).join(" ");
   let style = document.getElementById("team-colors");
   if (!style) { style = document.createElement("style"); style.id = "team-colors"; document.head.append(style); }
-  style.textContent = c ? `:root { ${vars(c.light)} } @media (prefers-color-scheme: dark) { :root { ${vars(c.dark)} } }` : "";
+  style.textContent = c ? `:root { ${vars(c.light)} } html.dark { ${vars(c.dark)} }` : "";
   // Phone status bar / browser bar in the header colour.
   const theme = document.querySelector('meta[name="theme-color"]');
   if (theme) theme.content = (c && c.light && HEX.test(c.light["--brand"] || "") && c.light["--brand"]) || BRAND_PRESETS[0][1];
@@ -1393,6 +1403,11 @@ function injectAuthUI() {
     if (ev.target.closest("[data-install]")) { acctOpen = false; renderAccount(); installApp(); return; }
     // A switch: the menu stays open and shows the new state.
     if (ev.target.closest("[data-push]")) { Promise.resolve(pushOn() ? disablePush() : enablePush()).catch(() => {}).finally(renderAccount); return; }
+    if (ev.target.closest("[data-theme]")) {
+      const dark = document.documentElement.classList.toggle("dark");
+      pref.set("theme", dark ? "dark" : "light");
+      return renderAccount();
+    }
     if (ev.target.closest("#acct-menu [data-feedback]")) { ev.preventDefault(); acctOpen = false; renderAccount(); openFeedback(); return; }
     const btn = ev.target.closest("#acct-btn");
     if (btn) { acctOpen = !acctOpen; renderAccount(); return; }
@@ -1418,7 +1433,7 @@ function gateMessage(text, err) { gateMsg = { text, err }; renderAuth(); }
 const appUrl = file => location.href.split(/[?#]/)[0].replace(/[^/]*$/, file);
 
 // ---- Feedback to RostiQ (account menu, footer): only the RostiQ admin reads it ----
-const APP_VERSION = "2026.10.54";
+const APP_VERSION = "2026.10.55";
 function deviceText() {
   const ua = navigator.userAgent;
   const os = /iPhone/.test(ua) ? "iPhone" : /iPad/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1) ? "iPad"
@@ -1662,6 +1677,8 @@ function renderAccount() {
       <div class="menu-group">
         ${pushAvailable() ? `<button class="menu-item menu-switch" role="menuitemcheckbox" aria-checked="${pushOn()}" data-push>${ic("bell")}
           <span class="grow">${t("menu.notifications")}</span><span class="switch" aria-hidden="true"></span></button>` : ""}
+        <button class="menu-item menu-switch" role="menuitemcheckbox" aria-checked="${document.documentElement.classList.contains("dark")}" data-theme>${ic("moon")}
+          <span class="grow">${t("menu.dark")}</span><span class="switch" aria-hidden="true"></span></button>
         <div class="menu-lang">${ic("globe")}<span class="grow">${t("menu.language")}</span><div class="lang">${langButtons()}</div></div>
         ${canInstall() ? `<button class="menu-item" role="menuitem" data-install>${ic("download")} ${t("menu.install")}</button>` : ""}
       </div>

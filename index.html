@@ -36,7 +36,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700;800&family=Cormorant+Garamond:wght@600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Noto+Sans:wght@400;500;600;700;800&family=Cormorant+Garamond:wght@600&display=swap">
 <link rel="stylesheet" href="common.css">
 <script src="boot.js"></script>
 <style>
@@ -426,6 +426,83 @@
   #move-box .err:empty { display: none; }
   #move-go { justify-self: start; }
   .details-dlg .spacer { flex: 1; }
+
+  /* ---- RostiQ next: Home ---- */
+  #view-home { max-width: 860px; margin: 0 auto; }
+  #hero.hero { margin-top: 18px; border-radius: 26px; gap: 14px; padding: 18px;
+    background: radial-gradient(120% 90% at 100% 0, color-mix(in srgb, var(--pampas) 26%, transparent), transparent 55%),
+                linear-gradient(150deg, color-mix(in srgb, var(--brand) 80%, #fff) 0%, var(--brand) 55%, color-mix(in srgb, var(--brand) 70%, #000) 100%); }
+  #hero.hero::after { content: ""; position: absolute; inset: 0; pointer-events: none;
+    background: repeating-linear-gradient(120deg, color-mix(in srgb, var(--pampas) 9%, transparent) 0 10px, transparent 10px 26px); }
+  .md-vs { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 10px; text-align: center; }
+  #hero.hero { grid-template-columns: minmax(0, 1fr); }
+  .md-team { display: grid; justify-items: center; gap: 6px; font-weight: 700; font-size: .88rem; min-width: 0; }
+  .md-team span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .md-crest { width: 64px; height: 64px; border-radius: 20px; display: grid; place-items: center; overflow: hidden; font-family: var(--font-display); font-size: 1.3rem; letter-spacing: .04em;
+    color: var(--pampas); background: color-mix(in srgb, var(--pampas) 18%, transparent); box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--pampas) 50%, transparent); }
+  .md-crest img { width: 100%; height: 100%; object-fit: contain; padding: 8px; }
+  .md-crest.them { color: var(--brand-text); background: color-mix(in srgb, var(--brand-text) 12%, transparent); box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--brand-text) 28%, transparent); }
+  .md-x { font-family: var(--font-display); font-size: 2.8rem; line-height: .9; color: var(--pampas); }
+  .md-x small { display: block; margin-top: 4px; font-family: var(--font-body); font-size: .62rem; font-weight: 800; letter-spacing: .14em; color: var(--brand-text); opacity: .85; }
+  .md-meta { display: flex; justify-content: center; align-items: center; gap: 6px 14px; flex-wrap: wrap; font-size: .86rem; font-weight: 600; opacity: .95; }
+  .md-meta span { display: inline-flex; align-items: center; gap: 5px; }
+  .md-role { display: flex; gap: 12px; align-items: center; padding: 10px 14px; border-radius: 16px; background: rgb(0 0 0 / .22); }
+  .md-role .md-ic { font-size: 1.4rem; }
+  .md-role b { display: block; font-size: .95rem; }
+  .md-role small { display: block; opacity: .85; font-size: .8rem; }
+  #hero .hero-answer { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; background: none; padding: 0; }
+  #hero .hero-answer button { justify-content: center; padding: 11px 0; border-radius: 14px; background: color-mix(in srgb, var(--brand-text) 14%, transparent); border: 0; font-weight: 800; color: var(--brand-text); }
+  #hero .hero-answer button[aria-pressed="true"] { color: #fff; }
+  .ts-ans button { background: color-mix(in srgb, var(--accent) 6%, var(--surface)); color: var(--text); border: 1px solid var(--border); }
+  #hero .hero-btns { display: flex; flex-wrap: wrap; gap: 8px; }
+  #hero .hero-btn { flex: 1 1 auto; justify-content: center; white-space: nowrap; }
+  #hero .hero-btn[data-share] { flex: 0 0 auto; }
+  .home-label { display: flex; justify-content: space-between; align-items: baseline; margin: 22px 0 10px; font-size: .72rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+  .home-label a { color: var(--accent); text-decoration: none; letter-spacing: .06em; }
+  #news { margin: 14px 0 0; }
+  .ts-scroll { display: flex; gap: 10px; overflow-x: auto; margin: 0 -16px; padding: 0 16px 6px; scrollbar-width: none; scroll-snap-type: x mandatory; }
+  .ts-scroll::-webkit-scrollbar { display: none; }
+  .ts-card { flex: none; width: 220px; scroll-snap-align: start; background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 12px; box-shadow: var(--shadow-sm); }
+  .ts-card.tr { border-left: 4px solid color-mix(in srgb, var(--pampas) 70%, var(--accent)); }
+  .ts-head { display: flex; gap: 10px; align-items: center; }
+  .ts-head b { display: block; font-size: .92rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 140px; }
+  .ts-head small { color: var(--muted); font-size: .75rem; }
+  .ts-date { width: 46px; text-align: center; border-radius: 12px; background: color-mix(in srgb, var(--accent) 7%, var(--surface)); padding: 4px 0; flex: none; }
+  .ts-date small { display: block; font-size: .6rem; font-weight: 800; letter-spacing: .1em; color: var(--muted); text-transform: uppercase; }
+  .ts-date b { font-family: var(--font-display); font-weight: 400; font-size: 1.35rem; line-height: 1.1; }
+  .ts-ans { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 10px; }
+  .ts-ans.two { grid-template-columns: 1fr auto; }
+  .ts-ans button { justify-content: center; padding: 8px 10px; border-radius: 10px; }
+  .ts-done { display: flex; gap: 8px; align-items: center; padding: 14px; border-radius: 18px; border: 1.5px dashed var(--border); color: var(--muted); font-size: .9rem; }
+  .ts-done svg.i { color: var(--yes); }
+  .bento-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(170px, 46%), 1fr)); gap: 10px; }
+  .tile { position: relative; overflow: hidden; display: block; min-height: 112px; padding: 14px; border-radius: 22px; background: var(--surface); border: 1px solid var(--border);
+    box-shadow: var(--shadow-sm); color: var(--text); text-decoration: none; }
+  a.tile:hover { border-color: color-mix(in srgb, var(--accent) 40%, var(--border)); }
+  .tile .tk { font-size: .66rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+  .tile .tv { font-family: var(--font-display); font-size: 2.1rem; line-height: 1; margin-top: 10px; }
+  .tile .tv small { font-size: 1rem; color: var(--muted); }
+  .tile .tv.sm { font-size: 1.35rem; }
+  .tile .ts { font-size: .78rem; color: var(--muted); margin-top: 5px; }
+  .tile .ts.strong { color: var(--no); font-weight: 700; }
+  .tile.warn { border-color: color-mix(in srgb, var(--no) 50%, var(--border)); }
+  .tile.wide { grid-column: 1 / -1; min-height: 0; }
+  .tile .ring { position: absolute; right: 12px; top: 12px; width: 58px; height: 58px; border-radius: 50%; display: grid; place-items: center;
+    background: conic-gradient(var(--yes) 0 var(--p), var(--maybe) var(--p) var(--q), color-mix(in srgb, var(--muted) 18%, transparent) var(--q)); }
+  .tile .ring::after { content: ""; position: absolute; inset: 7px; border-radius: 50%; background: var(--surface); }
+  .tile .ring b { position: relative; z-index: 1; font-size: .74rem; }
+  .tile-avs { display: flex; margin-top: 10px; }
+  .tile-avs .av { width: 26px; height: 26px; margin-left: -7px; font-size: .58rem; border: 2px solid var(--surface); }
+  .tile-avs .av:first-child { margin-left: 0; }
+  .tile.team { background: var(--brand); color: var(--brand-text); border-color: transparent; }
+  .tile.team .tk { color: color-mix(in srgb, var(--brand-text) 75%, transparent); }
+  .todo { display: grid; gap: 8px; margin-top: 10px; }
+  .todo > div { display: flex; align-items: center; gap: 10px; font-size: .88rem; font-weight: 600; }
+  .todo > div span { flex: 1; }
+  .todo i { font-style: normal; width: 28px; height: 28px; border-radius: 9px; display: grid; place-items: center; background: color-mix(in srgb, var(--brand-text) 12%, transparent); flex: none; }
+  .todo button { flex: none; font-size: .76rem; font-weight: 800; padding: 5px 11px; border-radius: 999px; border: 0; background: var(--pampas); color: var(--brand); }
+  .todo button.remind .count { display: none; }
+  @media (min-width: 701px) { #view-home .bento-grid { grid-template-columns: repeat(4, 1fr); } }
   .link-danger { background: none; border: none; padding: 0; color: var(--no); text-decoration: underline; font-size: .85rem; }
 </style>
 <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/12.12.0/firebase-app.js" crossorigin>
@@ -435,7 +512,7 @@
 <header class="brand">
   <div class="brand-inner">
     <a href="./"><img class="logo rostiq-logo" src="assets/rostiq-logo-header.webp" alt="RostiQ"></a>
-    <nav class="tabs"><a href="./" aria-current="page" data-i18n="tab.availability">Availability</a><a href="carpool.html" data-i18n="tab.carpool">🚗 Carpool</a><a href="ploeg.html" data-i18n="tab.team">👥 Team</a><a href="admin.html" class="admin-tab" hidden data-i18n="tab.admin">⚙️ Admin</a></nav>
+    <nav class="tabs"><a href="./" data-tab="home" data-i18n="tab.home">Home</a><a href="./#kalender" data-tab="cal" data-i18n="tab.calendar">Calendar</a><a href="carpool.html" data-i18n="tab.carpool">🚗 Carpool</a><a href="ploeg.html" data-i18n="tab.team">👥 Team</a><a href="admin.html" class="admin-tab" hidden data-i18n="tab.admin">⚙️ Admin</a></nav>
   </div>
 </header>
 <script>rostiqBootHeader()</script>
@@ -444,11 +521,16 @@
   <p class="sub"><span data-i18n="avail.sub">Tap a cell to set your availability</span> · <span class="status" id="status" data-i18n="status.connecting">Connecting…</span></p>
   <p class="banner" id="banner" hidden data-i18n-html="banner.noDb"></p>
 
+  <div class="view" id="view-home">
+  <section class="hero" id="hero" hidden aria-live="polite"></section>
+  <section class="news" id="news" hidden aria-live="polite"></section>
   <section class="onboard setup" id="setup" hidden></section>
   <section class="onboard" id="welcome" hidden></section>
-  <section class="news" id="news" hidden aria-live="polite"></section>
-  <section class="hero" id="hero" hidden aria-live="polite"></section>
+  <section class="todo-strip" id="todo-strip" hidden></section>
+  <section class="bento" id="bento" hidden></section>
+  </div>
 
+  <div class="view" id="view-cal" hidden>
   <div class="section-head">
     <h2 data-i18n="matches">Matches</h2>
     <div class="head-actions">
@@ -486,6 +568,7 @@
     </table>
   </div>
   <p class="note" id="table-note" data-i18n="note"></p>
+  </div>
 
 </main>
 
@@ -834,45 +917,141 @@ document.getElementById("welcome").addEventListener("keydown", ev => {
 });
 
 // The next match, big, at the top: countdown, details, progress, who's coming, my answer, quick actions.
+// ---- Home: the next match as a matchday card (team vs opponent), what I still need to answer, and tiles ----
+// Short letters for a crest: the meaningful words of a name ("Royal Golf Club du Hainaut" → "H", "Polo Kastanje" → "PK").
+const CREST_SKIP = /^(royal|golf|club|de|du|des|la|le|les|the|of|van|het|en|et|and|hc|fc|kfc|tc|rc|sk|vv|kv|bc|gc|g&cc|cc|asbl|vzw)$/i;
+const crestText = name => {
+  const w = String(name || "").replace(/[^\p{L}\p{N}\s&-]/gu, " ").split(/\s+/).filter(x => x && !CREST_SKIP.test(x));
+  return (w.length ? w.slice(0, 2).map(x => x[0]).join("") : String(name || "?").slice(0, 2)).toUpperCase();
+};
+const myRow = () => AUTH_ON && session.pid ? (root.players || {})[session.pid] : null;
+// My lift for a match, in a few words (or "").
+function myRideText(e) {
+  const cp = (root.carpool || {})[e.date] || {}, mine = session.pid && cp[session.pid];
+  if (!mine) return "";
+  if (mine.role === "driver") {
+    const riders = Object.keys(cp).filter(id => cp[id] && cp[id].role === "rider" && cp[id].with === session.pid && root.players[id]).map(id => firstName(root.players[id].name));
+    return t("home.rideDrive", { names: riders.join(", ") });
+  }
+  if (mine.role === "rider") return mine.with && root.players[mine.with] ? t("home.rideWith", { name: firstName(root.players[mine.with].name) }) : t("home.rideNeed");
+  return "";
+}
 function renderHero(players) {
   const el = document.getElementById("hero");
   const e = dataLoaded ? EVENTS.find(isOn) : null;
   el.hidden = !e;
   if (!e) return;
-  const c = tally(e, players), min = minPlayers();
-  const total = Math.max(players.filter(p => p.name).length, min, 1), pct = n => Math.min(100, n / total * 100);
   const days = Math.round((parse(e.date) - parse(TODAY)) / 864e5);
   const when = days <= 0 ? t("hero.today") : days === 1 ? t("hero.tomorrow") : t("hero.inDays", { n: days });
-  const me = AUTH_ON ? players.find(p => p.id === session.pid) : null;
-  const mine = me ? me.avail[e.date] || "" : null;
-  const coming = players.filter(p => p.avail[e.date] === "yes");
-  const more = detailsHtml(e);
+  const me = myRow(), mine = me ? me.avail[e.date] || "" : null;
+  const sel = selOf(e), role = sel && sel.pub && session.pid ? roleOf(sel, session.pid) : null;
+  const status = role ? roleShort(role, players) : t("home.st." + (mine || "none"));
+  const small = [role ? "" : sel && sel.pub ? t("home.notSelected") : t("home.selNone"), myRideText(e)].filter(Boolean).join(" · ");
+  const v = matchInfo(e).venue, more = detailsHtml(e);
+  const us = TEAM.logo ? `<img src="${esc(TEAM.logo)}" alt="">` : esc(crestText(TEAM.shortName || TEAM.brand));
   el.innerHTML = `
     <div class="hero-top"><span class="hero-kicker">${ic("flag")} ${t("hero.next")}</span>
       <span class="hero-top-r">${session.admin ? `<button class="hero-icon" data-history="${e.date}" title="${t("hist.button")}" aria-label="${t("hist.button")}">${ic("clock")}</button><button class="hero-icon" data-select="${e.date}" title="${t("sel.button")}" aria-label="${t("sel.button")}">${ic("users")}</button><button class="hero-icon" data-edit="${e.date}" title="${t("details.edit")}" aria-label="${t("details.edit")}">${ic("pencil")}</button>` : ""}<span class="hero-when">${when}</span></span></div>
-    <div class="hero-main">
-      <div class="hero-head"><h2 class="hero-title">${esc(e.opp)}${statusPill(e)}${homePill(e)}${e.final ? `<span class="pill violet">${ic("trophy")} ${t("final")}</span>` : ""}</h2>
-        <div class="hero-date">${esc(fmt(e.date, { weekday: "long", day: "numeric", month: "long" }))}${summaryLine(e) ? ` · ${summaryLine(e)}` : ""}</div>
-        ${selLine(e, players)}
-        ${more ? `<details class="hero-more"${heroMoreOpen ? " open" : ""}><summary>${t("hero.more")} ${ic("chevron-down")}</summary>${more}</details>` : ""}</div>
-      <div class="hero-stat"><b>${c.yes}</b><span>/ ${min}</span><small>${t("label.yes")}</small></div>
+    <div class="md-vs">
+      <div class="md-team"><div class="md-crest">${us}</div><span>${esc(TEAM.shortName || TEAM.brand)}</span></div>
+      <div class="md-x">VS<small>${e.home === true ? t("home.atHome") : e.home === false ? t("home.away") : ""}</small></div>
+      <div class="md-team"><div class="md-crest them">${esc(crestText(e.opp))}</div><span>${esc(e.opp)}</span></div>
     </div>
-    <div class="bar hero-bar"><div class="fill"><span class="yes" style="width:${pct(c.yes)}%"></span><span class="maybe" style="width:${pct(c.maybe)}%"></span></div>
-      <i class="min" style="left:${pct(min)}%" title="min. ${min}"></i></div>
-    <div class="hero-people">${coming.length ? `<span class="avatars">${coming.slice(0, 10).map(p => avatar(p, players.indexOf(p))).join("")}${
-      coming.length > 10 ? `<span class="av more">+${coming.length - 10}</span>` : ""}</span>` : `<span>${t("match.nobody")}</span>`}
-      <span class="pill ${LEVEL_PILL[c.level]}">${t("level." + c.level)}</span></div>
-    ${missingHtml(e, players)}
-    <div class="hero-actions">
-      ${mine !== null ? `<div class="answer hero-answer" role="group" aria-label="${t("match.mine")}">${["yes", "maybe", "no"].map(a =>
-        `<button data-answer="${a}" data-date="${e.date}" data-a="${a}" aria-pressed="${mine === a}">${ic({ yes: "check", maybe: "help", no: "x" }[a])} ${t("answer." + a)}</button>`).join("")}</div>` : ""}
-      <div class="hero-btns">
-        <button class="hero-btn" data-ics="${e.date}">${ic("calendar-plus")} ${t("hero.calendar")}</button>
-        <a class="hero-btn" href="${pageUrl("carpool.html")}">${ic("car")} ${t("hero.carpool")}</a>
-        <button class="hero-btn" data-share="${e.date}" title="${t("share.match")}" aria-label="${t("share.match")}">${ic("share")}</button>
-      </div>
+    <div class="md-meta"><span>${ic("calendar")} ${esc(fmt(e.date, { weekday: "short", day: "numeric", month: "short" }))}</span>${matchInfo(e).start ? `<span>${ic("clock")} ${esc(timeText(e))}</span>` : ""}${v ? `<span>${ic("pin")} ${esc(venueShort(v))}</span>` : ""}${statusPill(e)}${e.final ? `<span class="pill violet">${ic("trophy")} ${t("final")}</span>` : ""}</div>
+    ${mine !== null ? `<div class="md-role"><span class="md-ic">${role ? "⭐" : { yes: "✅", maybe: "❓", no: "❌" }[mine] || "👋"}</span><div><b>${esc(status)}</b>${small ? `<small>${esc(small)}</small>` : ""}</div></div>
+    <div class="answer hero-answer" role="group" aria-label="${t("match.mine")}">${["yes", "maybe", "no"].map(a =>
+      `<button data-answer="${a}" data-date="${e.date}" data-a="${a}" aria-pressed="${mine === a}">${ic({ yes: "check", maybe: "help", no: "x" }[a])} ${t("answer." + a)}</button>`).join("")}</div>` : ""}
+    ${selLine(e, players)}
+    ${more ? `<details class="hero-more"${heroMoreOpen ? " open" : ""}><summary>${t("hero.more")} ${ic("chevron-down")}</summary>${more}</details>` : ""}
+    <div class="hero-btns">
+      <button class="hero-btn" data-ics="${e.date}">${ic("calendar-plus")} ${t("hero.calendar")}</button>
+      <a class="hero-btn" href="${pageUrl("carpool.html")}">${ic("car")} ${t("hero.carpool")}</a>
+      <button class="hero-btn" data-share="${e.date}" title="${t("share.match")}" aria-label="${t("share.match")}">${ic("share")}</button>
     </div>`;
 }
+
+// What I still need to answer (matches after the next one, and trainings when they count only who says yes).
+function renderTodoStrip(players) {
+  const box = document.getElementById("todo-strip"), me = myRow();
+  box.hidden = !dataLoaded || !me;
+  if (box.hidden) return;
+  const next = EVENTS.find(isOn);
+  const ms = EVENTS.filter(e => isOn(e) && e !== next && !me.avail[e.date]).slice(0, 6);
+  const trs = (trainCfg() || {}).optOut ? [] : trainingDates(TODAY, new Date(parse(TODAY).getTime() + 13 * 864e5).toLocaleDateString("sv-SE")).filter(x => !x.off && !(me.tr || {})[x.date]);
+  const items = [...ms.map(e => ({ d: e.date, e })), ...trs.map(x => ({ d: x.date, tr: x }))].sort((a, b) => a.d.localeCompare(b.d)).slice(0, 8);
+  const date = d => `<div class="ts-date"><small>${esc(fmt(d, { weekday: "short" }).replace(".", ""))}</small><b>${parse(d).getDate()}</b></div>`;
+  box.innerHTML = `<div class="home-label"><span>${esc(t("home.toAnswer"))}</span><a href="#kalender">${esc(t("home.all"))} →</a></div>` + (items.length
+    ? `<div class="ts-scroll">${items.map(x => x.e
+      ? `<div class="ts-card"><div class="ts-head">${date(x.d)}<div><b>${esc(x.e.opp)}</b><small>${esc([x.e.home === true ? t("home.atHome") : x.e.home === false ? t("home.away") : "", timeText(x.e)].filter(Boolean).join(" · ").toLowerCase())}</small></div></div>
+          <div class="answer ts-ans">${["yes", "maybe", "no"].map(a => `<button data-answer="${a}" data-date="${x.d}" data-a="${a}" aria-pressed="false" title="${esc(t("answer." + a))}">${ic({ yes: "check", maybe: "help", no: "x" }[a])}</button>`).join("")}</div></div>`
+      : `<div class="ts-card tr"><div class="ts-head">${date(x.d)}<div><b>${esc(t("tr.one"))}</b><small>${esc(x.tr.start + (x.tr.venue ? " · " + venueShort(x.tr.venue) : ""))}</small></div></div>
+          <div class="answer ts-ans two"><button data-tr="yes" data-date="${x.d}" aria-pressed="false">${ic("check")} ${esc(t("tr.yes"))}</button><button data-tr="no" data-date="${x.d}" aria-pressed="false">${ic("x")}</button></div></div>`).join("")}</div>`
+    : `<div class="ts-done">${ic("check")} ${esc(t("home.allDone"))}</div>`);
+}
+
+// Tiles for the next match: who's coming, weather, carpool, the next training, and the admin's to-dos.
+function renderBento(players) {
+  const box = document.getElementById("bento"), e = dataLoaded ? EVENTS.find(isOn) : null;
+  box.hidden = !e;
+  if (!e) return;
+  const named = players.filter(p => p.name), n = Math.max(named.length, 1), c = tally(e, players);
+  const coming = players.filter(p => p.avail[e.date] === "yes");
+  const ring = `--p:${Math.round(100 * c.yes / n)}%;--q:${Math.round(100 * (c.yes + c.maybe) / n)}%`;
+  const wx = weatherFor(e), alerts = wx && wxOn() ? wxAlerts(wx) : [], v = matchInfo(e).venue;
+  const days = Math.round((parse(e.date) - parse(TODAY)) / 864e5);
+  const wxFrom = fmt(new Date(parse(e.date).getTime() - 15 * 864e5).toLocaleDateString("sv-SE"), { day: "numeric", month: "short" });
+  const cp = (root.carpool || {})[e.date] || {}, cars = Object.values(cp).filter(x => x && x.role === "driver").length;
+  const lookingRide = Object.values(cp).filter(x => x && x.role === "rider" && !x.with).length;
+  const tr = trainingDates(TODAY, new Date(parse(TODAY).getTime() + 13 * 864e5).toLocaleDateString("sv-SE")).find(x => !x.off);
+  const trComing = tr ? named.filter(p => trainComing(p, tr)).length : 0;
+  const sel = selOf(e), me = myRow();
+  const todo = [];
+  if (session.admin) {
+    if (c.missing.length) todo.push(`<div><i>${ic("bell")}</i><span>${esc(t("todo.open", { n: c.missing.length }))}</span><button class="remind" data-date="${e.date}">${esc(t("todo.remind"))}</button></div>`);
+    if (!sel || !sel.pub) todo.push(`<div><i>${ic("users")}</i><span>${esc(t(sel ? "todo.selDraft" : "todo.selNone"))}</span><button data-select="${e.date}">${esc(t("todo.select"))}</button></div>`);
+    if (alerts.length) todo.push(`<div><i>⚠️</i><span>${esc(t("wx.warn", { list: wxWarnText(alerts) }))}</span><button data-edit="${e.date}">${esc(t("todo.look"))}</button></div>`);
+    const gone = sel && sel.pub ? players.filter(p => (sel.p || {})[p.id] === "s" && p.avail[e.date] === "no") : [];
+    if (gone.length) todo.push(`<div><i>🔁</i><span>${esc(t("sel.gone", { names: gone.map(p => firstName(p.name)).join(", ") }))}</span><button data-select="${e.date}">${esc(t("todo.select"))}</button></div>`);
+  }
+  box.innerHTML = `<div class="home-label"><span>${esc(fmt(e.date, { day: "numeric", month: "long" }))} · ${esc(e.opp)}</span></div>
+    <div class="bento-grid">
+      <a class="tile" href="#kalender"><div class="tk">${esc(t("tile.coming"))}</div><div class="tv">${c.yes}<small>/${named.length}</small></div><div class="ts">${esc(t("tile.comingSub", { m: c.maybe, n: c.no }))}</div>
+        <div class="ring" style="${ring}"><b>${Math.round(100 * c.yes / n)}%</b></div>
+        <div class="tile-avs">${coming.slice(0, 5).map(p => avatar(p, players.indexOf(p))).join("")}${coming.length > 5 ? `<span class="av more">+${coming.length - 5}</span>` : ""}</div></a>
+      <div class="tile${alerts.length ? " warn" : ""}"><div class="tk">${esc(t("tile.weather"))}</div>
+        ${wx ? `<div class="tv">${wx.max}°</div><div class="ts">${WX_ICON(wx.code)} ${esc(wx.min + "° · 💨 " + wx.wind + " " + t("unit.kmh") + (wx.rain != null ? " · 💧 " + wx.rain + "%" : ""))}</div>${alerts.length ? `<div class="ts strong">⚠️ ${esc(wxWarnText(alerts))}</div>` : ""}`
+          : `<div class="tv sm">${v ? "🌤️" : "📍"}</div><div class="ts">${esc(v ? t("tile.wxLater", { when: wxFrom }) : t("tile.wxNoPlace"))}</div>`}</div>
+      <a class="tile" href="${pageUrl("carpool.html")}"><div class="tk">${esc(t("tile.carpool"))}</div><div class="tv sm">🚗 ${cars}</div><div class="ts">${esc(myRideText(e) || (lookingRide ? t("tile.looking", { n: lookingRide }) : t("tile.cars", { n: cars })))}</div></a>
+      ${tr ? `<a class="tile" href="#kalender"><div class="tk">${esc(t("tile.training"))}</div><div class="tv sm">${esc(fmt(tr.date, { weekday: "short" }).replace(".", ""))} ${esc(tr.start)}</div><div class="ts">${esc(t("tr.count", { n: trComing }))}${me ? " · " + esc(trainComing(me, tr) ? t("tr.yes") : (me.tr || {})[tr.date] === "no" ? t("tr.noBtn") : "?") : ""}</div></a>`
+        : session.admin ? `<a class="tile" href="${pageUrl("admin.html")}#sec-train"><div class="tk">${esc(t("tile.training"))}</div><div class="tv sm">🏃</div><div class="ts">${esc(t("tile.trainingSetup"))}</div></a>`
+        : `<div class="tile"><div class="tk">${esc(t("tile.season"))}</div><div class="tv">${EVENTS.filter(isOn).length}</div><div class="ts">${esc(t("tile.seasonSub"))}</div></div>`}
+      ${session.admin ? `<div class="tile wide team"><div class="tk">${esc(t("tile.todo"))}</div><div class="todo">${todo.join("") || `<div><i>${ic("check")}</i><span>${esc(t("todo.none"))}</span></div>`}</div></div>` : ""}
+    </div>`;
+}
+
+// Home or Kalender (#kalender, also #trainings): two views of this page.
+function applyView() {
+  const cal = /^#(kalender|trainings)/.test(location.hash);
+  document.getElementById("view-home").hidden = cal;
+  document.getElementById("view-cal").hidden = !cal;
+  document.body.classList.toggle("on-cal", cal);
+  if (typeof markTabs === "function") markTabs();
+}
+window.addEventListener("hashchange", () => { applyView(); window.scrollTo(0, 0); });
+applyView();
+// Home ↔ Kalender on this page: switch the view, no reload.
+document.addEventListener("click", ev => {
+  const a = ev.target.closest('a[data-tab="home"], a[data-tab="cal"], a[href="#kalender"]');
+  if (!a || ev.metaKey || ev.ctrlKey || ev.shiftKey) return;
+  ev.preventDefault();
+  const cal = a.dataset.tab === "cal" || a.getAttribute("href") === "#kalender";
+  history.pushState(null, "", location.pathname + location.search + (cal ? "#kalender" : ""));
+  applyView();
+  window.scrollTo(0, 0);
+});
+window.addEventListener("popstate", applyView);
+document.getElementById("todo-strip").addEventListener("click", ev => { if (ev.target.closest("[data-tr]")) onTrainClick(ev); else onMatchClick(ev); });
+document.getElementById("bento").addEventListener("click", onMatchClick);
 
 const matchesEl = document.getElementById("matches");
 matchesEl.addEventListener("toggle", ev => {
@@ -1015,6 +1194,8 @@ function render() {
   renderWelcome(players);
   renderNews();
   renderHero(players);
+  renderTodoStrip(players);
+  renderBento(players);
   renderMatches(players, events);
   renderTrainings(players);
   checkComplete(players);
@@ -1442,7 +1623,7 @@ function renderTrainings(players) {
   }).join("");
 }
 document.getElementById("tr-more").onclick = () => { trMore = !trMore; render(); };
-document.getElementById("trainings").addEventListener("click", async ev => {
+async function onTrainClick(ev) {
   const b = ev.target.closest("[data-tr]");
   if (b && session.pid && root.players[session.pid]) {
     const cur = (root.players[session.pid].tr || {})[b.dataset.date] || "";
@@ -1457,7 +1638,8 @@ document.getElementById("trainings").addEventListener("click", async ev => {
     if (!(await update({ [`trainings/${date}`]: { off: true, ...(note.trim() ? { note: note.trim().slice(0, 120) } : {}) } }))) return;
     if (await notifyTeam("t", date) === true) toast(t("status.notified"), "", 2500);
   }
-});
+}
+document.getElementById("trainings").addEventListener("click", onTrainClick);
 
 // ---- Selection: the admin picks who plays, in the way the team's sport does it ----
 // Formats (settings/sel, else the sport's default below): squad = n starters + b on the bench, optionally with positions
