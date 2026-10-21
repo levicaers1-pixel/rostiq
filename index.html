@@ -452,7 +452,13 @@
   .md-role small { display: block; opacity: .85; font-size: .8rem; }
   .hero.md .hero-answer { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; background: none; padding: 0; }
   .hero.md .hero-answer button { justify-content: center; padding: 11px 0; border-radius: 14px; background: color-mix(in srgb, var(--brand-text) 14%, transparent); border: 0; font-weight: 800; color: var(--brand-text); }
-  .hero.md .hero-answer button[aria-pressed="true"] { color: #fff; }
+  /* The chosen answer: solid in its colour with a light ring; the other two step back. */
+  .hero.md .hero-answer button[aria-pressed="true"] { color: #fff; box-shadow: 0 0 0 2px var(--brand-text), 0 6px 16px -6px rgb(0 0 0 / .5); }
+  .hero.md .hero-answer button[aria-pressed="true"][data-a="yes"] { background: var(--yes); }
+  .hero.md .hero-answer button[aria-pressed="true"][data-a="maybe"] { background: var(--maybe); }
+  .hero.md .hero-answer button[aria-pressed="true"][data-a="no"] { background: var(--no); }
+  .hero.md .hero-answer:has([aria-pressed="true"]) button[aria-pressed="false"] { opacity: .55; }
+  .hero.md .hero-answer:has([aria-pressed="true"]) button[aria-pressed="false"]:hover { opacity: 1; }
   .ts-ans button { background: color-mix(in srgb, var(--accent) 6%, var(--surface)); color: var(--text); border: 1px solid var(--border); }
   .hero.md .hero-btns { display: flex; flex-wrap: wrap; gap: 8px; }
   .hero.md .hero-btn { flex: 1 1 auto; justify-content: center; white-space: nowrap; }
