@@ -1256,6 +1256,18 @@ let deepAnswer = ["yes", "maybe", "no"].includes(QUERY.get("ans")) && /^\d{4}-\d
   ? { a: QUERY.get("ans"), d: QUERY.get("d") } : null;
 // ?edit=<date> (the weather warning's link): the admin lands in that match's edit window, once.
 let deepEdit = QUERY.get("edit");
+let deepDo = QUERY.get("do"); // from Beheer's quick actions: news | remind | sel
+function applyDeepDo() {
+  if (!deepDo || !dataLoaded || !session.ready || !session.admin) return;
+  const what = deepDo, e = EVENTS.find(isOn);
+  deepDo = null;
+  const u = new URL(location.href); u.searchParams.delete("do"); history.replaceState(history.state, "", u);
+  setTimeout(() => {
+    if (what === "news") { const b = document.getElementById("news-new"); if (b) b.click(); }
+    else if (what === "remind" && e) openRemind(e);
+    else if (what === "sel" && e) openSelection(e);
+  }, 0);
+}
 function applyDeepEdit() {
   if (!deepEdit || !dataLoaded || !session.ready || !session.admin) return;
   const e = EVENTS.find(x => x.date === deepEdit);
@@ -1338,6 +1350,7 @@ function render() {
   checkComplete(players);
   applyDeepAnswer();
   applyDeepEdit();
+  applyDeepDo();
   renderControls();
 
   document.querySelector("#table-view table").style.minWidth = `${180 + events.length * (compact ? 44 : 68)}px`;

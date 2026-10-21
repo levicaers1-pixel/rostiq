@@ -93,6 +93,46 @@
   #admin .panel { border-radius: 22px; }
   .admin-nav a .count { margin-left: 6px; padding: 0 6px; border-radius: 999px; background: var(--no); color: #fff; font-size: .7rem; }
   #admin .panel { scroll-margin-top: 64px; }
+  /* Hub: health card, quick actions, grouped list. A section opens on its own (#sec-…), with a way back. */
+  #admin[data-view="hub"] > section.panel { display: none; }
+  #admin:not([data-view="hub"]) > section.panel:not(.on), #admin:not([data-view="hub"]) .hub { display: none; }
+  #admin:not([data-view="hub"]) > section.panel.on { margin-top: 10px; animation: sec-in .2s var(--ease, ease); }
+  @keyframes sec-in { from { opacity: 0; transform: translateX(12px); } }
+  .admin-back { display: none; align-items: center; gap: 6px; margin-top: 18px; font-weight: 700; font-size: .9rem; color: var(--accent); text-decoration: none; }
+  #admin:not([data-view="hub"]) .admin-back { display: inline-flex; }
+  .hub { margin-top: 22px; max-width: 760px; }
+  .hub-health { display: grid; grid-template-columns: auto 1fr; gap: 16px; align-items: center; padding: 16px; border-radius: 24px;
+    background: var(--brand); color: var(--brand-text); }
+  .hub-ring { width: 76px; height: 76px; border-radius: 50%; display: grid; place-items: center; position: relative;
+    background: conic-gradient(var(--pampas) 0 var(--p), color-mix(in srgb, var(--brand-text) 16%, transparent) var(--p)); }
+  .hub-ring::after { content: ""; position: absolute; inset: 7px; border-radius: 50%; background: var(--brand); }
+  .hub-ring b { position: relative; z-index: 1; font-family: var(--font-display); font-weight: 400; font-size: 1.4rem; color: var(--pampas); }
+  .hub-health h3 { margin: 0; font-size: 1.05rem; }
+  .hub-health p { margin: 4px 0 0; font-size: .82rem; opacity: .85; line-height: 1.4; }
+  .hub-label { font-size: .7rem; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); margin: 22px 0 8px; }
+  .hub-qa { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .hub-qa a { display: grid; justify-items: center; gap: 7px; font-size: .74rem; font-weight: 700; color: var(--muted); text-decoration: none; text-align: center; }
+  .hub-qa a > span:first-child { position: relative; width: 56px; height: 56px; border-radius: 19px; display: grid; place-items: center;
+    background: var(--surface); border: 1px solid var(--border); color: var(--accent); box-shadow: var(--shadow-sm); transition: transform .15s var(--ease); }
+  .hub-qa a:hover > span:first-child { transform: translateY(-2px); }
+  .hub-qa svg.i { width: 22px; height: 22px; }
+  .hub-qa em { position: absolute; top: -5px; right: -5px; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 10px; display: grid; place-items: center;
+    background: var(--no); color: #fff; font-style: normal; font-size: .66rem; font-weight: 800; border: 2px solid var(--bg); }
+  .hub-group { background: var(--surface); border: 1px solid var(--border); border-radius: 22px; overflow: hidden; box-shadow: var(--shadow-sm); }
+  .hub-cell { display: flex; align-items: center; gap: 12px; padding: 13px 16px; color: var(--text); text-decoration: none; font-weight: 600; font-size: .92rem; }
+  .hub-cell + .hub-cell { border-top: 1px solid var(--border); }
+  .hub-cell:hover { background: color-mix(in srgb, var(--accent) 5%, var(--surface)); }
+  .hub-cell .ic { width: 34px; height: 34px; border-radius: 11px; display: grid; place-items: center; flex: none;
+    background: color-mix(in srgb, var(--accent) 9%, var(--surface)); color: var(--accent); }
+  .hub-cell .ic svg.i { width: 17px; height: 17px; }
+  .hub-cell .tx { flex: 1; min-width: 0; }
+  .hub-cell small { display: block; font-size: .76rem; font-weight: 500; color: var(--muted); margin-top: 1px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .hub-cell .bdg { font-size: .7rem; font-weight: 800; padding: 3px 9px; border-radius: 999px; background: var(--no); color: #fff; }
+  .hub-cell .chev { color: var(--muted); }
+  .hub-cell .chev svg.i { width: 16px; height: 16px; transform: rotate(-90deg); }
+  .hub-cell.warn .ic { background: var(--no-bg); color: var(--no); }
+  .hub-cell.danger { color: var(--no); }
+  .hub-cell.danger .ic { background: var(--no-bg); color: var(--no); }
   #admin .panel h2 { display: flex; align-items: center; gap: 10px; }
   #admin .panel h2 .h-ic { width: 32px; height: 32px; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center;
     background: color-mix(in srgb, var(--accent) 9%, var(--surface)); color: var(--accent); }
@@ -200,8 +240,9 @@
   <p class="banner" id="no-access" hidden data-i18n="admin.noAccess"></p>
 
   <div id="admin" hidden>
-    <div class="admin-tiles" id="admin-tiles"></div>
-    <nav class="admin-nav" id="admin-nav" aria-label="Sections">
+    <div class="hub" id="hub"></div>
+    <a class="admin-back" href="#" id="admin-back" data-i18n="hub.back">← Beheer</a>
+    <nav class="admin-nav" id="admin-nav" aria-label="Sections" hidden>
       <a href="#requests-panel"><span data-i18n="admin.requests">Access requests</span><span class="count" id="nav-req-count" hidden></span></a>
       <a href="#sec-players" data-i18n="admin.players">Players & accounts</a>
       <a href="#sec-settings" data-i18n="admin.settings">Settings</a>
@@ -563,8 +604,71 @@ function seenHtml(uid) {
   return `<span class="seen ${tone}" title="${esc(new Date(at).toLocaleString(LOCALE))}">${t("seen.label", { when })}</span>`;
 }
 
-// ---- Dashboard tiles: what needs attention ----
+// ---- Hub: how the team is doing, quick actions, and the sections as a grouped list ----
+const HUB_SECTIONS = ["requests-panel", "sec-players", "sec-fields", "sec-matches", "sec-train", "sec-settings", "sec-brand", "sec-backup", "sec-season"];
+function applyAdminView() {
+  const id = location.hash.slice(1), box = document.getElementById("admin");
+  const open = HUB_SECTIONS.includes(id) ? id : "";
+  box.dataset.view = open || "hub";
+  for (const s of HUB_SECTIONS) { const el = document.getElementById(s); if (el) el.classList.toggle("on", s === open); }
+}
+let fromHub = false; // opened from the overview on this page: "back" is a step back in history
+window.addEventListener("hashchange", ev => {
+  fromHub = HUB_SECTIONS.includes(location.hash.slice(1)) && !HUB_SECTIONS.includes((ev.oldURL.split("#")[1] || ""));
+  applyAdminView(); window.scrollTo(0, 0);
+});
+document.getElementById("admin-back").addEventListener("click", ev => {
+  ev.preventDefault();
+  if (fromHub) return history.back();
+  history.replaceState(history.state, "", location.pathname + location.search);
+  applyAdminView(); window.scrollTo(0, 0);
+});
+function renderHub() {
+  const players = sortedPlayers().filter(p => p.name);
+  const linked = players.filter(p => p.uid).length, reqs = Object.keys(reqList()).length;
+  const upcoming = EVENTS.filter(e => !isPast(e) && !e.cancelled), next = upcoming[0];
+  const missing = next ? players.filter(p => !(p.avail || {})[next.date]).length : 0;
+  const pct = (a, b) => b ? a / b : 1;
+  const score = Math.round(100 * (0.4 * pct(linked, players.length) + 0.6 * (next ? pct(players.length - missing, players.length) : 1)) - Math.min(reqs, 3) * 5);
+  const sc = Math.max(0, Math.min(100, score));
+  const facts = [t("hub.linked", { n: linked, total: players.length }),
+    next ? (missing ? t("hub.missing", { n: missing, opp: esc(next.opp) }) : t("hub.allAnswered", { opp: esc(next.opp) })) : t("hub.noMatch"),
+    reqs ? t("hub.requests", { n: reqs }) : ""].filter(Boolean).join(" · ");
+  const home = q => pageUrl("") + (q ? "&do=" + q : "");
+  const qa = (href, icon, label, badge) => `<a href="${href}"><span>${ic(icon)}${badge ? `<em>${badge}</em>` : ""}</span><span>${label}</span></a>`;
+  const cell = (id, icon, label, sub, extra = "", cls = "") => `<a class="hub-cell ${cls}" href="#${id}"><span class="ic">${ic(icon)}</span>
+    <span class="tx">${label}${sub ? `<small>${sub}</small>` : ""}</span>${extra}<span class="chev">${ic("chevron-down")}</span></a>`;
+  const s = root.settings || {}, slots = Object.keys((trainCfg() || {}).slots || {}).length;
+  const fields = customFields().map(([, l]) => l);
+  document.getElementById("hub").innerHTML = `
+    <div class="hub-health"><div class="hub-ring" style="--p:${sc}%"><b>${sc}%</b></div>
+      <div><h3>${t(sc >= 80 ? "hub.good" : sc >= 50 ? "hub.ok" : "hub.work")}</h3><p>${facts}</p></div></div>
+    <div class="hub-label">${t("hub.quick")}</div>
+    <div class="hub-qa">${qa(home("news"), "megaphone", t("hub.qNews"))}${next ? qa(home("remind"), "bell", t("hub.qRemind"), missing || "") : ""}${
+      next ? qa(home("sel"), "users", t("hub.qSel")) : ""}${qa("#sec-matches", "plus", t("hub.qMatch"))}</div>
+    <div class="hub-label">${t("hub.team")}</div>
+    <div class="hub-group">
+      ${cell("requests-panel", "bell", t("admin.requests"), reqs ? t("tile.requestsSub") : t("tile.none"), reqs ? `<span class="bdg">${reqs}</span>` : "", reqs ? "warn" : "")}
+      ${cell("sec-players", "users", t("admin.players"), t("hub.linked", { n: linked, total: players.length }))}
+      ${cell("sec-fields", "hash", t("fields.title"), [t("sport." + sportKey()), ...fields].map(esc).join(" · "))}
+    </div>
+    <div class="hub-label">${t("hub.season")}</div>
+    <div class="hub-group">
+      ${cell("sec-matches", "calendar", t("admin.matches"), next ? t("hub.matchesSub", { n: upcoming.length, when: esc(shortDate(next.date)) }) : t("hub.noMatch"))}
+      ${cell("sec-train", "clock", t("tr.admin"), slots ? t("hub.trainSub", { n: slots }) : t("hub.trainOff"))}
+      ${cell("sec-settings", "settings", t("admin.settings"), [s.seasonName, s.min ? t("hub.min", { n: s.min }) : ""].filter(Boolean).map(esc).join(" · "))}
+    </div>
+    <div class="hub-label">${t("hub.club")}</div>
+    <div class="hub-group">
+      ${cell("sec-brand", "image", t("brand.title"), t("hub.brandSub"))}
+      ${cell("sec-backup", "download", t("admin.backup"), "")}
+      ${cell("sec-season", "flag", t("admin.newSeason"), "", "", "danger")}
+    </div>`;
+  applyAdminView();
+}
+// (the old summary tiles, still filled for the request badge)
 function renderTiles() {
+  renderHub();
   const players = sortedPlayers().filter(p => p.name);
   const linked = players.filter(p => p.uid).length, notLinked = players.length - linked;
   const reqs = Object.keys(reqList()).length;
@@ -572,6 +676,7 @@ function renderTiles() {
   const missing = next ? players.filter(p => !(p.avail || {})[next.date]).length : 0;
   const tile = (href, icon, value, label, sub, tone = "") =>
     `<a class="tile ${tone}" href="${href}"><span class="tile-ic">${ic(icon)}</span><b>${value}</b><span>${label}</span><small>${sub || "&nbsp;"}</small></a>`;
+  if (!document.getElementById("admin-tiles")) { const badge = document.getElementById("nav-req-count"); badge.hidden = !reqs; badge.textContent = reqs; return; }
   document.getElementById("admin-tiles").innerHTML =
     tile("#requests-panel", "bell", reqs, t("tile.requests"), reqs ? t("tile.requestsSub") : t("tile.none"), reqs ? "warn" : "ok") +
     tile("#sec-players", "users", `${linked}/${players.length}`, t("tile.linked"), notLinked ? t("tile.notLinked", { n: notLinked }) : t("tile.allLinked"), notLinked ? "" : "ok") +

@@ -51,6 +51,49 @@
   .away-row > svg.i { color: var(--muted); }
   .away-row .grow { flex: 1; }
   .place-results button { text-align: left; font-size: .88rem; }
+  /* RostiQ next */
+  .sport-card { border-radius: 22px; padding: 14px; }
+  .me-section > h2 { font-size: .72rem; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); margin: 22px 0 4px; }
+  .me-section > h2 svg.i { width: 15px; height: 15px; }
+  .me-section > p.muted { font-size: .84rem; }
+  .pf { position: relative; overflow: hidden; margin-top: 16px; padding: 20px 16px 16px; border-radius: 26px; text-align: center; color: var(--brand-text);
+    background: linear-gradient(160deg, color-mix(in srgb, var(--brand) 78%, #fff), var(--brand) 55%, color-mix(in srgb, var(--brand) 70%, #000)); }
+  .pf::before { content: ""; position: absolute; inset: 0; background: repeating-linear-gradient(120deg, color-mix(in srgb, var(--pampas) 9%, transparent) 0 10px, transparent 10px 26px); }
+  .pf > * { position: relative; }
+  .pf-ph { width: 84px; height: 84px; border-radius: 28px; margin: 0 auto; display: grid; place-items: center; overflow: hidden; font-weight: 800; font-size: 1.6rem;
+    background: color-mix(in srgb, var(--pampas) 30%, var(--brand)); box-shadow: 0 0 0 4px color-mix(in srgb, var(--pampas) 60%, transparent); }
+  .pf-ph img { width: 100%; height: 100%; object-fit: cover; }
+  .pf h2 { font-family: var(--font-display); font-weight: 400; text-transform: uppercase; letter-spacing: .02em; font-size: 1.7rem; margin: 12px 0 2px; }
+  .pf p { margin: 0; font-size: .82rem; opacity: .82; }
+  .pf-stats { display: grid; grid-template-columns: repeat(3, 1fr); margin-top: 14px; border-radius: 16px; background: rgb(0 0 0 / .22); }
+  .pf-stats div { padding: 10px 4px; }
+  .pf-stats div + div { border-left: 1px solid color-mix(in srgb, var(--brand-text) 12%, transparent); }
+  .pf-stats b { display: block; font-family: var(--font-display); font-weight: 400; font-size: 1.45rem; color: var(--pampas); }
+  .pf-stats small { display: block; font-size: .6rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; opacity: .82; line-height: 1.25; }
+  .pf h2.mail { font-family: inherit; font-weight: 800; text-transform: none; letter-spacing: 0; font-size: 1.05rem; overflow-wrap: anywhere; }
+  .pf-teams { display: flex; gap: 10px; overflow-x: auto; margin: 0 -16px; padding: 2px 16px 4px; scrollbar-width: none; }
+  .pf-teams::-webkit-scrollbar { display: none; }
+  .pf-team { flex: none; width: 168px; padding: 12px; border-radius: 20px; background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow-sm); color: var(--text); text-decoration: none; }
+  .pf-team:hover { border-color: color-mix(in srgb, var(--accent) 40%, var(--border)); }
+  .pf-crest { width: 40px; height: 40px; border-radius: 13px; display: grid; place-items: center; font-family: var(--font-display); font-size: .85rem; letter-spacing: .03em; }
+  .pf-team b { display: block; margin-top: 8px; font-size: .9rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pf-team small { display: block; font-size: .74rem; color: var(--muted); }
+  .pf-team .pill { margin-top: 8px; }
+  .pf-group { background: var(--surface); border: 1px solid var(--border); border-radius: 22px; overflow: hidden; box-shadow: var(--shadow-sm); }
+  .pf-cell { display: flex; align-items: center; gap: 12px; width: 100%; padding: 13px 16px; border: 0; border-radius: 0; background: none; color: var(--text);
+    font: inherit; font-weight: 600; font-size: .92rem; text-align: left; }
+  .pf-cell + .pf-cell { border-top: 1px solid var(--border); }
+  .pf-cell > svg.i { width: 18px; height: 18px; color: var(--accent); }
+  .pf-cell .grow { flex: 1; }
+  button.pf-cell:hover:not(:disabled) { background: color-mix(in srgb, var(--accent) 5%, var(--surface)); border: 0; }
+  .pf-lang { display: inline-flex; border: 1px solid var(--border); border-radius: 999px; overflow: hidden; }
+  .pf-lang button { background: none; border: 0; border-radius: 0; color: var(--muted); font-size: .75rem; font-weight: 700; padding: 4px 10px; }
+  .pf-lang button[aria-pressed="true"] { background: var(--pampas); color: var(--brand); }
+  .away-add summary { cursor: pointer; list-style: none; display: inline-flex; align-items: center; gap: 8px; font-weight: 700; font-size: .9rem; color: var(--accent); }
+  .away-add summary::-webkit-details-marker { display: none; }
+  .away-add summary .plus { width: 30px; height: 30px; border-radius: 10px; display: grid; place-items: center; background: var(--pampas); color: var(--brand); }
+  .away-add[open] summary { margin-bottom: 12px; }
+  .away-none { color: var(--muted); font-size: .88rem; margin: 0 0 10px; }
 </style>
 <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/12.12.0/firebase-app.js" crossorigin>
 <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/12.12.0/firebase-auth.js" crossorigin>
@@ -203,16 +246,61 @@ async function saveSport(form) {
 const awayList = () => Object.entries((profile.data || {}).away || {}).filter(([, a]) => a && a.t >= TODAY).sort(([, a], [, b]) => a.f.localeCompare(b.f));
 function awayHtml() {
   const msg = me.msg._away || {};
+  const list = awayList();
   return `<form class="sport-card" id="away">
-    ${awayList().map(([id, a]) => `<div class="away-row">${ic("calendar")}<span class="grow"><b>${esc(awayText(a))}</b>${a.n ? ` · ${esc(a.n)}` : ""}</span>
-      <button type="button" class="small ghost" data-away-del="${id}" title="${t("away.remove")}" aria-label="${t("away.remove")}">${ic("trash")}</button></div>`).join("")}
+    ${list.length ? list.map(([id, a]) => `<div class="away-row">${ic("calendar")}<span class="grow"><b>${esc(awayText(a))}</b>${a.n ? ` · ${esc(a.n)}` : ""}</span>
+      <button type="button" class="small ghost" data-away-del="${id}" title="${t("away.remove")}" aria-label="${t("away.remove")}">${ic("trash")}</button></div>`).join("")
+      : `<p class="away-none">${t("me.awayNone")}</p>`}
+    <details class="away-add"${me.awayOpen || msg.err ? " open" : ""}><summary><span class="plus">${ic("plus")}</span>${t("me.addAway")}</summary>
     <div class="fields">
       <label><span>${t("away.from")}</span><input name="f" type="date" min="${TODAY}"></label>
       <label><span>${t("away.to")}</span><input name="t" type="date" min="${TODAY}"></label>
       <label><span>${t("away.note")}</span><input name="n" maxlength="60" placeholder="${t("away.notePh")}"></label>
     </div>
-    <div class="row-end"><span class="msg${msg.err ? " err" : ""}">${esc(msg.text || "")}</span><button class="primary">${t("away.add")}</button></div>
+    <div class="row-end"><span class="msg err">${msg.err ? esc(msg.text || "") : ""}</span><button class="primary">${t("away.add")}</button></div>
+    </details>${!msg.err && msg.text ? `<p class="muted" style="margin:8px 0 0">${esc(msg.text)}</p>` : ""}
   </form>`;
+}
+
+// ---- The profile card, my teams, app settings ----
+function profileHtml() {
+  const u = session.user || {}, d = profile.data || {};
+  const name = u.displayName || (me.teams[0] && me.teams[0].name) || u.email || "";
+  const place = (d.geo && d.geo.label) || d.gemeente || "";
+  let past = 0, yes = 0, open = 0;
+  for (const x of me.teams) for (const [date, e] of Object.entries(x.schedule)) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !e || !e.opp || e.cancelled) continue;
+    if (date < TODAY) { past++; if (x.avail[date] === "yes") yes++; }
+    else if (!x.avail[date]) open++;
+  }
+  const initials = name.split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]).join("").toUpperCase();
+  return `<section class="pf">
+    <div class="pf-ph">${u.photoURL ? `<img src="${esc(u.photoURL)}" alt="" referrerpolicy="no-referrer">` : esc(initials)}</div>
+    <h2${name.includes("@") ? ' class="mail"' : ""}>${esc(name)}</h2>
+    <p>${[place, t("me.teamsIn", { n: me.teams.length })].filter(Boolean).map(esc).join(" · ")}</p>
+    <div class="pf-stats"><div><b>${past ? Math.round(100 * yes / past) + "%" : "–"}</b><small>${t("me.statAttend")}</small></div>
+      <div><b>${open}</b><small>${t("me.statOpen")}</small></div><div><b>${me.teams.length}</b><small>${t("me.statTeams")}</small></div></div>
+  </section>`;
+}
+function teamsHtml() {
+  if (!me.teams.length) return "";
+  return `<section class="me-section"><h2>${ic("users")} ${t("me.myTeams")}</h2><div class="pf-teams">${me.teams.map(x => {
+    const open = Object.entries(x.schedule).filter(([date, e]) => date >= TODAY && e && e.opp && !e.cancelled && !x.avail[date]).length;
+    const hi = (x.info.colors && x.info.colors.light && x.info.colors.light["--pampas"]) || "#ffffff";
+    const nm = teamName(x), crest = nm.split(/\s+/).filter(Boolean).slice(0, 3).map(w => w[0]).join("").toUpperCase();
+    return `<a class="pf-team" href="${appUrl("index.html")}?t=${encodeURIComponent(x.tid)}">
+      <span class="pf-crest" style="background:${esc(teamColor(x))};color:${esc(hi)}">${esc(crest)}</span>
+      <b>${esc(nm)}</b><small>${esc(x.settings.seasonName || sportLabel(sportOf(x.settings)))}</small>
+      <span class="pill ${open ? "no" : "yes"}">${open ? t("me.toAnswer", { n: open }) : t("me.allDone")}</span></a>`;
+  }).join("")}</div></section>`;
+}
+function appHtml() {
+  const dark = document.documentElement.classList.contains("dark");
+  return `<section class="me-section"><h2>${ic("bell")} ${t("me.appTitle")}</h2><div class="pf-group">
+    ${pushAvailable() ? `<button type="button" class="pf-cell menu-switch" role="switch" aria-checked="${pushOn()}" data-push>${ic("bell")}<span class="grow">${t("menu.notifications")}</span><span class="switch" aria-hidden="true"></span></button>` : ""}
+    <button type="button" class="pf-cell menu-switch" role="switch" aria-checked="${dark}" data-theme>${ic("moon")}<span class="grow">${t("menu.dark")}</span><span class="switch" aria-hidden="true"></span></button>
+    <div class="pf-cell">${ic("globe")}<span class="grow">${t("menu.language")}</span><span class="pf-lang">${langButtons()}</span></div>
+  </div></section>`;
 }
 // Saves the new list (profile + all my teams), and sets "no" for the matches it covers in my teams.
 async function saveAway(next, period) {
@@ -233,6 +321,7 @@ async function saveAway(next, period) {
     }
   }
   me.msg._away = ok ? { text: period ? t("away.saved", { n }) : t("away.removed") } : { err: true, text: t("status.saveFailed") };
+  if (ok) me.awayOpen = false;
   render();
 }
 
@@ -268,8 +357,9 @@ function render() {
   // Keep what's being typed across a re-render.
   const a = document.activeElement, keep = a && a.form && a.name ? { form: a.form.id || a.form.dataset.sport, name: a.name, value: a.value } : null;
   // me.html?agenda: only my matches (its own menu item); otherwise the profile itself, kept short.
-  box.innerHTML = AGENDA ? `<section class="me-section">${agendaHtml()}</section>` : `
+  box.innerHTML = AGENDA ? `<section class="me-section">${agendaHtml()}</section>` : `${profileHtml()}${teamsHtml()}
     <section class="me-section"><h2>${ic("calendar")} ${t("away.title")}</h2><p class="muted">${t("away.sub")}</p>${awayHtml()}</section>
+    ${appHtml()}
     <section class="me-section"><h2>${ic("trophy")} ${t("me.sports")}</h2><p class="muted">${t("me.sportsSub")}</p>${sportsHtml()}</section>
     <section class="me-section"><h2>${ic("user")} ${t("me.contact")}</h2><p class="muted">${t("me.contactSub")}</p>${contactHtml()}</section>`;
   if (keep) {
@@ -292,6 +382,15 @@ document.getElementById("me-body").addEventListener("click", ev => {
       .then(ok => { me.msg._contact = ok ? { text: t("me.savedContact") } : { err: true, text: t("status.saveFailed") }; render(); });
   }
 });
+document.getElementById("me-body").addEventListener("click", ev => {
+  const l = ev.target.closest(".pf-lang [data-lang]");
+  if (l && l.dataset.lang !== LANG) { pref.set("lang", l.dataset.lang); location.reload(); }
+  if (ev.target.closest("[data-theme]")) setTimeout(render, 0);
+  if (ev.target.closest("[data-push]")) { setTimeout(render, 600); setTimeout(render, 2500); }
+});
+document.getElementById("me-body").addEventListener("toggle", ev => {
+  if (ev.target.classList && ev.target.classList.contains("away-add")) me.awayOpen = ev.target.open;
+}, true);
 document.getElementById("me-body").addEventListener("change", ev => {
   if (ev.target.id === "add-sport" && ev.target.value) { me.extraSports.push(ev.target.value); render(); }
 });
