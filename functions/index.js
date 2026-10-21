@@ -124,7 +124,7 @@ export const notice = onValueCreated({ ref: "/notices/{tid}/{id}", instance: "wi
       let mailed = 0;
       if (n.m) { // also by email: to every linked player's verified address, and the admin sees how many
         try { mailed = await sendNewsMail(db, tid, n, item, brand); } catch (e) { console.error("announcement email failed:", (e && e.code) || "error"); }
-        await db.ref(`teams/${tid}/news/${n.i}/mailed`).set(mailed);
+        await db.ref(`teams/${tid}/news/${n.i}`).update({ mailed, mailedAt: Date.now() });
       }
       console.log(`notice n: ${sent} notifications sent, ${mailed} emails`);
     }

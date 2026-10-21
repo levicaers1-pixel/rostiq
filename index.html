@@ -1342,7 +1342,8 @@ function renderNews() {
       <p class="news-text">${esc(n.text)}</p>
       <div class="news-foot">${mine || (session.user && n.by === session.user.uid) ? `<span class="muted">${ic("check")} ${esc(t("news.seen"))}</span>`
         : `<button type="button" class="small" data-news-seen="${n.id}">👍 ${esc(t("news.markSeen"))}</button>`}
-        ${admin && n.mailed != null ? `<span class="news-stat">✉️ ${esc(t("news.mailed", { n: n.mailed }))}</span>` : ""}
+        ${admin && n.mailed != null ? `<span class="news-stat">✉️ ${esc(t("news.mailed", { n: n.mailed }))}${n.mailedAt ? ` · ${esc(agoText(n.mailedAt))}` : ""}</span>` : ""}
+        ${admin && !DEMO ? `<button type="button" class="small" data-news-mail="${n.id}">✉️ ${esc(t(n.mailed != null ? "news.mailAgain" : "news.mailNow"))}</button>` : ""}
         ${admin && !DEMO ? `<span class="news-stat">${esc(t("news.stat", { n: seen.length, of: members.length }))}</span>
           ${notSeen.length ? `<details class="news-not"><summary>${esc(t("news.notSeen", { n: notSeen.length }))}</summary>${esc(notSeen.join(", "))}</details>` : ""}` : ""}</div>
     </article>`;
@@ -1356,6 +1357,17 @@ document.getElementById("news").addEventListener("click", async ev => {
     pref.set("newsSeen:" + id, "1");
     if (!DEMO && session.user) send("PUT", `newsSeen/${TEAM_ID}/${id}/${session.user.uid}`, { ".sv": "timestamp" }, true, true, true);
     return renderNews();
+  }
+  const mailB = ev.target.closest("[data-news-mail]");
+  if (mailB && session.admin && session.user) {
+    const id = mailB.dataset.newsMail, n = (root.news || {})[id];
+    if (!n) return;
+    if (!confirm(n.mailed != null ? t("news.mailAgainAsk", { n: n.mailed, when: agoText(n.mailedAt || n.at) }) : t("news.mailAsk"))) return;
+    mailB.disabled = true;
+    const ok = await send("PUT", `notices/${TEAM_ID}/${historyId()}`, { k: "n", d: TODAY, i: id, m: true, np: true, by: session.user.uid, at: { ".sv": "timestamp" } }, true, true, true);
+    toast(t(ok === true ? "news.mailing" : "rem.failed"), ok === true ? "" : "err", 3000);
+    mailB.disabled = false;
+    return;
   }
   const del = ev.target.closest("[data-news-del]");
   if (del) {

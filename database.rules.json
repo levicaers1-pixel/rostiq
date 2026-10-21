@@ -510,6 +510,9 @@
             "mailed": {
               ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 500"
             },
+            "mailedAt": {
+              ".validate": "newData.isNumber()"
+            },
             "$other": {
               ".validate": false
             }

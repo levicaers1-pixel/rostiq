@@ -241,7 +241,8 @@ team = {
         ".validate": "$id.matches(/^[0-9a-z]{10,24}$/) && newData.hasChildren(['text', 'by', 'at'])",
         "text": s(500, 1), "by": {".validate": "newData.isString()"}, "name": s(40), "at": {".validate": "newData.isNumber()"},
         "until": {".validate": "newData.isString() && newData.val().matches(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/)"},
-        "mailed": num(0, 500),  # how many players got it by email (written by the function)
+        "mailed": num(0, 500),  # how many players got it by email, and when (written by the function)
+        "mailedAt": {".validate": "newData.isNumber()"},
         "$other": NO}},
     # Who was asked to complete their details, and how (written by the function only; admins may clear it).
     "profileAsked": {".write": f"{TA} && !newData.exists()", "$pid": {
