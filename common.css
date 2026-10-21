@@ -542,6 +542,7 @@ html.font-serif .brand .logo-text { font-size: 1.6rem; }
 .tabs { margin-top: 0; gap: 2px; }
 .tabs a { padding: 7px 12px; border-radius: 999px; border-bottom: 0; margin-bottom: 0; font-size: .88rem; }
 .tabs a[aria-current="page"] { background: color-mix(in srgb, var(--brand-text) 16%, transparent); box-shadow: inset 0 -2px 0 var(--pampas); }
+.brand-inner:not(:has(.corner)) { padding-right: max(16px, env(safe-area-inset-right)); }
 .corner { top: 50%; transform: translateY(-50%); z-index: 45; } /* the transform makes a new layer: keep the account menu above the page */
 @media (max-width: 700px) {
   .brand-inner { min-height: 52px; padding-top: 8px; padding-bottom: 8px; padding-right: 64px; }
@@ -556,8 +557,8 @@ html.font-serif .brand .logo-text { font-size: 1.6rem; }
 }
 
 /* Answer buttons (Ja / Misschien / Nee, trainings), on every page. The chosen one is in the team's accent colour. */
-.answer { display: inline-flex; gap: 3px; padding: 3px; border-radius: 12px; background: color-mix(in srgb, var(--muted) 11%, var(--surface)); }
-.answer button { border: none; background: transparent; border-radius: 9px; padding: 7px 12px; font-weight: 600; color: var(--muted); }
-.answer button:hover:not(:disabled) { background: var(--surface); border: none; }
-.answer button[aria-pressed="true"] { background: var(--pampas); color: var(--brand); font-weight: 800;
+.answer[role="group"] { display: inline-flex; gap: 3px; padding: 3px; border-radius: 12px; background: color-mix(in srgb, var(--muted) 11%, var(--surface)); }
+.answer[role="group"] button { border: none; background: transparent; border-radius: 9px; padding: 7px 12px; font-weight: 600; color: var(--muted); }
+.answer[role="group"] button:hover:not(:disabled) { background: var(--surface); border: none; }
+.answer[role="group"] button[aria-pressed="true"], .q-ans button[aria-pressed="true"] { background: var(--pampas); color: var(--brand); font-weight: 800;
   box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--brand) 30%, transparent), var(--shadow-sm); }

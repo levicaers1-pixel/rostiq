@@ -9,7 +9,7 @@
 <meta name="theme-color" content="#1e1b4b">
 <link rel="icon" type="image/png" href="/assets/favicon.png">
 <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700;800&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Noto+Sans:wght@400;500;600;700;800&display=swap">
 <link rel="stylesheet" href="/common.css">
 <style>
   main.answer { max-width: 560px; }
@@ -21,21 +21,19 @@
   .done.no { background: var(--no-bg); color: var(--no); }
   .done svg.i { width: 22px; height: 22px; flex-shrink: 0; }
   .q-list { display: grid; gap: 12px; }
-  .q-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-sm); padding: 14px 16px; }
+  .q-card { background: var(--surface); border: 1px solid var(--border); border-radius: 22px; box-shadow: var(--shadow-sm); padding: 14px 16px; }
   .q-card.first { border-color: color-mix(in srgb, var(--accent) 45%, var(--border)); }
   .q-head { display: flex; gap: 12px; align-items: center; }
   .q-date { width: 48px; text-align: center; border-radius: 12px; padding: 6px 0; line-height: 1.05; background: color-mix(in srgb, var(--accent) 9%, var(--surface)); }
   .q-date small { display: block; font-size: .62rem; font-weight: 800; text-transform: uppercase; color: var(--accent); }
-  .q-date b { font-size: 1.25rem; }
+  .q-date b { font-family: var(--font-display); font-weight: 400; font-size: 1.45rem; }
   .q-opp { font-weight: 800; font-size: 1.05rem; }
   .q-sub { font-size: .8rem; color: var(--muted); }
   .q-count { margin-left: auto; font-size: .78rem; font-weight: 700; padding: 3px 9px; border-radius: 999px; background: var(--yes-bg); color: var(--yes); white-space: nowrap; }
   .q-count.low { background: var(--maybe-bg); color: var(--maybe); }
   .q-ans { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 12px; }
   .q-ans button { padding: 11px 0; font-weight: 700; border-radius: 12px; border: 1.5px solid var(--border); background: var(--surface); color: var(--text); font-size: .95rem; }
-  .q-ans button[aria-pressed=true][data-r=yes] { background: var(--yes); border-color: var(--yes); color: #fff; }
-  .q-ans button[aria-pressed=true][data-r=maybe] { background: var(--maybe); border-color: var(--maybe); color: #fff; }
-  .q-ans button[aria-pressed=true][data-r=no] { background: var(--no); border-color: var(--no); color: #fff; }
+  .q-ans button[aria-pressed=true] { border-color: transparent; }
   .q-more { margin-top: 22px; font-size: .88rem; color: var(--muted); text-align: center; line-height: 1.6; }
   .q-more a { color: var(--accent); font-weight: 700; }
   .q-msg { text-align: center; padding: 40px 16px; }
@@ -128,7 +126,7 @@ function brand(info) {
   $("q-brand").innerHTML = logo ? `<img class="logo" src="${esc(logo)}" alt="${esc(info.brand)}">` : esc(info.brand || "RostiQ");
   const vars = o => Object.entries(o || {}).filter(([k, v]) => /^--[a-z-]{2,20}$/.test(k) && /^#[0-9a-f]{6}$/i.test(v)).map(([k, v]) => `${k}: ${v};`).join(" ");
   const c = info.colors;
-  if (c) document.head.insertAdjacentHTML("beforeend", `<style>:root { ${vars(c.light)} } @media (prefers-color-scheme: dark) { :root { ${vars(c.dark)} } }</style>`);
+  if (c) document.head.insertAdjacentHTML("beforeend", `<style>:root { ${vars(c.light)} } html.dark { ${vars(c.dark)} }</style>`);
   const theme = c && c.light && c.light["--brand"];
   if (theme) document.querySelector('meta[name="theme-color"]').content = theme;
   $("q-who").innerHTML = t("qa.as", { name: `<b>${esc(name)}</b>` });
