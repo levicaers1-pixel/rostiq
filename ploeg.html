@@ -23,12 +23,17 @@
   .toolbar input { flex: 1 1 220px; min-width: 0; font: inherit; font-size: .9rem; padding: 7px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text); }
   .grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr)); }
   .grid > .empty-state { grid-column: 1 / -1; }
-  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-sm); padding: 14px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
-  .card.me { border-color: var(--accent); box-shadow: inset 3px 0 0 var(--accent); }
-  .head { display: flex; gap: 12px; align-items: center; }
-  .avatar { width: 44px; height: 44px; border-radius: 50%; background: var(--brand); color: #fff; display: flex; align-items: center; justify-content: center;
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 22px; box-shadow: var(--shadow-sm); padding: 0; display: flex; flex-direction: column; gap: 10px; min-width: 0; overflow: hidden; }
+  .card.me { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent), var(--shadow-sm); }
+  .head { display: flex; gap: 12px; align-items: center; padding: 14px 14px 12px;
+    background: linear-gradient(135deg, color-mix(in srgb, var(--brand) 16%, var(--surface)), var(--surface) 75%); }
+  .card.me .head { background: linear-gradient(135deg, var(--brand), color-mix(in srgb, var(--brand) 70%, var(--surface))); color: var(--brand-text); }
+  .card.me .head .place { color: color-mix(in srgb, var(--brand-text) 78%, transparent); }
+  .card.me .head .icon-btn { background: color-mix(in srgb, var(--brand-text) 14%, transparent); border-color: transparent; color: var(--brand-text); }
+  .card > .facts, .card > .fill-in { margin: 0 14px; }
+  .avatar { width: 52px; height: 52px; box-shadow: 0 0 0 3px var(--surface); border-radius: 50%; background: var(--brand); color: #fff; display: flex; align-items: center; justify-content: center;
     font-family: var(--font-head); font-weight: var(--head-weight); font-size: 1.2rem; flex-shrink: 0; font-variant-numeric: lining-nums; }
-  .name { font-weight: 700; font-size: 1.02rem; overflow-wrap: anywhere; }
+  .name { font-weight: 800; font-size: 1.05rem; overflow-wrap: anywhere; }
   .you { font-size: .7rem; font-weight: 700; background: var(--pampas); color: var(--brand); border-radius: 999px; padding: 1px 8px; margin-left: 6px; vertical-align: 2px; }
   .place { color: var(--muted); font-size: .85rem; }
   .head .who { min-width: 0; flex: 1; }
@@ -45,8 +50,13 @@
   .copy { border: none; background: none; padding: 0 2px; color: var(--muted); vertical-align: -2px; }
   .copy svg.i { width: 14px; height: 14px; }
   .fill-in { align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; font-size: .82rem; padding: 5px 10px; border-radius: 8px; }
-  .stats { font-size: .8rem; color: var(--muted); margin-top: auto; }
-  .stats b { color: var(--text); }
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); margin-top: auto; border-top: 1px solid var(--border); }
+  .stats > div { padding: 10px 8px 12px; text-align: center; min-width: 0; }
+  .stats > div + div { border-left: 1px solid var(--border); }
+  .stats b { display: block; font-family: var(--font-display); font-weight: 400; font-size: 1.55rem; line-height: 1; color: var(--text); }
+  .stats b small { font-size: .9rem; color: var(--muted); }
+  .stats span { display: block; margin-top: 4px; font-size: .68rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .empty { color: var(--muted); }
 
   /* Edit dialog: photo */
@@ -71,7 +81,7 @@
 <header class="brand">
   <div class="brand-inner">
     <a href="./"><img class="logo rostiq-logo" src="assets/rostiq-logo-header.webp" alt="RostiQ"></a>
-    <nav class="tabs"><a href="./" data-tab="home" data-i18n="tab.home">Home</a><a href="./#kalender" data-tab="cal" data-i18n="tab.calendar">Calendar</a><a href="carpool.html" data-i18n="tab.carpool">🚗 Carpool</a><a href="ploeg.html" data-i18n="tab.team">👥 Team</a><a href="admin.html" class="admin-tab" hidden data-i18n="tab.admin">⚙️ Admin</a></nav>
+    <nav class="tabs"><a href="./" data-tab="home" data-i18n="tab.home">Home</a><a href="./#kalender" data-tab="cal" data-i18n="tab.calendar">Calendar</a><a href="ploeg.html" data-i18n="tab.team">👥 Team</a><a href="admin.html" class="admin-tab" hidden data-i18n="tab.admin">⚙️ Admin</a></nav>
   </div>
 </header>
 <script>rostiqBootHeader()</script>
@@ -175,7 +185,11 @@ let render = function () {
       </div>
       ${facts.length ? `<div class="facts">${facts.join('<span class="dot">·</span>')}</div>` : ""}
       ${missing ? `<button class="fill-in" data-edit="${p.id}">${ic("plus")} ${t("team.fillIn")}</button>` : ""}
-      <div class="stats">✓ <b>${st.yes}</b>/${EVENTS.length} ${t("team.statYes")}${st.maybe ? ` · ? <b>${st.maybe}</b>` : ""} · 🚗 <b>${st.drove}</b> ${t("team.statDrove")} · 🙋 <b>${st.rode}</b> ${t("team.statRode")}</div>
+      <div class="stats">
+        <div title="${st.maybe ? `? ${st.maybe}` : ""}"><b>${st.yes}<small>/${EVENTS.length}</small></b><span>${t("team.statYes")}</span></div>
+        <div><b>${st.drove}</b><span>${t("team.statDrove")}</span></div>
+        <div><b>${st.rode}</b><span>${t("team.statRode")}</span></div>
+      </div>
     </article>`;
   }).join("");
 };

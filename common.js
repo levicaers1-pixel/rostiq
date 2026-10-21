@@ -1132,7 +1132,7 @@ let brandPreview = null;
 // The current tab, in the header and the bottom bar. The main page holds Home and Kalender (#kalender).
 function markTabs() {
   const page = (location.pathname.split("/").pop() || "index.html").replace(/^$/, "index.html");
-  const cal = /^#(kalender|trainings)/.test(location.hash);
+  const cal = /^#(kalender|trainings|m\/)/.test(location.hash); // a match page belongs to the calendar
   document.querySelectorAll(".tabs a, .bottom-nav a").forEach(a => {
     const tab = a.dataset.tab, href = (a.getAttribute("href") || "").split(/[?#]/)[0].replace(/^\.\/$/, "index.html").replace(/^$/, "index.html");
     const on = tab === "home" ? page === "index.html" && !cal : tab === "cal" ? page === "index.html" && cal : href === page;
@@ -1433,7 +1433,7 @@ function gateMessage(text, err) { gateMsg = { text, err }; renderAuth(); }
 const appUrl = file => location.href.split(/[?#]/)[0].replace(/[^/]*$/, file);
 
 // ---- Feedback to RostiQ (account menu, footer): only the RostiQ admin reads it ----
-const APP_VERSION = "2026.10.55";
+const APP_VERSION = "2026.10.56";
 function deviceText() {
   const ua = navigator.userAgent;
   const os = /iPhone/.test(ua) ? "iPhone" : /iPad/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1) ? "iPad"

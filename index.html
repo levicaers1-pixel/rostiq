@@ -429,13 +429,13 @@
 
   /* ---- RostiQ next: Home ---- */
   #view-home { max-width: 860px; margin: 0 auto; }
-  #hero.hero { margin-top: 18px; border-radius: 26px; gap: 14px; padding: 18px;
+  .hero.md { margin-top: 18px; border-radius: 26px; gap: 14px; padding: 18px;
     background: radial-gradient(120% 90% at 100% 0, color-mix(in srgb, var(--pampas) 26%, transparent), transparent 55%),
                 linear-gradient(150deg, color-mix(in srgb, var(--brand) 80%, #fff) 0%, var(--brand) 55%, color-mix(in srgb, var(--brand) 70%, #000) 100%); }
-  #hero.hero::after { content: ""; position: absolute; inset: 0; pointer-events: none;
+  .hero.md::after { content: ""; position: absolute; inset: 0; pointer-events: none;
     background: repeating-linear-gradient(120deg, color-mix(in srgb, var(--pampas) 9%, transparent) 0 10px, transparent 10px 26px); }
   .md-vs { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 10px; text-align: center; }
-  #hero.hero { grid-template-columns: minmax(0, 1fr); }
+  .hero.md { grid-template-columns: minmax(0, 1fr); }
   .md-team { display: grid; justify-items: center; gap: 6px; font-weight: 700; font-size: .88rem; min-width: 0; }
   .md-team span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .md-crest { width: 64px; height: 64px; border-radius: 20px; display: grid; place-items: center; overflow: hidden; font-family: var(--font-display); font-size: 1.3rem; letter-spacing: .04em;
@@ -450,13 +450,13 @@
   .md-role .md-ic { font-size: 1.4rem; }
   .md-role b { display: block; font-size: .95rem; }
   .md-role small { display: block; opacity: .85; font-size: .8rem; }
-  #hero .hero-answer { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; background: none; padding: 0; }
-  #hero .hero-answer button { justify-content: center; padding: 11px 0; border-radius: 14px; background: color-mix(in srgb, var(--brand-text) 14%, transparent); border: 0; font-weight: 800; color: var(--brand-text); }
-  #hero .hero-answer button[aria-pressed="true"] { color: #fff; }
+  .hero.md .hero-answer { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; background: none; padding: 0; }
+  .hero.md .hero-answer button { justify-content: center; padding: 11px 0; border-radius: 14px; background: color-mix(in srgb, var(--brand-text) 14%, transparent); border: 0; font-weight: 800; color: var(--brand-text); }
+  .hero.md .hero-answer button[aria-pressed="true"] { color: #fff; }
   .ts-ans button { background: color-mix(in srgb, var(--accent) 6%, var(--surface)); color: var(--text); border: 1px solid var(--border); }
-  #hero .hero-btns { display: flex; flex-wrap: wrap; gap: 8px; }
-  #hero .hero-btn { flex: 1 1 auto; justify-content: center; white-space: nowrap; }
-  #hero .hero-btn[data-share] { flex: 0 0 auto; }
+  .hero.md .hero-btns { display: flex; flex-wrap: wrap; gap: 8px; }
+  .hero.md .hero-btn { flex: 1 1 auto; justify-content: center; white-space: nowrap; }
+  .hero.md .hero-btn[data-share] { flex: 0 0 auto; }
   .home-label { display: flex; justify-content: space-between; align-items: baseline; margin: 22px 0 10px; font-size: .72rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
   .home-label a { color: var(--accent); text-decoration: none; letter-spacing: .06em; }
   #news { margin: 14px 0 0; }
@@ -503,6 +503,54 @@
   .todo button { flex: none; font-size: .76rem; font-weight: 800; padding: 5px 11px; border-radius: 999px; border: 0; background: var(--pampas); color: var(--brand); }
   .todo button.remind .count { display: none; }
   @media (min-width: 701px) { #view-home .bento-grid { grid-template-columns: repeat(4, 1fr); } }
+  a.md-vs { color: inherit; text-decoration: none; }
+  .hero-btn.md-open { flex: 1 1 100%; background: var(--pampas); color: var(--brand); border-color: transparent; font-weight: 800; }
+  .m-title a.m-opp { color: inherit; text-decoration: none; }
+  .m-title a.m-opp:hover { text-decoration: underline; text-underline-offset: 3px; }
+  a.ts-head { color: inherit; text-decoration: none; }
+  /* the match page */
+  #view-match { max-width: 860px; margin: 0 auto; }
+  .mp-back { display: inline-flex; margin: 10px 0 0; font-weight: 700; font-size: .88rem; color: var(--muted); text-decoration: none; }
+  .mp-hero { margin-top: 10px !important; }
+  .mp-tabs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; padding: 4px; margin: 14px 0 6px; border-radius: 16px; background: var(--surface); border: 1px solid var(--border); position: sticky; top: 8px; z-index: 5; box-shadow: var(--shadow-sm); }
+  .mp-tabs button { border: 0; border-radius: 12px; padding: 9px 0; font-size: .8rem; font-weight: 800; color: var(--muted); background: none; }
+  .mp-tabs button[aria-selected="true"] { background: var(--brand); color: var(--brand-text); }
+  .mp-pane { display: grid; gap: 8px; padding-top: 6px; }
+  .mp-info { display: grid; gap: 8px; }
+  .mp-row { display: flex; gap: 12px; align-items: center; padding: 12px; border-radius: 16px; background: var(--surface); border: 1px solid var(--border); color: var(--text); text-decoration: none; }
+  .mp-row i { font-style: normal; width: 36px; height: 36px; border-radius: 11px; display: grid; place-items: center; background: color-mix(in srgb, var(--accent) 7%, var(--surface)); flex: none; font-size: 1.1rem; }
+  .mp-row b { display: block; font-size: .92rem; }
+  .mp-row small { color: var(--muted); font-size: .78rem; }
+  .mp-row.warn { border-color: color-mix(in srgb, var(--no) 50%, var(--border)); }
+  .mp-count { display: grid; gap: 6px; margin-top: 8px; font-size: .88rem; color: var(--muted); }
+  .mp-count b { color: var(--text); font-size: 1.05rem; }
+  .mp-group .home-label { margin: 12px 0 6px; }
+  .mp-people { display: flex; flex-wrap: wrap; gap: 8px 12px; }
+  .mp-person { display: grid; justify-items: center; gap: 3px; width: 54px; font-size: .72rem; font-weight: 600; text-align: center; }
+  .mp-person .av { width: 40px; height: 40px; font-size: .8rem; }
+  .mp-person span { max-width: 54px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mp-acts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+  .mp-acts button, .mp-acts .btn { flex: 1 1 140px; justify-content: center; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; padding: 10px 14px; border-radius: 12px; font-weight: 700; }
+  .mp-mine { padding: 10px 14px; border-radius: 14px; background: color-mix(in srgb, var(--pampas) 25%, var(--surface)); font-weight: 700; display: flex; gap: 8px; align-items: center; }
+  .mp-draft { font-size: .82rem; color: var(--muted); display: flex; gap: 6px; align-items: center; }
+  .mp-pitch { display: grid; gap: 14px; padding: 18px 10px; border-radius: 20px; background: repeating-linear-gradient(0deg, #2f7d4f 0 12%, #2b7348 12% 24%); box-shadow: inset 0 0 0 3px rgb(255 255 255 / .45); }
+  .mp-line { display: flex; justify-content: space-evenly; flex-wrap: wrap; gap: 8px; }
+  .mp-tok { display: grid; justify-items: center; gap: 3px; }
+  .mp-tok .av { width: 40px; height: 40px; border: 2px solid #fff; font-size: .78rem; box-shadow: 0 3px 8px rgb(0 0 0 / .3); }
+  .mp-tok b { font-size: .68rem; background: rgb(0 0 0 / .5); color: #fff; padding: 1px 6px; border-radius: 6px; }
+  .mp-tok.me .av { box-shadow: 0 0 0 3px var(--pampas); }
+  .mp-lrow { display: flex; gap: 10px; padding: 10px 12px; border-radius: 14px; background: var(--surface); border: 1px solid var(--border); font-size: .9rem; }
+  .mp-lrow b { flex: none; min-width: 74px; }
+  .mp-lrow.res { opacity: .85; }
+  .mp-car { padding: 12px; border-radius: 18px; background: var(--surface); border: 1px solid var(--border); }
+  .mp-car-h { display: flex; gap: 10px; align-items: center; }
+  .mp-car-h b { display: block; font-size: .92rem; }
+  .mp-car-h small { color: var(--muted); font-size: .76rem; }
+  .mp-seats { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .mp-seats span { flex: 1 1 70px; text-align: center; padding: 8px 6px; border-radius: 10px; font-size: .8rem; font-weight: 700; border: 1px dashed var(--border); color: var(--muted); }
+  .mp-seats span.f { border: 0; background: var(--yes-bg); color: var(--yes); }
+  .mp-wait { min-height: 0 !important; }
+  .mp-hist { margin: 0; max-height: none; padding: 4px 14px; border-radius: 16px; background: var(--surface); border: 1px solid var(--border); }
   .link-danger { background: none; border: none; padding: 0; color: var(--no); text-decoration: underline; font-size: .85rem; }
 </style>
 <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/12.12.0/firebase-app.js" crossorigin>
@@ -512,7 +560,7 @@
 <header class="brand">
   <div class="brand-inner">
     <a href="./"><img class="logo rostiq-logo" src="assets/rostiq-logo-header.webp" alt="RostiQ"></a>
-    <nav class="tabs"><a href="./" data-tab="home" data-i18n="tab.home">Home</a><a href="./#kalender" data-tab="cal" data-i18n="tab.calendar">Calendar</a><a href="carpool.html" data-i18n="tab.carpool">🚗 Carpool</a><a href="ploeg.html" data-i18n="tab.team">👥 Team</a><a href="admin.html" class="admin-tab" hidden data-i18n="tab.admin">⚙️ Admin</a></nav>
+    <nav class="tabs"><a href="./" data-tab="home" data-i18n="tab.home">Home</a><a href="./#kalender" data-tab="cal" data-i18n="tab.calendar">Calendar</a><a href="ploeg.html" data-i18n="tab.team">👥 Team</a><a href="admin.html" class="admin-tab" hidden data-i18n="tab.admin">⚙️ Admin</a></nav>
   </div>
 </header>
 <script>rostiqBootHeader()</script>
@@ -529,6 +577,8 @@
   <section class="todo-strip" id="todo-strip" hidden></section>
   <section class="bento" id="bento" hidden></section>
   </div>
+
+  <div class="view" id="view-match" hidden></div>
 
   <div class="view" id="view-cal" hidden>
   <div class="section-head">
@@ -774,7 +824,7 @@ function renderMatches(players, events) {
     return `<article class="match${e.final ? " final" : ""}${isPast(e) ? " past" : ""}${off ? " off" : ""}${glow ? " complete" : ""}"${glow ? ` style="${glow}"` : ""}>
       <div class="m-date"><span>${fmt(e.date, { weekday: "short" }).replace(".", "")}</span><b>${parse(e.date).getDate()}</b><span>${fmt(e.date, { month: "short" }).replace(".", "")}</span></div>
       <div class="m-body">
-        <div class="m-title"><span class="m-opp">${esc(e.opp)}</span>${statusPill(e)}${homePill(e)}${e.final ? `<span class="pill violet">${ic("trophy")} ${t("final")}</span>` : ""}</div>
+        <div class="m-title"><a class="m-opp" href="#m/${e.date}">${esc(e.opp)}</a>${statusPill(e)}${homePill(e)}${e.final ? `<span class="pill violet">${ic("trophy")} ${t("final")}</span>` : ""}</div>
         ${summaryLine(e) ? `<div class="m-sub">${summaryLine(e)}</div>` : ""}
         ${selLine(e, players)}
         ${remindedLine(e, players)}
@@ -941,6 +991,11 @@ function renderHero(players) {
   const e = dataLoaded ? EVENTS.find(isOn) : null;
   el.hidden = !e;
   if (!e) return;
+  el.classList.add("md");
+  el.innerHTML = matchCardHtml(e, players, false);
+}
+// The matchday card for one match; onPage: on the match page itself (no link to it, "match" instead of "next match").
+function matchCardHtml(e, players, onPage) {
   const days = Math.round((parse(e.date) - parse(TODAY)) / 864e5);
   const when = days <= 0 ? t("hero.today") : days === 1 ? t("hero.tomorrow") : t("hero.inDays", { n: days });
   const me = myRow(), mine = me ? me.avail[e.date] || "" : null;
@@ -949,14 +1004,15 @@ function renderHero(players) {
   const small = [role ? "" : sel && sel.pub ? t("home.notSelected") : t("home.selNone"), myRideText(e)].filter(Boolean).join(" · ");
   const v = matchInfo(e).venue, more = detailsHtml(e);
   const us = TEAM.logo ? `<img src="${esc(TEAM.logo)}" alt="">` : esc(crestText(TEAM.shortName || TEAM.brand));
-  el.innerHTML = `
-    <div class="hero-top"><span class="hero-kicker">${ic("flag")} ${t("hero.next")}</span>
+  const vsTag = onPage ? "div" : "a";
+  return `
+    <div class="hero-top"><span class="hero-kicker">${ic("flag")} ${onPage ? esc(isPast(e) ? t("mp.played") : t("mp.match")) : t("hero.next")}</span>
       <span class="hero-top-r">${session.admin ? `<button class="hero-icon" data-history="${e.date}" title="${t("hist.button")}" aria-label="${t("hist.button")}">${ic("clock")}</button><button class="hero-icon" data-select="${e.date}" title="${t("sel.button")}" aria-label="${t("sel.button")}">${ic("users")}</button><button class="hero-icon" data-edit="${e.date}" title="${t("details.edit")}" aria-label="${t("details.edit")}">${ic("pencil")}</button>` : ""}<span class="hero-when">${when}</span></span></div>
-    <div class="md-vs">
+    <${vsTag} class="md-vs"${onPage ? "" : ` href="#m/${e.date}" aria-label="${esc(t("mp.open"))}"`}>
       <div class="md-team"><div class="md-crest">${us}</div><span>${esc(TEAM.shortName || TEAM.brand)}</span></div>
       <div class="md-x">VS<small>${e.home === true ? t("home.atHome") : e.home === false ? t("home.away") : ""}</small></div>
       <div class="md-team"><div class="md-crest them">${esc(crestText(e.opp))}</div><span>${esc(e.opp)}</span></div>
-    </div>
+    </${vsTag}>
     <div class="md-meta"><span>${ic("calendar")} ${esc(fmt(e.date, { weekday: "short", day: "numeric", month: "short" }))}</span>${matchInfo(e).start ? `<span>${ic("clock")} ${esc(timeText(e))}</span>` : ""}${v ? `<span>${ic("pin")} ${esc(venueShort(v))}</span>` : ""}${statusPill(e)}${e.final ? `<span class="pill violet">${ic("trophy")} ${t("final")}</span>` : ""}</div>
     ${mine !== null ? `<div class="md-role"><span class="md-ic">${role ? "⭐" : { yes: "✅", maybe: "❓", no: "❌" }[mine] || "👋"}</span><div><b>${esc(status)}</b>${small ? `<small>${esc(small)}</small>` : ""}</div></div>
     <div class="answer hero-answer" role="group" aria-label="${t("match.mine")}">${["yes", "maybe", "no"].map(a =>
@@ -965,8 +1021,9 @@ function renderHero(players) {
     ${more ? `<details class="hero-more"${heroMoreOpen ? " open" : ""}><summary>${t("hero.more")} ${ic("chevron-down")}</summary>${more}</details>` : ""}
     <div class="hero-btns">
       <button class="hero-btn" data-ics="${e.date}">${ic("calendar-plus")} ${t("hero.calendar")}</button>
-      <a class="hero-btn" href="${pageUrl("carpool.html")}">${ic("car")} ${t("hero.carpool")}</a>
+      <a class="hero-btn" href="${carpoolUrl(e.date)}">${ic("car")} ${t("hero.carpool")}</a>
       <button class="hero-btn" data-share="${e.date}" title="${t("share.match")}" aria-label="${t("share.match")}">${ic("share")}</button>
+      ${onPage ? "" : `<a class="hero-btn md-open" href="#m/${e.date}">${esc(t("mp.open"))} ${ic("arrow-right")}</a>`}
     </div>`;
 }
 
@@ -982,7 +1039,7 @@ function renderTodoStrip(players) {
   const date = d => `<div class="ts-date"><small>${esc(fmt(d, { weekday: "short" }).replace(".", ""))}</small><b>${parse(d).getDate()}</b></div>`;
   box.innerHTML = `<div class="home-label"><span>${esc(t("home.toAnswer"))}</span><a href="#kalender">${esc(t("home.all"))} →</a></div>` + (items.length
     ? `<div class="ts-scroll">${items.map(x => x.e
-      ? `<div class="ts-card"><div class="ts-head">${date(x.d)}<div><b>${esc(x.e.opp)}</b><small>${esc([x.e.home === true ? t("home.atHome") : x.e.home === false ? t("home.away") : "", timeText(x.e)].filter(Boolean).join(" · ").toLowerCase())}</small></div></div>
+      ? `<div class="ts-card"><a class="ts-head" href="#m/${x.d}">${date(x.d)}<div><b>${esc(x.e.opp)}</b><small>${esc([x.e.home === true ? t("home.atHome") : x.e.home === false ? t("home.away") : "", timeText(x.e)].filter(Boolean).join(" · ").toLowerCase())}</small></div></a>
           <div class="answer ts-ans">${["yes", "maybe", "no"].map(a => `<button data-answer="${a}" data-date="${x.d}" data-a="${a}" aria-pressed="false" title="${esc(t("answer." + a))}">${ic({ yes: "check", maybe: "help", no: "x" }[a])}</button>`).join("")}</div></div>`
       : `<div class="ts-card tr"><div class="ts-head">${date(x.d)}<div><b>${esc(t("tr.one"))}</b><small>${esc(x.tr.start + (x.tr.venue ? " · " + venueShort(x.tr.venue) : ""))}</small></div></div>
           <div class="answer ts-ans two"><button data-tr="yes" data-date="${x.d}" aria-pressed="false">${ic("check")} ${esc(t("tr.yes"))}</button><button data-tr="no" data-date="${x.d}" aria-pressed="false">${ic("x")}</button></div></div>`).join("")}</div>`
@@ -1015,13 +1072,13 @@ function renderBento(players) {
   }
   box.innerHTML = `<div class="home-label"><span>${esc(fmt(e.date, { day: "numeric", month: "long" }))} · ${esc(e.opp)}</span></div>
     <div class="bento-grid">
-      <a class="tile" href="#kalender"><div class="tk">${esc(t("tile.coming"))}</div><div class="tv">${c.yes}<small>/${named.length}</small></div><div class="ts">${esc(t("tile.comingSub", { m: c.maybe, n: c.no }))}</div>
+      <a class="tile" href="#m/${e.date}"><div class="tk">${esc(t("tile.coming"))}</div><div class="tv">${c.yes}<small>/${named.length}</small></div><div class="ts">${esc(t("tile.comingSub", { m: c.maybe, n: c.no }))}</div>
         <div class="ring" style="${ring}"><b>${Math.round(100 * c.yes / n)}%</b></div>
         <div class="tile-avs">${coming.slice(0, 5).map(p => avatar(p, players.indexOf(p))).join("")}${coming.length > 5 ? `<span class="av more">+${coming.length - 5}</span>` : ""}</div></a>
       <div class="tile${alerts.length ? " warn" : ""}"><div class="tk">${esc(t("tile.weather"))}</div>
         ${wx ? `<div class="tv">${wx.max}°</div><div class="ts">${WX_ICON(wx.code)} ${esc(wx.min + "° · 💨 " + wx.wind + " " + t("unit.kmh") + (wx.rain != null ? " · 💧 " + wx.rain + "%" : ""))}</div>${alerts.length ? `<div class="ts strong">⚠️ ${esc(wxWarnText(alerts))}</div>` : ""}`
           : `<div class="tv sm">${v ? "🌤️" : "📍"}</div><div class="ts">${esc(v ? t("tile.wxLater", { when: wxFrom }) : t("tile.wxNoPlace"))}</div>`}</div>
-      <a class="tile" href="${pageUrl("carpool.html")}"><div class="tk">${esc(t("tile.carpool"))}</div><div class="tv sm">🚗 ${cars}</div><div class="ts">${esc(myRideText(e) || (lookingRide ? t("tile.looking", { n: lookingRide }) : t("tile.cars", { n: cars })))}</div></a>
+      <a class="tile" href="#m/${e.date}/c"><div class="tk">${esc(t("tile.carpool"))}</div><div class="tv sm">🚗 ${cars}</div><div class="ts">${esc(myRideText(e) || (lookingRide ? t("tile.looking", { n: lookingRide }) : t("tile.cars", { n: cars })))}</div></a>
       ${tr ? `<a class="tile" href="#kalender"><div class="tk">${esc(t("tile.training"))}</div><div class="tv sm">${esc(fmt(tr.date, { weekday: "short" }).replace(".", ""))} ${esc(tr.start)}</div><div class="ts">${esc(t("tr.count", { n: trComing }))}${me ? " · " + esc(trainComing(me, tr) ? t("tr.yes") : (me.tr || {})[tr.date] === "no" ? t("tr.noBtn") : "?") : ""}</div></a>`
         : session.admin ? `<a class="tile" href="${pageUrl("admin.html")}#sec-train"><div class="tk">${esc(t("tile.training"))}</div><div class="tv sm">🏃</div><div class="ts">${esc(t("tile.trainingSetup"))}</div></a>`
         : `<div class="tile"><div class="tk">${esc(t("tile.season"))}</div><div class="tv">${EVENTS.filter(isOn).length}</div><div class="ts">${esc(t("tile.seasonSub"))}</div></div>`}
@@ -1029,12 +1086,95 @@ function renderBento(players) {
     </div>`;
 }
 
-// Home or Kalender (#kalender, also #trainings): two views of this page.
+// ---- The match page (#m/<date>[/o|l|c|h]): the matchday card, then Overzicht · Opstelling · Carpool · Log ----
+var mpDate = "", mpTab = "o", mpHist = { date: "", html: "" };
+const carpoolUrl = date => { const u = new URL(pageUrl("carpool.html")); u.searchParams.set("d", date); return u.pathname.split("/").pop() + u.search; };
+function renderMatchPage(players) {
+  const box = document.getElementById("view-match");
+  if (!box || box.hidden || !dataLoaded) return;
+  const e = EVENTS.find(x => x.date === mpDate);
+  if (!e) { box.innerHTML = `<a class="mp-back" href="#kalender">← ${esc(t("tab.calendar").replace(/^\S+\s/, ""))}</a><div class="ts-done">${esc(t("mp.gone"))}</div>`; return; }
+  const m = matchInfo(e), v = m.venue, c = tally(e, players), named = players.filter(p => p.name);
+  const wx = weatherFor(e), alerts = wx && wxOn() ? wxAlerts(wx) : [];
+  const tabs = [["o", t("mp.tab.o")], ["l", t(selFormat().f === "squad" ? "mp.tab.lSquad" : "mp.tab.lOrder")], ["c", t("mp.tab.c")], ["h", t("mp.tab.h")]];
+  const group = (key, list) => list.length ? `<div class="mp-group"><div class="home-label"><span>${esc(t("mp.g." + key, { n: list.length }))}</span></div>
+    <div class="mp-people">${list.map(p => `<span class="mp-person">${avatar(p, players.indexOf(p))}<span>${esc(firstName(p.name))}</span></span>`).join("")}</div></div>` : "";
+  const by = a => named.filter(p => (p.avail[e.date] || "") === a);
+  let pane = "";
+  if (mpTab === "o") {
+    pane = `<div class="mp-info">
+        ${v ? `<a class="mp-row" href="${mapsUrl(v)}" target="_blank" rel="noopener"><i>${ic("pin")}</i><div><b>${esc(v.name || venueText(v))}</b><small>${esc(v.address || "")} · ${esc(t("maps"))} ↗</small></div></a>` : `<div class="mp-row"><i>${ic("pin")}</i><div><b>${esc(t("mp.noVenue"))}</b></div></div>`}
+        <div class="mp-row"><i>${ic("clock")}</i><div><b>${esc(timeText(e) || t("mp.noTime"))}</b><small>${esc(m.meet ? t("meet") + ": " + m.meet : t("mp.noMeet"))}</small></div></div>
+        <div class="mp-row${alerts.length ? " warn" : ""}"><i>${wx ? WX_ICON(wx.code) : "🌤️"}</i><div><b>${wx ? esc(wx.max + "° / " + wx.min + "°") : esc(t("mp.wxLater"))}</b><small>${wx ? esc("💨 " + wx.wind + " " + t("unit.kmh") + (wx.rain != null ? " · 💧 " + wx.rain + "%" : "")) : ""}${alerts.length ? ` · ⚠️ ${esc(wxWarnText(alerts))}` : ""}</small></div></div>
+        ${m.info ? `<div class="mp-row"><i>${ic("info")}</i><div><b>${esc(m.info)}</b></div></div>` : ""}
+      </div>
+      <div class="mp-count"><div class="bar"><div class="fill"><span class="yes" style="width:${100 * c.yes / Math.max(named.length, 1)}%"></span><span class="maybe" style="width:${100 * c.maybe / Math.max(named.length, 1)}%"></span></div></div>
+        <span><b>${c.yes}</b>/${named.length} ${esc(t("label.yes"))} · ${esc(t("level." + c.level))}</span></div>
+      ${group("yes", by("yes"))}${group("maybe", by("maybe"))}${group("no", by("no"))}${group("none", by(""))}
+      ${session.admin && isOn(e) ? `<div class="home-label"><span>${esc(t("mp.admin"))}</span></div><div class="mp-acts">
+        <button class="remind" data-date="${e.date}">${ic("bell")} ${esc(t("todo.remind"))}${c.missing.length ? ` (${c.missing.length})` : ""}</button>
+        <button data-select="${e.date}">${ic("users")} ${esc(t("todo.select"))}</button>
+        <button data-edit="${e.date}">${ic("pencil")} ${esc(t("details.edit"))}</button>
+        <button data-history="${e.date}">${ic("clock")} ${esc(t("hist.button"))}</button></div>` : ""}`;
+  } else if (mpTab === "l") {
+    const sel = selOf(e), f = selFormat();
+    const visible = sel && (sel.pub || session.admin);
+    const mine = sel && sel.pub && session.pid ? roleOf(sel, session.pid) : null;
+    if (!visible) pane = `<div class="ts-done">${ic("users")} ${esc(t("mp.noSel"))}</div>`;
+    else if (f.f === "squad" && f.pos) {
+      const P = sel.p || {}, pos = id => (sel.pos || {})[id] || "start";
+      const row = k => Object.keys(P).filter(id => P[id] === "s" && pos(id) === k && root.players[id]);
+      const tok = id => { const pl = root.players[id], i = players.findIndex(x => x.id === id); return `<span class="mp-tok${id === session.pid ? " me" : ""}">${avatar(pl, i)}<b>${esc(firstName(pl.name))}${sel.cap === id ? " ©" : ""}</b></span>`; };
+      pane = `${sel.pub ? "" : `<div class="mp-draft">${ic("pencil")} ${esc(t("sel.draftTag"))}</div>`}
+        <div class="mp-pitch">${["fwd", "mid", "def", "gk"].map(k => row(k).length ? `<div class="mp-line">${row(k).map(tok).join("")}</div>` : "").join("")}
+          ${row("start").length ? `<div class="mp-line">${row("start").map(tok).join("")}</div>` : ""}</div>
+        ${lineupLines(sel, f, players).filter(l => l.k === "bench" || l.k === "r").map(l => `<div class="mp-lrow"><b>${esc(l.label)}</b><span>${esc(l.text)}</span></div>`).join("")}`;
+    } else {
+      pane = `${sel.pub ? "" : `<div class="mp-draft">${ic("pencil")} ${esc(t("sel.draftTag"))}</div>`}
+        ${lineupLines(sel, f, players).map(l => `<div class="mp-lrow${l.k === "r" ? " res" : ""}"><b>${esc(l.label)}</b><span>${esc(l.text)}</span></div>`).join("") || `<div class="ts-done">${esc(t("sel.empty"))}</div>`}`;
+    }
+    if (mine) pane = `<div class="mp-mine">${esc(roleShort(mine, players))}</div>` + pane;
+    if (session.admin && isOn(e)) pane += `<div class="mp-acts"><button class="primary" data-select="${e.date}">${ic("users")} ${esc(t(sel ? "mp.editSel" : "mp.makeSel"))}</button></div>`;
+  } else if (mpTab === "c") {
+    const cp = (root.carpool || {})[e.date] || {}, nm = id => root.players[id] ? firstName(root.players[id].name) : "?";
+    const drivers = Object.keys(cp).filter(id => cp[id] && cp[id].role === "driver" && root.players[id]);
+    const waiting = Object.keys(cp).filter(id => cp[id] && cp[id].role === "rider" && !cp[id].with && root.players[id]);
+    pane = (myRideText(e) ? `<div class="mp-mine">${ic("car")} ${esc(myRideText(e))}</div>` : "") +
+      (drivers.map(id => { const riders = Object.keys(cp).filter(r => cp[r] && cp[r].role === "rider" && cp[r].with === id); const seats = Math.max(cp[id].seats || 0, riders.length);
+        return `<div class="mp-car"><div class="mp-car-h">${avatar(root.players[id], players.findIndex(x => x.id === id))}<div><b>${esc(root.players[id].name)}</b><small>${esc(root.players[id].gemeente || "")}${cp[id].note ? " · " + esc(cp[id].note) : ""}</small></div></div>
+          <div class="mp-seats">${[...Array(seats)].map((_, i) => riders[i] ? `<span class="f">${esc(nm(riders[i]))}</span>` : `<span>${esc(t("mp.free"))}</span>`).join("")}</div></div>`; }).join("")
+        || `<div class="ts-done">${ic("car")} ${esc(t("mp.noCars"))}</div>`) +
+      (waiting.length ? `<div class="tile wide team mp-wait"><div class="tk">${esc(t("mp.waiting"))}</div><div>${esc(waiting.map(nm).join(", "))}</div></div>` : "") +
+      `<div class="mp-acts"><a class="btn primary" href="${carpoolUrl(e.date)}">${ic("car")} ${esc(t("mp.toCarpool"))}</a></div>`;
+  } else {
+    if (!session.admin) pane = `<div class="ts-done">${ic("clock")} ${esc(t("mp.logAdmin"))}</div>`;
+    else {
+      if (mpHist.date !== e.date) { mpHist = { date: e.date, html: "" }; historyRows(e).then(html => { if (mpHist.date === e.date) { mpHist.html = html; renderMatchPage(sortedPlayers()); } }); }
+      const sel = selOf(e), chg = sel && sel.chg;
+      pane = (chg && root.players[chg.out] ? `<div class="mp-mine">🔁 ${esc(chg.in && root.players[chg.in] ? t("sel.chg.in", { in: firstName(root.players[chg.in].name), out: firstName(root.players[chg.out].name) }) : t("sel.chg.none", { out: firstName(root.players[chg.out].name) }))}</div>` : "") +
+        `<ul class="history-list mp-hist">${mpHist.html || `<li class="h-empty">${esc(t("hist.loading"))}</li>`}</ul>`;
+    }
+  }
+  box.innerHTML = `<a class="mp-back" href="#kalender">← ${esc(t("tab.calendar").replace(/^\S+\s/, ""))}</a>
+    <section class="hero md mp-hero">${matchCardHtml(e, players, true)}</section>
+    <div class="mp-tabs" role="tablist">${tabs.map(([k, l]) => `<button role="tab" data-mt="${k}" aria-selected="${mpTab === k}">${esc(l)}</button>`).join("")}</div>
+    <div class="mp-pane">${pane}</div>`;
+}
+document.getElementById("view-match").addEventListener("click", ev => {
+  const tb = ev.target.closest("[data-mt]");
+  if (tb) { mpTab = tb.dataset.mt; history.replaceState(null, "", location.pathname + location.search + `#m/${mpDate}/${mpTab}`); return renderMatchPage(sortedPlayers()); }
+  onMatchClick(ev);
+});
+
+// Home, Kalender (#kalender, also #trainings) or a match (#m/<date>): three views of this page.
 function applyView() {
-  const cal = /^#(kalender|trainings)/.test(location.hash);
-  document.getElementById("view-home").hidden = cal;
+  const m = /^#m\/(\d{4}-\d{2}-\d{2})(?:\/([olch]))?/.exec(location.hash);
+  const cal = !m && /^#(kalender|trainings)/.test(location.hash);
+  document.getElementById("view-home").hidden = cal || !!m;
   document.getElementById("view-cal").hidden = !cal;
-  document.body.classList.toggle("on-cal", cal);
+  document.getElementById("view-match").hidden = !m;
+  document.body.classList.toggle("on-cal", cal || !!m);
+  if (m) { mpDate = m[1]; if (m[2]) mpTab = m[2]; if (typeof dataLoaded !== "undefined" && dataLoaded) renderMatchPage(sortedPlayers()); }
   if (typeof markTabs === "function") markTabs();
 }
 window.addEventListener("hashchange", () => { applyView(); window.scrollTo(0, 0); });
@@ -1196,6 +1336,7 @@ function render() {
   renderHero(players);
   renderTodoStrip(players);
   renderBento(players);
+  renderMatchPage(players);
   renderMatches(players, events);
   renderTrainings(players);
   checkComplete(players);
@@ -1474,6 +1615,10 @@ async function openHistory(e) {
   document.getElementById("history-sub").textContent = fmt(e.date, { weekday: "long", day: "numeric", month: "long" });
   list.innerHTML = `<li class="h-empty">${t("hist.loading")}</li>`;
   historyDlg.showModal();
+  list.innerHTML = await historyRows(e);
+}
+// Who changed which answer, when (history/<team>/<date>), as list items.
+async function historyRows(e) {
   const data = await getAbs(`history/${TEAM_ID}/${e.date}`);
   const players = root.players || {}, admins = root.admins || {};
   const nameOfPid = pid => players[pid] && players[pid].name ? players[pid].name : "?";
@@ -1487,7 +1632,7 @@ async function openHistory(e) {
     return `<li><span class="h-time">${esc(when)}</span><b>${esc(nameOfPid(x.p))}</b>
       <span class="h-change">${x.f ? `${pill(x.f)}<span class="h-arrow">→</span>` : ""}${pill(x.a)}${how ? ` <small>${esc(how)}</small>` : ""}</span></li>`;
   });
-  list.innerHTML = rows.length ? rows.join("") : `<li class="h-empty">${t(data === null && isOffline() ? "hist.offline" : "hist.empty")}</li>`;
+  return rows.length ? rows.join("") : `<li class="h-empty">${t(data === null && isOffline() ? "hist.offline" : "hist.empty")}</li>`;
 }
 
 // ---- Announcements: news/<id> = { text, by, name, at, until } from the admins, at the top of the page. Shown until

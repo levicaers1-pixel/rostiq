@@ -66,26 +66,31 @@
   #requests-panel { border-color: var(--maybe); }
 
   /* Dashboard: summary tiles + section menu */
-  .admin-tiles { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(min(200px, 100%), 1fr)); margin-top: 24px; }
+  .admin-tiles { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(min(170px, 46%), 1fr)); margin-top: 24px; }
   .tile { display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto auto auto; column-gap: 12px; align-items: center;
-    padding: 14px 16px; border-radius: var(--radius); background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow-sm);
+    padding: 14px 16px; border-radius: 22px; background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow-sm);
     color: var(--text); text-decoration: none; transition: box-shadow .2s var(--ease), transform .2s var(--ease); }
   .tile:hover { box-shadow: var(--shadow); transform: translateY(-1px); }
   .tile-ic { grid-row: 1 / span 3; width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center;
     background: color-mix(in srgb, var(--accent) 9%, var(--surface)); color: var(--accent); }
   .tile-ic svg.i { width: 20px; height: 20px; }
-  .tile b { font-size: 1.6rem; font-weight: 800; line-height: 1.1; font-variant-numeric: tabular-nums; }
+  .tile b { font-family: var(--font-display); font-size: 1.9rem; font-weight: 400; line-height: 1.05; font-variant-numeric: tabular-nums; }
   .tile > span:not(.tile-ic) { font-size: .82rem; font-weight: 600; }
   .tile small { font-size: .75rem; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .tile.warn .tile-ic { background: var(--maybe-bg); color: var(--maybe); }
   .tile.warn b { color: var(--maybe); }
   .tile.ok .tile-ic { background: var(--yes-bg); color: var(--yes); }
+  @media (max-width: 520px) { .tile { grid-template-columns: 1fr; } .tile-ic { grid-row: auto; margin-bottom: 8px; width: 34px; height: 34px; } }
   .admin-nav { position: sticky; top: 0; z-index: 10; display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; margin: 18px -16px 0; padding: 10px 16px;
     background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(10px); }
   .admin-nav::-webkit-scrollbar { display: none; }
-  .admin-nav a { flex-shrink: 0; padding: 6px 12px; border-radius: 999px; font-size: .82rem; font-weight: 600; text-decoration: none; color: var(--muted);
+  .admin-nav a { flex-shrink: 0; display: inline-flex; align-items: center; gap: 6px; padding: 7px 13px; border-radius: 999px; font-size: .82rem; font-weight: 600; text-decoration: none; color: var(--muted);
     background: var(--surface); border: 1px solid var(--border); }
   .admin-nav a:hover { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 40%, var(--border)); }
+  .admin-nav a svg.i { width: 15px; height: 15px; color: var(--accent); }
+  .admin-nav a[aria-current] { color: var(--brand-text); background: var(--brand); border-color: transparent; }
+  .admin-nav a[aria-current] svg.i { color: inherit; }
+  #admin .panel { border-radius: 22px; }
   .admin-nav a .count { margin-left: 6px; padding: 0 6px; border-radius: 999px; background: var(--no); color: #fff; font-size: .7rem; }
   #admin .panel { scroll-margin-top: 64px; }
   #admin .panel h2 { display: flex; align-items: center; gap: 10px; }
@@ -184,7 +189,7 @@
 <header class="brand">
   <div class="brand-inner">
     <a href="./"><img class="logo rostiq-logo" src="assets/rostiq-logo-header.webp" alt="RostiQ"></a>
-    <nav class="tabs"><a href="./" data-tab="home" data-i18n="tab.home">Home</a><a href="./#kalender" data-tab="cal" data-i18n="tab.calendar">Calendar</a><a href="carpool.html" data-i18n="tab.carpool">🚗 Carpool</a><a href="ploeg.html" data-i18n="tab.team">👥 Team</a><a href="admin.html" class="admin-tab" hidden data-i18n="tab.admin">⚙️ Admin</a></nav>
+    <nav class="tabs"><a href="./" data-tab="home" data-i18n="tab.home">Home</a><a href="./#kalender" data-tab="cal" data-i18n="tab.calendar">Calendar</a><a href="ploeg.html" data-i18n="tab.team">👥 Team</a><a href="admin.html" class="admin-tab" hidden data-i18n="tab.admin">⚙️ Admin</a></nav>
   </div>
 </header>
 <script>rostiqBootHeader()</script>
@@ -644,12 +649,25 @@ ff.addEventListener("submit", async ev => {
 
 // Section headings get an icon.
 const SECTION_ICONS = { "requests-panel": "bell", "sec-players": "users", "sec-settings": "settings", "sec-fields": "hash", "sec-brand": "image",
-  "sec-matches": "calendar", "sec-backup": "download", "sec-season": "flag" };
+  "sec-matches": "calendar", "sec-train": "clock", "sec-backup": "download", "sec-season": "flag" };
 function addSectionIcons() { // after the texts are filled in (that replaces the heading's content)
   for (const [id, icon] of Object.entries(SECTION_ICONS)) {
     const h = document.querySelector(`#${id} h2`);
     if (h && !h.querySelector(".h-ic")) h.insertAdjacentHTML("afterbegin", `<span class="h-ic">${ic(icon)}</span>`);
+    const a = document.querySelector(`#admin-nav a[href="#${id}"]`);
+    if (a && !a.querySelector("svg.i")) a.insertAdjacentHTML("afterbegin", ic(icon));
   }
+}
+// The section menu marks the section in view.
+if ("IntersectionObserver" in window) {
+  const seen = new IntersectionObserver(entries => {
+    for (const en of entries) if (en.isIntersecting) {
+      document.querySelectorAll("#admin-nav a").forEach(a => a.getAttribute("href") === "#" + en.target.id ? a.setAttribute("aria-current", "true") : a.removeAttribute("aria-current"));
+      const cur = document.querySelector("#admin-nav a[aria-current]");
+      if (cur) cur.parentElement.scrollTo({ left: cur.offsetLeft - 16, behavior: "smooth" });
+    }
+  }, { rootMargin: "-80px 0px -70% 0px" });
+  Object.keys(SECTION_ICONS).forEach(id => { const el = document.getElementById(id); if (el) seen.observe(el); });
 }
 
 document.getElementById("invite-copy").onclick = ev => {
