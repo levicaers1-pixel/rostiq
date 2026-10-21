@@ -221,13 +221,6 @@
   .m-people { display: flex; align-items: center; gap: 10px; min-height: 30px; font-size: .82rem; color: var(--muted); }
   .m-mine { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding-top: 14px; border-top: 1px solid var(--border); }
   .m-mine > span { font-size: .8rem; font-weight: 600; color: var(--muted); margin-right: auto; }
-  .answer { display: inline-flex; gap: 3px; padding: 3px; border-radius: 12px; background: color-mix(in srgb, var(--muted) 11%, var(--surface)); }
-  .answer button { border: none; background: transparent; border-radius: 9px; padding: 7px 12px; font-weight: 600; color: var(--muted); }
-  .answer button:hover:not(:disabled) { background: var(--surface); border: none; }
-  .answer button[aria-pressed="true"] { color: #fff; box-shadow: var(--shadow-sm); }
-  .answer button[aria-pressed="true"][data-a="yes"] { background: var(--yes); }
-  .answer button[aria-pressed="true"][data-a="maybe"] { background: var(--maybe); }
-  .answer button[aria-pressed="true"][data-a="no"] { background: var(--no); }
   .m-team { border-top: 1px solid var(--border); padding-top: 12px; }
   .m-team summary { cursor: pointer; list-style: none; display: flex; align-items: center; gap: 7px; font-size: .82rem; font-weight: 600; color: var(--muted); }
   .m-team summary::-webkit-details-marker { display: none; }
@@ -453,10 +446,7 @@
   .hero.md .hero-answer { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; background: none; padding: 0; }
   .hero.md .hero-answer button { justify-content: center; padding: 11px 0; border-radius: 14px; background: color-mix(in srgb, var(--brand-text) 14%, transparent); border: 0; font-weight: 800; color: var(--brand-text); }
   /* The chosen answer: solid in its colour with a light ring; the other two step back. */
-  .hero.md .hero-answer button[aria-pressed="true"] { color: #fff; box-shadow: 0 0 0 2px var(--brand-text), 0 6px 16px -6px rgb(0 0 0 / .5); }
-  .hero.md .hero-answer button[aria-pressed="true"][data-a="yes"] { background: var(--yes); }
-  .hero.md .hero-answer button[aria-pressed="true"][data-a="maybe"] { background: var(--maybe); }
-  .hero.md .hero-answer button[aria-pressed="true"][data-a="no"] { background: var(--no); }
+  .hero.md .hero-answer button[aria-pressed="true"] { background: var(--pampas); color: var(--brand); box-shadow: 0 0 0 2px var(--brand-text), 0 6px 16px -6px rgb(0 0 0 / .5); }
   .hero.md .hero-answer:has([aria-pressed="true"]) button[aria-pressed="false"] { opacity: .55; }
   .hero.md .hero-answer:has([aria-pressed="true"]) button[aria-pressed="false"]:hover { opacity: 1; }
   .ts-ans button { background: color-mix(in srgb, var(--accent) 6%, var(--surface)); color: var(--text); border: 1px solid var(--border); }
