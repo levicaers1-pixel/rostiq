@@ -563,7 +563,7 @@ T.fr = {
   "mp.free": "libre", "mp.noCars": "Pas encore de voitures pour ce match.", "mp.waiting": "Cherchent encore un trajet", "mp.toCarpool": "Organiser mon trajet",
   "mp.logAdmin": "Seuls les administrateurs voient l'historique des réponses.",
   "cp.allMatches": "Tous les matchs",
-  "hub.back": "← Gestion", "hub.quick": "Rapide", "hub.team": "Équipe", "hub.season": "Saison", "hub.club": "Club",
+  "hub.back": "← Admin", "hub.quick": "Rapide", "hub.team": "Équipe", "hub.season": "Saison", "hub.club": "Club",
   "hub.good": "Équipe en forme", "hub.ok": "Presque prêt", "hub.work": "Du pain sur la planche",
   "hub.linked": ({ n, total }) => `${n}/${total} ${plural(n, "lié", "liés")}`,
   "hub.missing": ({ n, opp }) => `${n} sans réponse pour ${opp}`,

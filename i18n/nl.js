@@ -559,7 +559,7 @@ T.nl = {
   "mp.free": "vrij", "mp.noCars": "Nog geen auto's voor deze wedstrijd.", "mp.waiting": "Zoeken nog een lift", "mp.toCarpool": "Regel je vervoer",
   "mp.logAdmin": "De geschiedenis van de antwoorden zien alleen de beheerders.",
   "cp.allMatches": "Alle wedstrijden",
-  "hub.back": "← Beheer", "hub.quick": "Snel", "hub.team": "Ploeg", "hub.season": "Seizoen", "hub.club": "Club",
+  "hub.back": "← Admin", "hub.quick": "Snel", "hub.team": "Ploeg", "hub.season": "Seizoen", "hub.club": "Club",
   "hub.good": "Ploeg in vorm", "hub.ok": "Bijna in orde", "hub.work": "Werk aan de winkel",
   "hub.linked": ({ n, total }) => `${n}/${total} gekoppeld`,
   "hub.missing": ({ n, opp }) => `${n} nog geen antwoord voor ${opp}`,

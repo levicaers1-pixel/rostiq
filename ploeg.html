@@ -88,6 +88,7 @@
     #grid .card .p-ring { display: grid; }
     #grid .card .p-tags { display: flex; }
   }
+  html.dark #grid .card.me { border-color: var(--pampas); }
   .season-top { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(min(280px, 100%), 1fr)); margin-top: 22px; }
   .season-top h3 { margin: 0 0 8px; font-size: .7rem; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
   .lb { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; overflow: hidden; box-shadow: var(--shadow-sm); }
@@ -262,6 +263,8 @@ sheet.className = "p-sheet";
 document.body.appendChild(sheet);
 sheet.addEventListener("click", ev => {
   if (ev.target === sheet || ev.target.closest("[data-sheet-close]")) return sheet.close();
+  const c = ev.target.closest("[data-copy]");
+  if (c) { navigator.clipboard.writeText(c.dataset.copy).then(() => { c.textContent = "✓"; }).catch(() => {}); return; }
   const e = ev.target.closest("[data-edit]");
   if (e) { sheet.close(); openEdit(e.dataset.edit); }
 });

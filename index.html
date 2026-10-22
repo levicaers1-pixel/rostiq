@@ -129,6 +129,8 @@
   .cal-months .dots span.need { background: var(--no); }
   .cal-months button.on { background: var(--brand); border-color: var(--brand); color: var(--brand-text); }
   .cal-months button.on small { color: var(--pampas); }
+  html.dark .cal-filters button[aria-pressed="true"], html.dark .cal-months button.on { background: var(--pampas); border-color: var(--pampas); color: #0b0d14; }
+  html.dark .cal-months button.on small { color: #0b0d14; }
   .cal-month { grid-column: 1 / -1; display: flex; justify-content: space-between; margin: 14px 0 -4px; scroll-margin-top: 16px;
     font-size: .7rem; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
   .cal-month:first-child { margin-top: 4px; }
@@ -563,6 +565,7 @@
   .mp-acts button, .mp-acts .btn { flex: 1 1 140px; justify-content: center; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; padding: 10px 14px; border-radius: 12px; font-weight: 700; }
   .mp-mine { padding: 10px 14px; border-radius: 14px; background: color-mix(in srgb, var(--pampas) 25%, var(--surface)); font-weight: 700; display: flex; gap: 8px; align-items: center; }
   .mp-draft { font-size: .82rem; color: var(--muted); display: flex; gap: 6px; align-items: center; }
+  @media (max-width: 700px) { body.on-match main > h1, body.on-match main > .sub { display: none; } body.on-match .mp-back { margin-top: 14px; } } /* the match card is the title */
   .mp-pitch { display: grid; gap: 14px; padding: 18px 10px; border-radius: 20px; background: repeating-linear-gradient(0deg, #2f7d4f 0 12%, #2b7348 12% 24%); box-shadow: inset 0 0 0 3px rgb(255 255 255 / .45); }
   .mp-line { display: flex; justify-content: space-evenly; flex-wrap: wrap; gap: 8px; }
   .mp-tok { display: grid; justify-items: center; gap: 3px; }
@@ -1234,6 +1237,7 @@ function applyView() {
   document.getElementById("view-cal").hidden = !cal;
   document.getElementById("view-match").hidden = !m;
   document.body.classList.toggle("on-cal", cal || !!m);
+  document.body.classList.toggle("on-match", !!m);
   if (m) { mpDate = m[1]; if (m[2]) mpTab = m[2]; if (typeof dataLoaded !== "undefined" && dataLoaded) renderMatchPage(sortedPlayers()); }
   if (typeof markTabs === "function") markTabs();
 }

@@ -103,6 +103,7 @@
   .hub { margin-top: 22px; max-width: 760px; }
   .hub-health { display: grid; grid-template-columns: auto 1fr; gap: 16px; align-items: center; padding: 16px; border-radius: 24px;
     background: var(--brand); color: var(--brand-text); }
+  html.dark .hub-health { border: 1px solid color-mix(in srgb, var(--pampas) 35%, var(--border)); }
   .hub-ring { width: 76px; height: 76px; border-radius: 50%; display: grid; place-items: center; position: relative;
     background: conic-gradient(var(--pampas) 0 var(--p), color-mix(in srgb, var(--brand-text) 16%, transparent) var(--p)); }
   .hub-ring::after { content: ""; position: absolute; inset: 7px; border-radius: 50%; background: var(--brand); }
@@ -241,7 +242,7 @@
 
   <div id="admin" hidden>
     <div class="hub" id="hub"></div>
-    <a class="admin-back" href="#" id="admin-back" data-i18n="hub.back">← Beheer</a>
+    <a class="admin-back" href="#" id="admin-back" data-i18n="hub.back">← Admin</a>
     <nav class="admin-nav" id="admin-nav" aria-label="Sections" hidden>
       <a href="#requests-panel"><span data-i18n="admin.requests">Access requests</span><span class="count" id="nav-req-count" hidden></span></a>
       <a href="#sec-players" data-i18n="admin.players">Players & accounts</a>
@@ -630,7 +631,7 @@ function renderHub() {
   const missing = next ? players.filter(p => !(p.avail || {})[next.date]).length : 0;
   const pct = (a, b) => b ? a / b : 1;
   const score = Math.round(100 * (0.4 * pct(linked, players.length) + 0.6 * (next ? pct(players.length - missing, players.length) : 1)) - Math.min(reqs, 3) * 5);
-  const sc = Math.max(0, Math.min(100, score));
+  const sc = players.length ? Math.max(0, Math.min(100, score)) : 0; // no players yet: nothing to be proud of
   const facts = [t("hub.linked", { n: linked, total: players.length }),
     next ? (missing ? t("hub.missing", { n: missing, opp: esc(next.opp) }) : t("hub.allAnswered", { opp: esc(next.opp) })) : t("hub.noMatch"),
     reqs ? t("hub.requests", { n: reqs }) : ""].filter(Boolean).join(" · ");
