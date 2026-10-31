@@ -168,3 +168,26 @@ console.log("notice tests ok");
   assert(!newsEmail({ tid: "kfc", brand: "KFC", item: { text: "<script>" } }, "fr").html.includes("<script>"), "escaped");
 }
 console.log("reminder tests passed");
+
+// Daily error email: grouping and the email itself.
+import { groupErrors, errorEmail } from "./errors.mjs";
+{
+  const errs = {
+    a: { at: 2000, team: "pampas", page: "index", device: "iPhone · Chrome", version: "2026.10.66", items: { 0: { msg: "x is undefined", src: "index.html:10:5", n: 2 } } },
+    b: { at: 3000, team: "bogey", page: "admin", device: "Mac · Safari", version: "2026.10.66", items: { 0: { msg: "x is undefined", src: "index.html:10:5", n: 1 }, 1: { msg: "ic is not defined", src: "common.js:1:1" } } },
+    old: { at: 500, items: { 0: { msg: "already reported" } } },
+  };
+  const g = groupErrors(errs, 1000);
+  assert.equal(g.reports, 2);
+  assert.equal(g.list.length, 2);
+  assert.equal(g.list[0].msg, "x is undefined");
+  assert.equal(g.list[0].count, 3);
+  assert.deepEqual([...g.list[0].teams].sort(), ["bogey", "pampas"]);
+  assert(!g.list.some(x => x.msg === "already reported"), "only new reports");
+  assert.equal(groupErrors(errs, 5000).list.length, 0, "nothing new");
+  const m = errorEmail(g, "2026-10-31");
+  assert(m.subject.startsWith("RostiQ: 2 fouten") && m.subject.includes("2 meldingen"), m.subject);
+  assert(m.text.includes("x is undefined") && m.text.includes("3×") && m.html.includes("ic is not defined"));
+  assert(!errorEmail(groupErrors({ z: { at: 9, items: { 0: { msg: "<img src=x onerror=alert(1)>" } } } }, 0), "x").html.includes("<img"), "escaped");
+}
+console.log("error email tests passed");

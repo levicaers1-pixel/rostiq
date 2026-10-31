@@ -5,7 +5,7 @@
 // - daily at 18:30 Belgian time (mode "all"): also match reminders for linked players who haven't answered yet:
 //   "r3" from 3 days before and a last one ("r1") the day before. pushLog/<team>/<date>/<kind>/<uid> remembers what was
 //   sent, so a re-run never sends twice. Device tokens that no longer work are removed; played matches' answer history
-//   and unused anonymous accounts are cleaned up.
+//   and unused anonymous accounts are cleaned up; the app's new error reports go to the RostiQ admin by email.
 // Logs only counts (no names, teams or tokens).
 import { getDatabase, ServerValue } from "firebase-admin/database";
 import { getAuth } from "firebase-admin/auth";
@@ -15,6 +15,7 @@ import { runInvites } from "./invites.mjs";
 import { REMIND_GAP } from "./remind.mjs";
 import { wxOn, forecast, wxAlerts, wxMessage } from "./weather.js";
 import { trainingDates } from "./training.js";
+import { runErrorReport } from "./errors.mjs";
 
 const APP = "https://app.rostiq.be";
 const TZ = "Europe/Brussels";
@@ -241,6 +242,12 @@ export async function runJob({ mode = "all", dry = false, verbose = false, clean
 
   if (verbose) console.log(JSON.stringify(Object.keys(logWrites).sort()));
   if (!DRY && Object.keys({ ...logWrites, ...deadTokens }).length) await db.ref().update({ ...logWrites, ...deadTokens });
+
+  // Daily: an email with the app's new error reports (see errors.mjs); old reports are removed.
+  if (MODE !== "requests") {
+    const errWrites = await runErrorReport({ db, dry: DRY, today });
+    if (!DRY && Object.keys(errWrites).length) await db.ref().update(errWrites);
+  }
 
   // Anonymous accounts (made by personal answer links) unused for 60 days: removed with their link session.
   // Someone who taps their link later simply gets a new one. Daily only; not available in the emulator test.
