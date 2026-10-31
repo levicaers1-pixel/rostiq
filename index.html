@@ -1057,7 +1057,7 @@ function matchCardHtml(e, players, onPage) {
   const me = myRow(), mine = me ? me.avail[e.date] || "" : null;
   const sel = selOf(e), role = sel && sel.pub && session.pid ? roleOf(sel, session.pid) : null;
   const status = role ? roleShort(role, players) : t("home.st." + (mine || "none"));
-  const small = [role ? "" : sel && sel.pub ? t("home.notSelected") : t("home.selNone"), myRideText(e)].filter(Boolean).join(" · ");
+  const small = [role || !selOn() ? "" : sel && sel.pub ? t("home.notSelected") : t("home.selNone"), myRideText(e)].filter(Boolean).join(" · ");
   const v = matchInfo(e).venue, more = detailsHtml(e);
   const us = TEAM.logo ? `<img src="${esc(TEAM.logo)}" alt="">` : esc(crestText(TEAM.shortName || TEAM.brand));
   const vsTag = onPage ? "div" : "a";
