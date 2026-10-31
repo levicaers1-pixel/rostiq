@@ -10,6 +10,7 @@ if (window.top !== window.self) {
 const DB = (window.FIREBASE_DB_URL || "").trim().replace(/\/+$/, "");
 
 // Per-viewer UI preferences (not shared).
+if (typeof window.ic !== "function") window.ic = () => ""; // icons.js didn't load (bad connection): no icons, but no crash
 const pref = {
   get(k, d) { try { return localStorage.getItem(k) ?? d; } catch { return d; } },
   set(k, v) { try { localStorage.setItem(k, v); } catch {} },
@@ -1433,7 +1434,7 @@ function gateMessage(text, err) { gateMsg = { text, err }; renderAuth(); }
 const appUrl = file => location.href.split(/[?#]/)[0].replace(/[^/]*$/, file);
 
 // ---- Feedback to RostiQ (account menu, footer): only the RostiQ admin reads it ----
-const APP_VERSION = "2026.10.66";
+const APP_VERSION = "2026.10.67";
 function deviceText() {
   const ua = navigator.userAgent;
   const os = /iPhone/.test(ua) ? "iPhone" : /iPad/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1) ? "iPad"

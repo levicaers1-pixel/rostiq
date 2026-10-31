@@ -1012,8 +1012,14 @@ for (const id of ["welcome", "setup"]) document.getElementById(id).addEventListe
   const act = b.dataset.onb;
   if (act === "answer") {
     const me = root.players[session.pid] || {}, e = EVENTS.find(x => isOn(x) && !(me.avail || {})[x.date]);
-    const target = e && document.querySelector(`.match [data-answer][data-date="${e.date}"]`) || document.getElementById("hero");
-    target.scrollIntoView({ behavior: "smooth", block: "center" });
+    // The next unanswered match: on the big card here if it's that one, otherwise in the Kalender.
+    const hero = document.getElementById("hero");
+    if (!e) return;
+    if (!hero.hidden && hero.querySelector(`[data-answer][data-date="${e.date}"]`)) hero.scrollIntoView({ behavior: "smooth", block: "center" });
+    else {
+      location.hash = "#kalender";
+      setTimeout(() => { const m = document.querySelector(`#matches [data-answer][data-date="${e.date}"]`); (m || document.getElementById("matches")).scrollIntoView({ behavior: "smooth", block: "center" }); }, 150);
+    }
   }
   if (act === "find") findOnbPlace();
   if (act === "phone") {
@@ -1037,7 +1043,8 @@ const crestText = name => {
   const w = String(name || "").replace(/[^\p{L}\p{N}\s&-]/gu, " ").split(/\s+/).filter(x => x && !CREST_SKIP.test(x));
   return (w.length ? w.slice(0, 2).map(x => x[0]).join("") : String(name || "?").slice(0, 2)).toUpperCase();
 };
-const myRow = () => AUTH_ON && session.pid ? (root.players || {})[session.pid] : null;
+// My player row, with empty answers/trainings when there are none yet (a new player has no "avail" at all).
+const myRow = () => { const p = AUTH_ON && session.pid ? (root.players || {})[session.pid] : null; return p ? { ...p, avail: p.avail || {}, tr: p.tr || {} } : null; };
 // My lift for a match, in a few words (or "").
 function myRideText(e) {
   const cp = (root.carpool || {})[e.date] || {}, mine = session.pid && cp[session.pid];
