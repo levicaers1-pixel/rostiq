@@ -293,6 +293,8 @@
             <input name="min" type="number" min="1" max="50" inputmode="numeric">
             <span class="ff-err" hidden></span><span class="ff-help" data-i18n="setup.minSub"></span></label>
         </div>
+        <label class="ff check push-set"><input type="checkbox" name="homeAway"> <span><b data-i18n="set.homeAway">Home and away matches</b><br><small class="ff-help" data-i18n="set.homeAwayHelp"></small></span></label>
+        <label class="ff check push-set"><input type="checkbox" name="selOn"> <span><b data-i18n="set.selOn">Make selections</b><br><small class="ff-help" data-i18n="set.selOnHelp"></small></span></label>
         <label class="ff check push-set"><input type="checkbox" name="quickLinks"> <span><b data-i18n="set.quickLinks">Answer via personal link</b><br><small class="ff-help" data-i18n="set.quickLinksHelp"></small></span></label>
         <label class="ff check push-set"><input type="checkbox" name="autoRemind"> <span><b data-i18n="set.autoRemind">Automatic reminders</b><br><small class="ff-help" data-i18n="set.autoRemindHelp"></small></span></label>
         <label class="ff check push-set"><input type="checkbox" name="wx"> <span><b data-i18n="set.wx">Weather warning</b><br><small class="ff-help" data-i18n="set.wxHelp"></small></span></label>
@@ -646,7 +648,7 @@ function renderHub() {
       <div><h3>${t(sc >= 80 ? "hub.good" : sc >= 50 ? "hub.ok" : "hub.work")}</h3><p>${facts}</p></div></div>
     <div class="hub-label">${t("hub.quick")}</div>
     <div class="hub-qa">${qa(home("news"), "megaphone", t("hub.qNews"))}${next ? qa(home("remind"), "bell", t("hub.qRemind"), missing || "") : ""}${
-      next ? qa(home("sel"), "users", t("hub.qSel")) : ""}${qa("#sec-matches", "plus", t("hub.qMatch"))}</div>
+      next && selOn() ? qa(home("sel"), "users", t("hub.qSel")) : ""}${qa("#sec-matches", "plus", t("hub.qMatch"))}</div>
     <div class="hub-label">${t("hub.team")}</div>
     <div class="hub-group">
       ${cell("requests-panel", "bell", t("admin.requests"), reqs ? t("tile.requestsSub") : t("tile.none"), reqs ? `<span class="bdg">${reqs}</span>` : "", reqs ? "warn" : "")}
@@ -964,6 +966,8 @@ function renderSettings() {
     sf.autoRemind.checked = s.autoRemind !== false; // on unless switched off
     sf.wx.checked = wxOn(); // the team's choice, else on for outdoor sports
     sf.quickLinks.checked = s.quickLinks !== false;
+    sf.homeAway.checked = homeAwayOn();
+    sf.selOn.checked = selOn();
   }
   sf.querySelector("[type=submit]").disabled = !settingsDirty;
   const msg = document.getElementById("settings-msg");
@@ -972,13 +976,15 @@ function renderSettings() {
 }
 
 function renderMatches() {
+  const ha = document.querySelector('#add-match select[name="home"]');
+  if (ha) ha.closest("label").hidden = !homeAwayOn();
   document.getElementById("matches").innerHTML = EVENTS.length ? EVENTS.map(e => `
     <li class="${isPast(e) ? "past" : ""}">
       <span class="when">${esc(fmt(e.date, { weekday: "short", day: "numeric", month: "short", year: "numeric" }))}</span>
       <div><span class="opp">${esc(e.opp)}</span>${e.final ? `<span class="tag">${t("final")}</span>` : ""}${statusPill(e)}${detailsHtml(e, "", true)}</div>
       <div class="acts">
-        <button data-home-cycle="${e.date}" title="${t("match.homeAway")}">${e.home === true ? `${ic("home")} ${t("match.home")}` : e.home === false ? `${ic("car")} ${t("match.away")}` : t("match.homeUnknown")}</button>
-        <a href="./${teamQuery()}#edit=${e.date}" title="${t("details.edit")}">✏️</a>
+        <button data-home-cycle="${e.date}" title="${t("match.homeAway")}"${homeAwayOn() ? "" : " hidden"}>${e.home === true ? `${ic("home")} ${t("match.home")}` : e.home === false ? `${ic("car")} ${t("match.away")}` : t("match.homeUnknown")}</button>
+        <a href="./${teamQuery()}&back=admin#edit=${e.date}" title="${t("details.edit")}">✏️</a>
         <button data-del-match="${e.date}" title="${t("admin.remove")}">🗑️</button>
       </div>
     </li>`).join("") : `<li class="list-empty">${emptyState("calendar", t("admin.noMatchesTitle"), t("admin.noMatches"), "", true)}</li>`;
@@ -1048,7 +1054,9 @@ sf.addEventListener("submit", async ev => {
   if (!fieldErr(sf.min, n >= 1 && n <= 50 ? "" : t("set.minRange"))) return;
   if (!fieldErr(sf.wa, !link || WA_LINK.test(link) ? "" : t("wa.invalid"))) return;
   const ok = await update({ "settings/seasonName": season, "settings/minPlayers": n, "settings/waGroup": link || null, "settings/autoRemind": sf.autoRemind.checked ? null : false,
-    "settings/wx": sf.wx.checked === WX_OUTDOOR.includes((root.settings || {}).sport || "golf") ? null : sf.wx.checked, "settings/quickLinks": sf.quickLinks.checked ? null : false });
+    "settings/wx": sf.wx.checked === WX_OUTDOOR.includes((root.settings || {}).sport || "golf") ? null : sf.wx.checked, "settings/quickLinks": sf.quickLinks.checked ? null : false,
+    "settings/homeAway": sf.homeAway.checked === (((root.settings || {}).sport || "golf") !== "golf") ? null : sf.homeAway.checked,
+    "settings/selOff": sf.selOn.checked ? null : true });
   const msg = document.getElementById("settings-msg");
   if (!ok) { msg.textContent = t("status.saveFailed"); msg.className = "msg err"; return; }
   settingsDirty = false;

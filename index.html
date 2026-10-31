@@ -115,22 +115,12 @@
   .matches > .empty-state { grid-column: 1 / -1; }
   /* Kalender: filters, month strip, month headings; on phones a timeline */
   .cal-filters { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; margin: 4px -16px 12px; padding: 0 16px; }
-  .cal-filters::-webkit-scrollbar, .cal-months::-webkit-scrollbar { display: none; }
+  .cal-filters::-webkit-scrollbar { display: none; }
   .cal-filters button { flex: none; font-size: .8rem; font-weight: 700; padding: 7px 13px; border-radius: 999px; background: var(--surface); border: 1px solid var(--border); color: var(--muted); }
   .cal-filters button[aria-pressed="true"] { background: var(--brand); color: var(--brand-text); border-color: var(--brand); }
   .cal-filters button i { font-style: normal; margin-left: 5px; padding: 0 6px; border-radius: 999px; background: var(--no); color: #fff; font-size: .68rem; }
-  .cal-months { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; margin: 0 -16px 6px; padding: 0 16px 2px; }
-  .cal-months button { flex: none; width: 60px; padding: 8px 0 7px; border-radius: 16px; background: var(--surface); border: 1px solid var(--border); color: var(--text);
     display: grid; justify-items: center; gap: 1px; line-height: 1.05; }
-  .cal-months small { font-size: .6rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
-  .cal-months b { font-family: var(--font-display); font-weight: 400; font-size: 1.2rem; }
-  .cal-months .dots { display: flex; gap: 3px; height: 5px; margin-top: 3px; }
-  .cal-months .dots span { width: 5px; height: 5px; border-radius: 50%; background: var(--pampas); }
-  .cal-months .dots span.need { background: var(--no); }
-  .cal-months button.on { background: var(--brand); border-color: var(--brand); color: var(--brand-text); }
-  .cal-months button.on small { color: var(--pampas); }
-  html.dark .cal-filters button[aria-pressed="true"], html.dark .cal-months button.on { background: var(--pampas); border-color: var(--pampas); color: #0b0d14; }
-  html.dark .cal-months button.on small { color: #0b0d14; }
+  html.dark .cal-filters button[aria-pressed="true"] { background: var(--pampas); border-color: var(--pampas); color: #0b0d14; }
   .cal-month { grid-column: 1 / -1; display: flex; justify-content: space-between; margin: 14px 0 -4px; scroll-margin-top: 16px;
     font-size: .7rem; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
   .cal-month:first-child { margin-top: 4px; }
@@ -623,7 +613,6 @@
     </div>
   </div>
   <div class="cal-filters" id="cal-filters" role="group" hidden></div>
-  <div class="cal-months" id="cal-months" hidden></div>
   <div class="matches" id="matches"></div>
 
   <div class="section-head" id="train-head" hidden>
@@ -675,6 +664,8 @@
 <dialog id="details" class="details-dlg">
   <form method="dialog" id="details-form">
     <h3 id="details-title"></h3>
+    <label class="block"><span data-i18n="admin.opp">Opponent / location</span>
+      <input name="opp" maxlength="60" autocomplete="off" required></label>
     <div class="times">
       <label><span data-i18n="details.start">Start</span> <input type="time" name="start"></label>
       <label><span data-i18n="details.end">End</span> <input type="time" name="end"></label>
@@ -819,7 +810,7 @@ const animStyle = (key, ms, extra = "") => {
 
 function renderMatches(players, events) {
   const box = document.getElementById("matches");
-  document.getElementById("cal-filters").hidden = document.getElementById("cal-months").hidden = true; // shown again below when there's a list
+  document.getElementById("cal-filters").hidden = true; // shown again below when there's a list
   // No matches yet: one clear empty state instead of an empty list and an empty table.
   const none = dataLoaded && !EVENTS.length;
   document.getElementById("table-view").hidden = !dataLoaded || none;
@@ -853,11 +844,6 @@ function renderMatches(players, events) {
     const k = e.date.slice(0, 7), m = months.find(x => x.k === k) || (months.push({ k, list: [] }), months[months.length - 1]);
     m.list.push(e);
   }
-  const ms = document.getElementById("cal-months");
-  ms.hidden = months.length < 2;
-  ms.innerHTML = months.map(m => `<button type="button" data-mo="${m.k}"${m.k === TODAY.slice(0, 7) ? ' class="on"' : ""}>
-    <small>${esc(fmt(m.k + "-01", { month: "short" }).replace(".", ""))}</small><b>${m.list.length}</b>
-    <span class="dots">${m.list.slice(0, 4).map(e => `<span${todo(e) ? ' class="need"' : ""}></span>`).join("")}</span></button>`).join("");
   if (!listed.length) {
     box.innerHTML = `<div class="cal-empty">${ic(calFilter === "todo" ? "check" : "calendar")} ${t(calFilter === "todo" ? "cal.noneTodo" : "cal.noneFilter")}</div>`;
     return;
@@ -1135,7 +1121,7 @@ function renderBento(players) {
   const todo = [];
   if (session.admin) {
     if (c.missing.length) todo.push(`<div><i>${ic("bell")}</i><span>${esc(t("todo.open", { n: c.missing.length }))}</span><button class="remind" data-date="${e.date}">${esc(t("todo.remind"))}</button></div>`);
-    if (!sel || !sel.pub) todo.push(`<div><i>${ic("users")}</i><span>${esc(t(sel ? "todo.selDraft" : "todo.selNone"))}</span><button data-select="${e.date}">${esc(t("todo.select"))}</button></div>`);
+    if (selOn() && (!sel || !sel.pub)) todo.push(`<div><i>${ic("users")}</i><span>${esc(t(sel ? "todo.selDraft" : "todo.selNone"))}</span><button data-select="${e.date}">${esc(t("todo.select"))}</button></div>`);
     if (alerts.length) todo.push(`<div><i>⚠️</i><span>${esc(t("wx.warn", { list: wxWarnText(alerts) }))}</span><button data-edit="${e.date}">${esc(t("todo.look"))}</button></div>`);
     const gone = sel && sel.pub ? players.filter(p => (sel.p || {})[p.id] === "s" && p.avail[e.date] === "no") : [];
     if (gone.length) todo.push(`<div><i>🔁</i><span>${esc(t("sel.gone", { names: gone.map(p => firstName(p.name)).join(", ") }))}</span><button data-select="${e.date}">${esc(t("todo.select"))}</button></div>`);
@@ -1166,7 +1152,8 @@ function renderMatchPage(players) {
   if (!e) { box.innerHTML = `<a class="mp-back" href="#kalender">← ${esc(t("tab.calendar").replace(/^\S+\s/, ""))}</a><div class="ts-done">${esc(t("mp.gone"))}</div>`; return; }
   const m = matchInfo(e), v = m.venue, c = tally(e, players), named = players.filter(p => p.name);
   const wx = weatherFor(e), alerts = wx && wxOn() ? wxAlerts(wx) : [];
-  const tabs = [["o", t("mp.tab.o")], ["l", t(selFormat().f === "squad" ? "mp.tab.lSquad" : "mp.tab.lOrder")], ["c", t("mp.tab.c")], ["h", t("mp.tab.h")]];
+  const tabs = [["o", t("mp.tab.o")], ["l", t(selFormat().f === "squad" ? "mp.tab.lSquad" : "mp.tab.lOrder")], ["c", t("mp.tab.c")], ["h", t("mp.tab.h")]].filter(([k]) => k !== "l" || selOn());
+  if (mpTab === "l" && !selOn()) mpTab = "o";
   const group = (key, list) => list.length ? `<div class="mp-group"><div class="home-label"><span>${esc(t("mp.g." + key, { n: list.length }))}</span></div>
     <div class="mp-people">${list.map(p => `<span class="mp-person">${avatar(p, players.indexOf(p))}<span>${esc(firstName(p.name))}</span></span>`).join("")}</div></div>` : "";
   const by = a => named.filter(p => (p.avail[e.date] || "") === a);
@@ -1340,7 +1327,7 @@ function applyDeepDo() {
   setTimeout(() => {
     if (what === "news") { const b = document.getElementById("news-new"); if (b) b.click(); }
     else if (what === "remind" && e) openRemind(e);
-    else if (what === "sel" && e) openSelection(e);
+    else if (what === "sel" && e && selOn()) openSelection(e);
   }, 0);
 }
 function applyDeepEdit() {
@@ -1506,12 +1493,17 @@ function render() {
 
 // Coming from the Admin page: ./#edit=YYYY-MM-DD opens that match's details once the data is loaded.
 let pendingEdit = location.hash.startsWith("#edit=") ? location.hash.slice(6) : "";
+const editFromAdmin = !!pendingEdit && QUERY.get("back") === "admin";
 function openPendingEdit() {
   if (!pendingEdit || !session.admin || !session.ready || !root.players) return;
   const e = EVENTS.find(x => x.date === pendingEdit);
   pendingEdit = "";
   history.replaceState(null, "", location.pathname + teamQuery());
   if (e) setTimeout(() => openDetails(e), 0);
+  if (e && editFromAdmin) { // watch the window itself: closed by Save, Cancel, the cross or Escape
+    const back = new MutationObserver(() => { if (detailsDlg.open) return; back.disconnect(); setTimeout(() => { location.href = pageUrl("admin.html") + "#sec-matches"; }, 400); });
+    setTimeout(() => back.observe(detailsDlg, { attributes: true, attributeFilter: ["open"] }), 50);
+  }
 }
 
 function renderControls() {
@@ -1528,13 +1520,6 @@ document.getElementById("cal-filters").addEventListener("click", ev => {
   const b = ev.target.closest("[data-calf]");
   if (!b || b.dataset.calf === calFilter) return;
   calFilter = b.dataset.calf; render();
-});
-document.getElementById("cal-months").addEventListener("click", ev => {
-  const b = ev.target.closest("[data-mo]");
-  const h = b && document.getElementById("mo-" + b.dataset.mo);
-  if (!h) return;
-  document.querySelectorAll("#cal-months button").forEach(x => x.classList.toggle("on", x === b));
-  h.scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" });
 });
 document.getElementById("past").onclick = () => {
   showPast = !showPast; pref.set("showPast", showPast ? "1" : "0"); render();
@@ -1901,7 +1886,7 @@ function selFormat() {
   if (f.f !== "squad") Object.assign(f, { b: 0, pos: false, cap: false });
   return f;
 }
-const selOf = e => (root.selection || {})[e.date] || null;
+const selOf = e => selOn() ? (root.selection || {})[e.date] || null : null; // selections off: as if there were none
 const selNames = (e, players, s) => players.filter(p => p.name && ((selOf(e) || {}).p || {})[p.id] === s).map(p => p.name);
 // This player's place (the same as roleOf in functions/lineup.js).
 function roleOf(sel, pid) {
@@ -2245,6 +2230,7 @@ function openDetails(e) {
   draft = { e, venue: m.venue || null, results: [], status: "idle" };
   document.getElementById("details-title").textContent =
     t("details.title", { opp: e.opp, when: fmt(e.date, { weekday: "long", day: "numeric", month: "long" }) });
+  form.opp.value = e.opp || "";
   form.start.value = m.start || "";
   form.end.value = m.end || "";
   form.meet.value = m.meet || "";
@@ -2391,6 +2377,8 @@ form.addEventListener("submit", () => {
   };
   for (const k of Object.keys(data)) if (data[k] === null) delete data[k];
   write(`matches/${draft.e.date}`, Object.keys(data).length ? data : null);
+  const opp = form.opp.value.trim().slice(0, 60);
+  if (opp && opp !== draft.e.opp) scheduleUpdate({ [`schedule/${draft.e.date}/opp`]: opp });
 });
 
 

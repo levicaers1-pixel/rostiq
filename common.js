@@ -11,6 +11,22 @@ const DB = (window.FIREBASE_DB_URL || "").trim().replace(/\/+$/, "");
 
 // Per-viewer UI preferences (not shared).
 if (typeof window.ic !== "function") window.ic = () => ""; // icons.js didn't load (bad connection): no icons, but no crash
+// Every pop-up gets a close cross at the top right (Escape closes them too).
+if (window.HTMLDialogElement && !HTMLDialogElement.prototype._rqX) {
+  const open = HTMLDialogElement.prototype.showModal;
+  HTMLDialogElement.prototype._rqX = true;
+  HTMLDialogElement.prototype.showModal = function () {
+    if (!this.querySelector(":scope > .dlg-x")) {
+      const b = document.createElement("button");
+      b.type = "button"; b.className = "dlg-x";
+      b.setAttribute("aria-label", typeof t === "function" ? t("close") : "Close");
+      b.innerHTML = typeof ic === "function" && ic("x") ? ic("x") : "×";
+      b.addEventListener("click", () => this.close());
+      this.prepend(b);
+    }
+    return open.call(this);
+  };
+}
 const pref = {
   get(k, d) { try { return localStorage.getItem(k) ?? d; } catch { return d; } },
   set(k, v) { try { localStorage.setItem(k, v); } catch {} },
@@ -80,6 +96,12 @@ function cachedTeamInfo() {
   try { return JSON.parse(pref.get("brand:" + TEAM_ID, "null")); } catch { return null; }
 }
 
+// Home/away: off for golf (no home matches there) unless the team says otherwise (settings/homeAway).
+// Line-ups (Selection): on unless the team switched them off (settings/selOff). Function declarations: also usable
+// before the rest of this file has run.
+function homeAwayOn() { const s = root.settings || {}; return typeof s.homeAway === "boolean" ? s.homeAway : (s.sport || "golf") !== "golf"; }
+function selOn() { return !(root.settings || {}).selOff; }
+
 // Schedule: the team's list in the database (schedule/{date}); TEAM.events only as a fallback.
 let EVENTS = [];
 function refreshEvents() {
@@ -87,9 +109,10 @@ function refreshEvents() {
   const fromDb = (root.settings && root.settings.scheduleInDb) || Object.keys(s).length;
   EVENTS = fromDb
     ? Object.keys(s).sort().map(date => ({ date, opp: s[date].opp || "?", ...(s[date].final ? { final: true } : {}),
-      ...(typeof s[date].home === "boolean" ? { home: s[date].home } : {}),
+      ...(typeof s[date].home === "boolean" && homeAwayOn() ? { home: s[date].home } : {}),
       ...(s[date].cancelled === true ? { cancelled: true } : {}), ...(s[date].moved ? { moved: s[date].moved } : {}) }))
     : (TEAM.events || []).slice();
+  if (document.body) document.body.classList.toggle("sel-off", !selOn()); // hides every Selection button (common.css)
 }
 const seasonName = () => (root.settings && root.settings.seasonName) || TEAM.season || TEAM.brand;
 const teamSize = () => TEAM.teamSize ?? 0;
@@ -1434,7 +1457,7 @@ function gateMessage(text, err) { gateMsg = { text, err }; renderAuth(); }
 const appUrl = file => location.href.split(/[?#]/)[0].replace(/[^/]*$/, file);
 
 // ---- Feedback to RostiQ (account menu, footer): only the RostiQ admin reads it ----
-const APP_VERSION = "2026.10.67";
+const APP_VERSION = "2026.10.68";
 function deviceText() {
   const ua = navigator.userAgent;
   const os = /iPhone/.test(ua) ? "iPhone" : /iPad/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1) ? "iPad"

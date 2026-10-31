@@ -578,6 +578,8 @@ T.nl = {
   "cal.count": ({ n }) => `${n} ${n === 1 ? "wedstrijd" : "wedstrijden"}`,
   "cp.seatsFree": ({ n }) => n === 1 ? "vrije plaats" : "vrije plaatsen",
   "team.topYes": "Trouwste spelers", "team.topDrove": "Meeste ritten",
+  "set.homeAway": "Thuis- en uitwedstrijden", "set.homeAwayHelp": "Uit voor sporten zonder thuis of uit, zoals golf: dan verdwijnen die labels en keuzes.",
+  "set.selOn": "Selecties maken", "set.selOnHelp": "Uit als je ploeg geen selectie of opstelling per wedstrijd nodig heeft: dan verdwijnen de selectieknoppen.",
   "rem.title": ({ n, opp, when }) => `${n} zonder antwoord · ${opp}, ${when}`,
   "rem.sub": "Een persoonlijke herinnering komt als melding op hun gsm, of anders per e-mail, met Ja / Nee / Misschien erin. Eén tik en hun antwoord staat erin. Vink uit wie je overslaat.",
   "rem.you": "Dat ben jij: antwoord hierboven",

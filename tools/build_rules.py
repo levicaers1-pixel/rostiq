@@ -112,6 +112,8 @@ def settings_rules():
             "from": DATE, "to": DATE, "optOut": {".validate": "newData.isBoolean()"},
             "$other": NO},
         "quickLinks": {".validate": "newData.isBoolean()"},
+        "homeAway": {".validate": "newData.isBoolean()"},  # home/away matches on / off (missing: off for golf, on otherwise)
+        "selOff": {".validate": "newData.val() === true"},  # true = this team doesn't make selections (Selection hidden)
         # How this team picks a line-up (Selection window): f squad | order | pairs, n starters / players / pairs,
         # b bench places, pos positions on, cap captain on, by sort by handicap | ranking | none. Missing: the sport's default.
         "sel": {"f": {".validate": "newData.val() === 'squad' || newData.val() === 'order' || newData.val() === 'pairs'"},

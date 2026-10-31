@@ -582,6 +582,8 @@ T.en = {
   "cal.count": ({ n }) => `${n} ${n === 1 ? "match" : "matches"}`,
   "cp.seatsFree": ({ n }) => n === 1 ? "free seat" : "free seats",
   "team.topYes": "Most reliable", "team.topDrove": "Most rides given",
+  "set.homeAway": "Home and away matches", "set.homeAwayHelp": "Off for sports without home or away, like golf: those labels and choices disappear.",
+  "set.selOn": "Make selections", "set.selOnHelp": "Off if your team doesn't need a selection or line-up per match: the selection buttons disappear.",
   "rem.title": ({ n, opp, when }) => `${n} without an answer · ${opp}, ${when}`,
   "rem.sub": "A personal reminder arrives as a notification on their phone, or else by email, with Yes / No / Maybe in it. One tap and their answer is in. Untick anyone you want to skip.",
   "rem.you": "That's you: answer above",

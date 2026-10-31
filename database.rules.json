@@ -274,6 +274,12 @@
           "quickLinks": {
             ".validate": "newData.isBoolean()"
           },
+          "homeAway": {
+            ".validate": "newData.isBoolean()"
+          },
+          "selOff": {
+            ".validate": "newData.val() === true"
+          },
           "sel": {
             "f": {
               ".validate": "newData.val() === 'squad' || newData.val() === 'order' || newData.val() === 'pairs'"

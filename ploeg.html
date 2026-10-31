@@ -269,8 +269,7 @@ sheet.addEventListener("click", ev => {
   if (e) { sheet.close(); openEdit(e.dataset.edit); }
 });
 function openSheet(card) {
-  sheet.innerHTML = `<article class="${card.className}">${card.innerHTML}</article>
-    <div class="sheet-close"><button type="button" data-sheet-close>${t("close")}</button></div>`;
+  sheet.innerHTML = `<article class="${card.className}">${card.innerHTML}</article>`;
   sheet.showModal();
 }
 

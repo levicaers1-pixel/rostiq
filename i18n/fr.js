@@ -582,6 +582,8 @@ T.fr = {
   "cal.count": ({ n }) => `${n} ${plural(n, "match", "matchs")}`,
   "cp.seatsFree": ({ n }) => n === 1 ? "place libre" : "places libres",
   "team.topYes": "Les plus fidèles", "team.topDrove": "Le plus de trajets",
+  "set.homeAway": "Matchs à domicile et à l'extérieur", "set.homeAwayHelp": "Désactive-le pour les sports sans domicile ni extérieur, comme le golf : ces étiquettes et choix disparaissent.",
+  "set.selOn": "Faire des sélections", "set.selOnHelp": "Désactive-le si ton équipe n'a pas besoin de sélection ou de composition par match : les boutons de sélection disparaissent.",
   "rem.title": ({ n, opp, when }) => `${n} sans réponse · ${opp}, ${when}`,
   "rem.sub": "Un rappel personnel arrive en notification sur leur téléphone, sinon par e-mail, avec Oui / Non / Peut-être. Un geste et leur réponse est enregistrée. Décoche ceux que tu veux passer.",
   "rem.you": "C'est toi : réponds plus haut",
