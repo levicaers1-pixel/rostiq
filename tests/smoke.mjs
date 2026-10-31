@@ -77,6 +77,8 @@ const PAGES = [
       const got = rows.map(x => x.querySelector(".nm b").textContent.split(" ")[0] + ":" + x.querySelector(".rk").textContent + ":" + x.querySelector(".pt b").textContent).join(" ");
       if (got !== "Test:1:43 Jonas:2:43 Jens:3:30 Arnaud:4:24") r.push("ranking: " + got);
       if (!vis(document.querySelector(".rk-pod.p1"))) r.push("podium missing");
+      const hist = document.querySelectorAll(".rk-hist a").length;
+      if (hist !== 2) r.push("played matches on the Ranking: " + hist + " of 2");
       if (![...document.querySelectorAll(".rank-tab")].some(vis)) r.push("Ranking tab not shown for a golf team");
       return r;` },
   { name: "golf-result-admin", url: `/?t=golf#m/${dates("golf")[1]}/r`, check: `
@@ -84,6 +86,12 @@ const PAGES = [
       if (calc.length !== 4) r.push("score entry shows " + calc.length + " of 4 players");
       if (!calc.some(x => x.startsWith("72") && x.includes("· 18"))) r.push("no live place/points for the tie at 72: " + calc.join(" | "));
       if (!document.querySelector("[data-sc-f=net][aria-pressed=true]")) r.push("saved format (net) not selected");
+      return r;` },
+  { name: "golf-ranking-history", url: "/?t=golf#ranking", setup: "noScores", check: `${vis}
+      const r = [], links = [...document.querySelectorAll(".rk-hist a")];
+      if (links.length !== 2) r.push("played matches without results: " + links.length + " of 2");
+      if (!links.every(a => a.querySelector(".go:not(.done)"))) r.push("no 'enter scores' button for the admin");
+      if (!links.every(a => (a.getAttribute("href") || "").startsWith("#m/") && a.getAttribute("href").endsWith("/r"))) r.push("links don't open the Result tab");
       return r;` },
   { name: "full-no-ranking", url: "/?t=full", check: `${vis}
       return [...document.querySelectorAll(".rank-tab")].some(vis) ? ["Ranking tab shown for a hockey team"] : [];` },
@@ -137,6 +145,7 @@ for (const run of RUNS) {
   }, [USER, run.theme]);
   for (const pg of PAGES.filter(p => p.name.includes(only))) {
     await put(); // every page starts from the same data
+    if (pg.setup === "noScores") await fetch(`${BASE}/teams/golf/scores.json`, { method: "DELETE" });
     const page = await context.newPage();
     const errors = [];
     page.on("pageerror", e => errors.push("script error: " + e.message));

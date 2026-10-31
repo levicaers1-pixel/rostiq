@@ -590,6 +590,19 @@
   .rk-row .pt b { display: block; font-family: var(--font-display); font-weight: 400; font-size: 1.25rem; line-height: 1; }
   .rk-row .pt small { font-size: .62rem; color: var(--muted); font-weight: 700; }
   .rk-row.me { background: color-mix(in srgb, var(--pampas) 22%, var(--surface)); }
+  .rk-hist { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; overflow: hidden; max-width: 720px; }
+  .rk-hist a { display: flex; align-items: center; gap: 12px; padding: 10px 12px; color: var(--text); text-decoration: none; }
+  .rk-hist a + a { border-top: 1px solid var(--border); }
+  .rk-hist a:hover { background: color-mix(in srgb, var(--accent) 5%, var(--surface)); }
+  .rk-hist .d { width: 44px; text-align: center; border-radius: 12px; padding: 4px 0; flex: none; background: color-mix(in srgb, var(--accent) 8%, var(--surface)); line-height: 1.05; }
+  .rk-hist .d small { display: block; font-size: .56rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  .rk-hist .d b { font-family: var(--font-display); font-weight: 400; font-size: 1.2rem; }
+  .rk-hist .o { flex: 1; min-width: 0; } .rk-hist .o b { display: block; font-size: .9rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .rk-hist .o small { font-size: .74rem; color: var(--muted); }
+  .rk-hist .go { flex: none; font-size: .78rem; font-weight: 800; padding: 7px 12px; border-radius: 12px; background: var(--brand); color: var(--brand-text); }
+  .rk-hist .go.done { background: none; color: var(--muted); padding: 0; }
+  .rk-hist .go.done svg.i { width: 16px; height: 16px; transform: rotate(-90deg); }
+  html.dark .rk-hist .go:not(.done) { background: var(--pampas); color: #0b0d14; }
   .rk-note { font-size: .78rem; color: var(--muted); line-height: 1.5; max-width: 720px; margin: 12px 0 0; }
   .rk-stats { display: grid; grid-template-columns: repeat(3, 1fr); margin: 14px 0 6px; border: 1px solid var(--border); border-radius: 16px; }
   .rk-stats div { text-align: center; padding: 10px 4px; } .rk-stats div + div { border-left: 1px solid var(--border); }
@@ -1271,10 +1284,19 @@ function renderRanking(players) {
   const dates = Object.keys(root.scores || {}).filter(d => (root.scores[d] || {}).p).sort();
   const list = seasonRanking(), total = EVENTS.filter(e => !e.cancelled).length;
   const before = dates.length > 1 ? Object.fromEntries(seasonRanking(dates[dates.length - 2]).map(x => [x.pid, x.place])) : {};
+  // Played matches (newest first): the result, or "enter scores" for admins. Past matches are hidden in the Kalender.
+  const played = EVENTS.filter(e => e.date <= TODAY && !e.cancelled).sort((a, b) => b.date.localeCompare(a.date));
+  const hist = played.length ? `<div class="home-label"><span>${esc(t("rk.history"))}</span><span>${played.length}</span></div><div class="rk-hist">${played.map(e => {
+    const sc = (root.scores || {})[e.date], rows = matchRanking(sc), win = rows[0];
+    const sub = rows.length ? `${fmtLabel(sc.f)} · ${t("rk.winner", { name: firstName(rkName(win.pid)) })}` : t("rk.noResultShort");
+    const go = rows.length ? `<span class="go done">${ic("chevron-down")}</span>` : session.admin ? `<span class="go">${esc(t("rk.enter"))}</span>` : "";
+    return `<a href="#m/${e.date}/r"><span class="d"><small>${esc(fmt(e.date, { month: "short" }).replace(".", ""))}</small><b>${parse(e.date).getDate()}</b></span>
+      <span class="o"><b>${esc(e.opp)}</b><small>${esc(sub)}</small></span>${go}</a>`;
+  }).join("")}</div>` : "";
   const head = `<h1 class="page-title rk-title">${esc(t("rk.title"))}</h1>
-    <p class="rk-sub">${esc(seasonName())} · ${esc(t("rk.played", { n: dates.length, total }))}</p>`;
+    <p class="rk-sub">${esc(seasonName())} · ${esc(t("rk.played", { n: played.length, total }))}</p>`;
   if (!list.length) {
-    box.innerHTML = head + `<div class="ts-done">${ic("trophy")} ${esc(t(session.admin ? "rk.emptyAdmin" : "rk.empty"))}</div>
+    box.innerHTML = head + `<div class="ts-done">${ic("trophy")} ${esc(t(session.admin ? "rk.emptyAdmin" : "rk.empty"))}</div>${hist}
       <p class="rk-note">${esc(t("rk.how", { tie: t(tieMode() === "share" ? "rk.tieShare" : "rk.tieHcp") }))}</p>`;
     return;
   }
@@ -1288,7 +1310,7 @@ function renderRanking(players) {
         <span class="nm"><b>${esc(rkName(x.pid))}</b><small>${move > 0 ? `<span class="rk-up">▲${move}</span> · ` : move < 0 ? `<span class="rk-down">▼${-move}</span> · ` : ""}${esc(t("rk.best", { place: ordinal(x.best) }))}</small></span>
         <span class="rk-form">${x.form.map(p => `<span${p === 1 ? ' class="w"' : ""}>${p}</span>`).join("")}</span>
         <span class="pt"><b>${x.pts}</b><small>${esc(t("rk.pts"))}</small></span></button>`;
-    }).join("")}</div>
+    }).join("")}</div>${hist}
     <p class="rk-note">${esc(t("rk.how", { tie: t(tieMode() === "share" ? "rk.tieShare" : "rk.tieHcp") }))}</p>`;
 }
 // A player's results, in a pop-up.
