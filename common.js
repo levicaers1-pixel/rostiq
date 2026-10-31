@@ -101,6 +101,8 @@ function cachedTeamInfo() {
 // before the rest of this file has run.
 function homeAwayOn() { const s = root.settings || {}; return typeof s.homeAway === "boolean" ? s.homeAway : (s.sport || "golf") !== "golf"; }
 function selOn() { return !(root.settings || {}).selOff; }
+// Golf ranking (Order of Merit): golf teams.
+function rankOn() { return ((root.settings || {}).sport || "golf") === "golf"; }
 
 // Schedule: the team's list in the database (schedule/{date}); TEAM.events only as a fallback.
 let EVENTS = [];
@@ -113,6 +115,7 @@ function refreshEvents() {
       ...(s[date].cancelled === true ? { cancelled: true } : {}), ...(s[date].moved ? { moved: s[date].moved } : {}) }))
     : (TEAM.events || []).slice();
   if (document.body) document.body.classList.toggle("sel-off", !selOn()); // hides every Selection button (common.css)
+  document.querySelectorAll(".rank-tab").forEach(a => { a.hidden = !rankOn(); });
 }
 const seasonName = () => (root.settings && root.settings.seasonName) || TEAM.season || TEAM.brand;
 const teamSize = () => TEAM.teamSize ?? 0;
@@ -1157,9 +1160,11 @@ let brandPreview = null;
 function markTabs() {
   const page = (location.pathname.split("/").pop() || "index.html").replace(/^$/, "index.html");
   const cal = /^#(kalender|trainings|m\/)/.test(location.hash); // a match page belongs to the calendar
+  const rank = /^#ranking/.test(location.hash);
   document.querySelectorAll(".tabs a, .bottom-nav a").forEach(a => {
     const tab = a.dataset.tab, href = (a.getAttribute("href") || "").split(/[?#]/)[0].replace(/^\.\/$/, "index.html").replace(/^$/, "index.html");
-    const on = tab === "home" ? page === "index.html" && !cal : tab === "cal" ? page === "index.html" && cal : href === page;
+    const on = tab === "home" ? page === "index.html" && !cal && !rank : tab === "cal" ? page === "index.html" && cal
+      : tab === "rank" ? page === "index.html" && rank : href === page;
     on ? a.setAttribute("aria-current", "page") : a.removeAttribute("aria-current");
   });
 }
@@ -1457,7 +1462,7 @@ function gateMessage(text, err) { gateMsg = { text, err }; renderAuth(); }
 const appUrl = file => location.href.split(/[?#]/)[0].replace(/[^/]*$/, file);
 
 // ---- Feedback to RostiQ (account menu, footer): only the RostiQ admin reads it ----
-const APP_VERSION = "2026.10.69";
+const APP_VERSION = "2026.11.70";
 function deviceText() {
   const ua = navigator.userAgent;
   const os = /iPhone/.test(ua) ? "iPhone" : /iPad/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1) ? "iPad"

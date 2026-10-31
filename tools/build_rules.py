@@ -113,7 +113,8 @@ def settings_rules():
             "$other": NO},
         "quickLinks": {".validate": "newData.isBoolean()"},
         "homeAway": {".validate": "newData.isBoolean()"},  # home/away matches on / off (missing: off for golf, on otherwise)
-        "selOff": {".validate": "newData.val() === true"},  # true = this team doesn't make selections (Selection hidden)
+        "selOff": {".validate": "newData.val() === true"},
+        "tie": {".validate": "newData.val() === 'share'"},  # golf ranking: ties share the points (missing: lowest handicap wins)  # true = this team doesn't make selections (Selection hidden)
         # How this team picks a line-up (Selection window): f squad | order | pairs, n starters / players / pairs,
         # b bench places, pos positions on, cap captain on, by sort by handicap | ranking | none. Missing: the sport's default.
         "sel": {"f": {".validate": "newData.val() === 'squad' || newData.val() === 'order' || newData.val() === 'pairs'"},
@@ -213,6 +214,15 @@ team = {
     # Selection per match (admins): p/<player> = "s" selected | "r" reserve; pub = shown to the team;
     # o/<player> = playing order or reserve order, pos/<player> = position (squad sports) or bench, pair/<player> = pair
     # number (padel, doubles), cap = the captain's player id.
+    # Golf ranking (admins): scores/<date> = { f: stb | net | gross, p: { <player>: { s: points or strokes, h: playing
+    # handicap } }, at, by }. Readable by the team; functions/ranking.js turns them into places and RostiQ Points.
+    "scores": {".write": TA, "$date": {
+        ".validate": "$date.matches(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/) && newData.hasChildren(['f', 'p'])",
+        "f": {".validate": "newData.val() === 'stb' || newData.val() === 'net' || newData.val() === 'gross'"},
+        "p": {"$pid": {".validate": "newData.hasChild('s') && root.child('teams').child($tid).child('players').child($pid).exists()",
+                       "s": num(0, 300), "h": num(-10, 60), "$other": NO}},
+        "at": {".validate": "newData.isNumber()"}, "by": s(40),
+        "$other": NO}},
     "selection": {".write": TA, "$date": {
         ".validate": "$date.matches(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/)",
         "p": {"$pid": {".validate": "newData.val() === 's' || newData.val() === 'r'"}},
@@ -560,8 +570,9 @@ final["rules"]["notices"] = {"$tid": {"$id": {
                  f" || (newData.child('k').val() === 'a' && {N_SCHED}.child('opp').exists() && {N_SCHED}.child('cancelled').val() !== true)"
                  " || (newData.child('k').val() === 'p' && newData.child('p').exists())"
                  " || (newData.child('k').val() === 't' && root.child('teams').child($tid).child('trainings').child(newData.child('d').val()).child('off').val() === true)"
-                 " || (newData.child('k').val() === 'n' && newData.child('i').isString() && root.child('teams').child($tid).child('news').child(newData.child('i').val()).exists()))",
-    "k": {".validate": "newData.val() === 'c' || newData.val() === 'm' || newData.val() === 's' || newData.val() === 'a' || newData.val() === 'p' || newData.val() === 'n' || newData.val() === 't'"},
+                 " || (newData.child('k').val() === 'n' && newData.child('i').isString() && root.child('teams').child($tid).child('news').child(newData.child('i').val()).exists())"
+                 " || (newData.child('k').val() === 'r' && root.child('teams').child($tid).child('scores').child(newData.child('d').val()).exists()))",
+    "k": {".validate": "newData.val() === 'c' || newData.val() === 'm' || newData.val() === 's' || newData.val() === 'a' || newData.val() === 'p' || newData.val() === 'n' || newData.val() === 't' || newData.val() === 'r'"},
     "d": {".validate": "newData.isString() && newData.val().matches(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/)"},
     "o": {".validate": "newData.isString() && newData.val().matches(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/)"},
     "by": {".validate": "newData.isString()"}, "at": {".validate": "newData.isNumber()"},

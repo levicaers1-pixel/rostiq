@@ -191,3 +191,39 @@ import { groupErrors, errorEmail } from "./errors.mjs";
   assert(!errorEmail(groupErrors({ z: { at: 9, items: { 0: { msg: "<img src=x onerror=alert(1)>" } } } }, 0), "x").html.includes("<img"), "escaped");
 }
 console.log("error email tests passed");
+
+// Golf ranking: places, RostiQ Points, ties (lowest handicap or shared), the season, the notification text.
+import { matchRanking, seasonRanking, profileHcp, resultText, RANK_POINTS } from "./ranking.js";
+{
+  assert.deepEqual(RANK_POINTS, [25, 18, 15, 12, 10, 8, 6, 4, 2, 1]);
+  // Strokeplay net: 81-10=71, 76-4=72, 86-14=72, 90-15=75. Tie at 72: lowest handicap (Levi, 4) wins.
+  const net = { f: "net", p: { jonas: { s: 81, h: 10 }, levi: { s: 76, h: 4 }, jens: { s: 86, h: 14 }, jvo: { s: 90, h: 15 } } };
+  const r = matchRanking(net);
+  assert.deepEqual(r.map(x => [x.pid, x.v, x.place, x.pts]), [["jonas", 71, 1, 25], ["levi", 72, 2, 18], ["jens", 72, 3, 15], ["jvo", 75, 4, 12]]);
+  // The same with "share": both 2nd, (18 + 15) / 2 = 16.5, next is 4th.
+  const sh = matchRanking(net, () => null, "share");
+  assert.deepEqual(sh.map(x => [x.pid, x.place, x.pts]), [["jonas", 1, 25], ["jens", 2, 16.5], ["levi", 2, 16.5], ["jvo", 4, 12]]);
+  // Same score and same handicap: shared even with "lowest handicap wins".
+  const eq = matchRanking({ f: "stb", p: { a: { s: 30, h: 8 }, b: { s: 30, h: 8 }, c: { s: 25, h: 3 } } });
+  assert.deepEqual(eq.map(x => [x.place, x.pts]), [[1, 21.5], [1, 21.5], [3, 15]]);
+  // Stableford: most points wins; gross: fewest strokes; no handicap entered: the profile's handicap breaks ties.
+  assert.equal(matchRanking({ f: "stb", p: { a: { s: 28 }, b: { s: 36 } } })[0].pid, "b");
+  assert.equal(matchRanking({ f: "gross", p: { a: { s: 80 }, b: { s: 80 } } }, pid => ({ a: 12, b: 3 })[pid])[0].pid, "b");
+  // More than 10 players: the 11th scores 0.
+  const many = { f: "stb", p: Object.fromEntries(Array.from({ length: 11 }, (_, i) => ["p" + i, { s: 40 - i }])) };
+  assert.equal(matchRanking(many).at(-1).pts, 0);
+  // Season: sum of points, wins, best place, form; a missing score just doesn't count.
+  const season = seasonRanking({ "2026-11-22": { f: "stb", p: { levi: { s: 36 }, jonas: { s: 33 }, jens: { s: 31 } } }, "2027-01-03": net });
+  // Levi and Jonas tie on 43 and no handicap is known: they share 1st place. With handicaps the lower one is first:
+  assert.deepEqual(season.map(x => [x.pid, x.pts, x.played, x.wins, x.place]), [["jonas", 43, 2, 1, 1], ["levi", 43, 2, 1, 1], ["jens", 30, 2, 0, 3], ["jvo", 12, 1, 0, 4]]);
+  const s2 = seasonRanking({ "2026-11-22": { f: "stb", p: { a: { s: 30 }, b: { s: 28 } } }, "2027-01-03": { f: "stb", p: { a: { s: 28 }, b: { s: 30 } } } }, pid => ({ a: 9, b: 2 })[pid]);
+  assert.deepEqual(s2.map(x => [x.pid, x.place]), [["b", 1], ["a", 2]]);
+  const s3 = seasonRanking({ "2026-11-22": { f: "stb", p: { a: { s: 30 }, b: { s: 28 } } }, "2027-01-03": { f: "stb", p: { a: { s: 28 }, b: { s: 30 } } } }, pid => ({ a: 9, b: 2 })[pid], "share");
+  assert.deepEqual(s3.map(x => x.place), [1, 1]);
+  // The handicap from the team's own field (named "Handicap", comma decimals too).
+  assert.equal(profileHcp({ extra: { c2: "4,2" } }, { fields: { c1: "Federatienummer", c2: "Handicap" } }), 4.2);
+  assert.equal(profileHcp({ extra: {} }, { fields: { c1: "HCP" } }), null);
+  assert.equal(resultText("nl", "Het Woold", r, { jonas: { name: "Jonas Maselis" }, levi: { name: "Levi Caers" }, jens: { name: "Jens V" } }),
+    "🏆 Uitslag Het Woold is binnen: 1. Jonas, 2. Levi, 3. Jens");
+}
+console.log("ranking tests passed");

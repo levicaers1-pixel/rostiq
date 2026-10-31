@@ -72,11 +72,26 @@ const PAGES = [
       if (f.selOn.checked) r.push("'Make selections' is on, but the team switched it off");
       if (f.homeAway.checked) r.push("home/away is on for golf");
       return r;` },
+  { name: "golf-ranking", url: "/?t=golf#ranking", check: `${vis}
+      const r = [], rows = [...document.querySelectorAll(".rk-row")];
+      const got = rows.map(x => x.querySelector(".nm b").textContent.split(" ")[0] + ":" + x.querySelector(".rk").textContent + ":" + x.querySelector(".pt b").textContent).join(" ");
+      if (got !== "Test:1:43 Jonas:2:43 Jens:3:30 Arnaud:4:24") r.push("ranking: " + got);
+      if (!vis(document.querySelector(".rk-pod.p1"))) r.push("podium missing");
+      if (![...document.querySelectorAll(".rank-tab")].some(vis)) r.push("Ranking tab not shown for a golf team");
+      return r;` },
+  { name: "golf-result-admin", url: `/?t=golf#m/${dates("golf")[1]}/r`, check: `
+      const r = [], calc = [...document.querySelectorAll("[data-sc-calc]")].map(x => x.textContent.replace(/\s+/g, " ").trim());
+      if (calc.length !== 4) r.push("score entry shows " + calc.length + " of 4 players");
+      if (!calc.some(x => x.startsWith("72") && x.includes("· 18"))) r.push("no live place/points for the tie at 72: " + calc.join(" | "));
+      if (!document.querySelector("[data-sc-f=net][aria-pressed=true]")) r.push("saved format (net) not selected");
+      return r;` },
+  { name: "full-no-ranking", url: "/?t=full", check: `${vis}
+      return [...document.querySelectorAll(".rank-tab")].some(vis) ? ["Ranking tab shown for a hockey team"] : [];` },
   { name: "profile", url: "/me.html", check: `${vis}
       const r = [];
       if (!vis(document.querySelector(".pf"))) r.push("profile card missing");
       const n = document.querySelectorAll(".pf-team").length;
-      if (n !== 2) r.push("profile shows " + n + " of 2 teams");
+      if (n !== 3) r.push("profile shows " + n + " of 3 teams");
       return r;` },
   { name: "answer-link", url: `/a/?${QUICK_KEY}`, check: `
       return document.querySelectorAll(".q-card").length ? [] : ["answer page shows no matches"];` },

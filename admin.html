@@ -230,7 +230,7 @@
 <header class="brand">
   <div class="brand-inner">
     <a href="./"><img class="logo rostiq-logo" src="assets/rostiq-logo-header.webp" alt="RostiQ"></a>
-    <nav class="tabs"><a href="./" data-tab="home" data-i18n="tab.home">Home</a><a href="./#kalender" data-tab="cal" data-i18n="tab.calendar">Calendar</a><a href="ploeg.html" data-i18n="tab.team">👥 Team</a><a href="admin.html" class="admin-tab" hidden data-i18n="tab.admin">⚙️ Admin</a></nav>
+    <nav class="tabs"><a href="./" data-tab="home" data-i18n="tab.home">Home</a><a href="./#kalender" data-tab="cal" data-i18n="tab.calendar">Calendar</a><a href="./#ranking" data-tab="rank" class="rank-tab" hidden data-i18n="tab.ranking">🏆 Ranking</a><a href="ploeg.html" data-i18n="tab.team">👥 Team</a><a href="admin.html" class="admin-tab" hidden data-i18n="tab.admin">⚙️ Admin</a></nav>
   </div>
 </header>
 <script>rostiqBootHeader()</script>
@@ -295,6 +295,9 @@
         </div>
         <label class="ff check push-set"><input type="checkbox" name="homeAway"> <span><b data-i18n="set.homeAway">Home and away matches</b><br><small class="ff-help" data-i18n="set.homeAwayHelp"></small></span></label>
         <label class="ff check push-set"><input type="checkbox" name="selOn"> <span><b data-i18n="set.selOn">Make selections</b><br><small class="ff-help" data-i18n="set.selOnHelp"></small></span></label>
+        <label class="ff rank-only"><span class="ff-label" data-i18n="set.tie">Ties in the ranking</span>
+          <select name="tie"><option value="hcp" data-i18n="set.tieHcp">Lowest handicap wins</option><option value="share" data-i18n="set.tieShare">Share the points</option></select>
+          <span class="ff-help" data-i18n="set.tieHelp"></span></label>
         <label class="ff check push-set"><input type="checkbox" name="quickLinks"> <span><b data-i18n="set.quickLinks">Answer via personal link</b><br><small class="ff-help" data-i18n="set.quickLinksHelp"></small></span></label>
         <label class="ff check push-set"><input type="checkbox" name="autoRemind"> <span><b data-i18n="set.autoRemind">Automatic reminders</b><br><small class="ff-help" data-i18n="set.autoRemindHelp"></small></span></label>
         <label class="ff check push-set"><input type="checkbox" name="wx"> <span><b data-i18n="set.wx">Weather warning</b><br><small class="ff-help" data-i18n="set.wxHelp"></small></span></label>
@@ -968,7 +971,9 @@ function renderSettings() {
     sf.quickLinks.checked = s.quickLinks !== false;
     sf.homeAway.checked = homeAwayOn();
     sf.selOn.checked = selOn();
+    sf.tie.value = (root.settings || {}).tie === "share" ? "share" : "hcp";
   }
+  sf.querySelector(".rank-only").hidden = !rankOn();
   sf.querySelector("[type=submit]").disabled = !settingsDirty;
   const msg = document.getElementById("settings-msg");
   if (settingsDirty) { msg.textContent = t("admin.unsaved"); msg.className = "msg dirty"; }
@@ -1056,7 +1061,7 @@ sf.addEventListener("submit", async ev => {
   const ok = await update({ "settings/seasonName": season, "settings/minPlayers": n, "settings/waGroup": link || null, "settings/autoRemind": sf.autoRemind.checked ? null : false,
     "settings/wx": sf.wx.checked === WX_OUTDOOR.includes((root.settings || {}).sport || "golf") ? null : sf.wx.checked, "settings/quickLinks": sf.quickLinks.checked ? null : false,
     "settings/homeAway": sf.homeAway.checked === (((root.settings || {}).sport || "golf") !== "golf") ? null : sf.homeAway.checked,
-    "settings/selOff": sf.selOn.checked ? null : true });
+    "settings/selOff": sf.selOn.checked ? null : true, "settings/tie": sf.tie.value === "share" ? "share" : null });
   const msg = document.getElementById("settings-msg");
   if (!ok) { msg.textContent = t("status.saveFailed"); msg.className = "msg err"; return; }
   settingsDirty = false;

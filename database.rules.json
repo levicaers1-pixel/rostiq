@@ -280,6 +280,9 @@
           "selOff": {
             ".validate": "newData.val() === true"
           },
+          "tie": {
+            ".validate": "newData.val() === 'share'"
+          },
           "sel": {
             "f": {
               ".validate": "newData.val() === 'squad' || newData.val() === 'order' || newData.val() === 'pairs'"
@@ -373,6 +376,38 @@
             }
           },
           ".read": "(auth != null && root.child('quickSessions').child(auth.uid).child('k').isString() && root.child('quickKeys').child(root.child('quickSessions').child(auth.uid).child('k').val()).child('t').val() === $tid && root.child('teams').child($tid).child('settings').child('quickLinks').val() !== false)"
+        },
+        "scores": {
+          ".write": "((auth != null && auth.token.email_verified === true && (auth.token.email === 'levicaers1@gmail.com')) || (auth != null && auth.token.email_verified === true && root.child('teams').child($tid).child('admins').child(auth.uid).val() === true))",
+          "$date": {
+            ".validate": "$date.matches(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/) && newData.hasChildren(['f', 'p'])",
+            "f": {
+              ".validate": "newData.val() === 'stb' || newData.val() === 'net' || newData.val() === 'gross'"
+            },
+            "p": {
+              "$pid": {
+                ".validate": "newData.hasChild('s') && root.child('teams').child($tid).child('players').child($pid).exists()",
+                "s": {
+                  ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 300"
+                },
+                "h": {
+                  ".validate": "newData.isNumber() && newData.val() >= -10 && newData.val() <= 60"
+                },
+                "$other": {
+                  ".validate": false
+                }
+              }
+            },
+            "at": {
+              ".validate": "newData.isNumber()"
+            },
+            "by": {
+              ".validate": "newData.isString() && newData.val().length <= 40"
+            },
+            "$other": {
+              ".validate": false
+            }
+          }
         },
         "selection": {
           ".write": "((auth != null && auth.token.email_verified === true && (auth.token.email === 'levicaers1@gmail.com')) || (auth != null && auth.token.email_verified === true && root.child('teams').child($tid).child('admins').child(auth.uid).val() === true))",
@@ -1060,9 +1095,9 @@
       "$tid": {
         "$id": {
           ".write": "!data.exists() && newData.exists() && ((auth != null && auth.token.email_verified === true && (auth.token.email === 'levicaers1@gmail.com')) || (auth != null && auth.token.email_verified === true && root.child('teams').child($tid).child('admins').child(auth.uid).val() === true))",
-          ".validate": "$id.matches(/^[0-9a-z]{10,24}$/) && newData.hasChildren(['k', 'd', 'by', 'at']) && newData.child('by').val() === auth.uid && newData.child('at').val() === now && ((newData.child('k').val() === 'c' && root.child('teams').child($tid).child('schedule').child(newData.child('d').val()).child('cancelled').val() === true) || (newData.child('k').val() === 'm' && root.child('teams').child($tid).child('schedule').child(newData.child('d').val()).child('moved').val() === newData.child('o').val()) || (newData.child('k').val() === 's' && root.child('teams').child($tid).child('selection').child(newData.child('d').val()).child('pub').val() === true) || (newData.child('k').val() === 'a' && root.child('teams').child($tid).child('schedule').child(newData.child('d').val()).child('opp').exists() && root.child('teams').child($tid).child('schedule').child(newData.child('d').val()).child('cancelled').val() !== true) || (newData.child('k').val() === 'p' && newData.child('p').exists()) || (newData.child('k').val() === 't' && root.child('teams').child($tid).child('trainings').child(newData.child('d').val()).child('off').val() === true) || (newData.child('k').val() === 'n' && newData.child('i').isString() && root.child('teams').child($tid).child('news').child(newData.child('i').val()).exists()))",
+          ".validate": "$id.matches(/^[0-9a-z]{10,24}$/) && newData.hasChildren(['k', 'd', 'by', 'at']) && newData.child('by').val() === auth.uid && newData.child('at').val() === now && ((newData.child('k').val() === 'c' && root.child('teams').child($tid).child('schedule').child(newData.child('d').val()).child('cancelled').val() === true) || (newData.child('k').val() === 'm' && root.child('teams').child($tid).child('schedule').child(newData.child('d').val()).child('moved').val() === newData.child('o').val()) || (newData.child('k').val() === 's' && root.child('teams').child($tid).child('selection').child(newData.child('d').val()).child('pub').val() === true) || (newData.child('k').val() === 'a' && root.child('teams').child($tid).child('schedule').child(newData.child('d').val()).child('opp').exists() && root.child('teams').child($tid).child('schedule').child(newData.child('d').val()).child('cancelled').val() !== true) || (newData.child('k').val() === 'p' && newData.child('p').exists()) || (newData.child('k').val() === 't' && root.child('teams').child($tid).child('trainings').child(newData.child('d').val()).child('off').val() === true) || (newData.child('k').val() === 'n' && newData.child('i').isString() && root.child('teams').child($tid).child('news').child(newData.child('i').val()).exists()) || (newData.child('k').val() === 'r' && root.child('teams').child($tid).child('scores').child(newData.child('d').val()).exists()))",
           "k": {
-            ".validate": "newData.val() === 'c' || newData.val() === 'm' || newData.val() === 's' || newData.val() === 'a' || newData.val() === 'p' || newData.val() === 'n' || newData.val() === 't'"
+            ".validate": "newData.val() === 'c' || newData.val() === 'm' || newData.val() === 's' || newData.val() === 'a' || newData.val() === 'p' || newData.val() === 'n' || newData.val() === 't' || newData.val() === 'r'"
           },
           "d": {
             ".validate": "newData.isString() && newData.val().matches(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/)"

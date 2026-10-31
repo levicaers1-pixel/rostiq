@@ -45,9 +45,29 @@ export function seed(today = new Date()) {
     selection: { [d(5)]: { p: { p1: "s", p2: "s", p3: "s", p4: "s", p5: "r" }, pub: true, at: Date.now() } },
     news: { n1: { text: "Teamfoto zondag om 10u. Witte shirts!", name: "Test", by: USER.uid, at: Date.now() - 3600e3, until: d(10) } },
   };
+  // "golf": a golf team with two results (Stableford, then strokeplay net with a tie at 72 that the lower handicap wins).
+  // Expected ranking: Test Tester 43 (hcp 4.2) and Jonas 43 (hcp 9.8): the lower handicap first; Jens 30; Arnaud 24.
+  const golf = {
+    initialized: true,
+    info: { brand: "Golf Ranking Club", shortName: "GRC", minPlayers: 4 },
+    settings: { sport: "golf", minPlayers: 4, scheduleInDb: true, seasonName: "GRC Winter", fields: { c1: "Handicap" } },
+    schedule: { [d(-20)]: { opp: "Midden-Brabant" }, [d(-6)]: { opp: "Het Woold" }, [d(15)]: { opp: "Haviksoord" } },
+    players: {
+      p1: { name: "Test Tester", uid: USER.uid, order: 1, extra: { c1: "4,2" }, avail: { [d(-20)]: "yes", [d(-6)]: "yes" } },
+      p2: { name: "Jonas Maselis", order: 2, extra: { c1: "9.8" }, avail: { [d(-20)]: "yes", [d(-6)]: "yes" } },
+      p3: { name: "Jens Havermaet", order: 3, extra: { c1: "14" }, avail: { [d(-20)]: "yes", [d(-6)]: "yes" } },
+      p4: { name: "Arnaud Gruwez", order: 4, extra: { c1: "15" }, avail: { [d(-20)]: "yes", [d(-6)]: "yes" } },
+    },
+    members: { [USER.uid]: "p1" },
+    admins: { [USER.uid]: true },
+    scores: {
+      [d(-20)]: { f: "stb", p: { p1: { s: 36, h: 4 }, p2: { s: 33, h: 10 }, p3: { s: 31, h: 14 }, p4: { s: 29, h: 15 } }, at: 1, by: USER.uid },
+      [d(-6)]: { f: "net", p: { p1: { s: 76, h: 4 }, p2: { s: 81, h: 10 }, p3: { s: 86, h: 14 }, p4: { s: 90, h: 15 } }, at: 2, by: USER.uid },
+    },
+  };
   return {
-    teams: { fresh, full },
-    users: { [USER.uid]: { teams: { fresh: "p1", full: "p1" }, profile: { gemeente: "Berchem" } } },
+    teams: { fresh, full, golf },
+    users: { [USER.uid]: { teams: { fresh: "p1", full: "p1", golf: "p1" }, profile: { gemeente: "Berchem" } } },
     quickKeys: { [QUICK_KEY]: { t: "full", p: "p2", at: Date.now() } },
     quickIndex: { full: { p2: QUICK_KEY } },
   };

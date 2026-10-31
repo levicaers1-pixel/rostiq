@@ -82,6 +82,19 @@ await check("admin: changes the team name", () => assertSucceeds(admin.ref(`${T}
 await check("member: can't change the team name", () => assertFails(member.ref(`${T}/info/brand`).set("Hacked")));
 await check("admin: colours only as #rrggbb", () => assertFails(admin.ref(`${T}/info/colors/main`).set("red; background:url(x)")));
 
+// ---- golf ranking: scores per match, the tie rule ----
+const SCORE = { f: "net", p: { p1: { s: 84, h: 12 }, p2: { s: 90, h: 18 } }, at: 1, by: "u-admin" };
+await check("admin: enters a match result", () => assertSucceeds(admin.ref(`${T}/scores/2030-05-01`).set(SCORE)));
+await check("member: can't enter results", () => assertFails(member.ref(`${T}/scores/2030-05-01`).set(SCORE)));
+await check("member: can't change their own score", () => assertFails(member.ref(`${T}/scores/2030-05-01/p/p2/s`).set(60)));
+await check("result: only stb / net / gross", () => assertFails(admin.ref(`${T}/scores/2030-05-01`).set({ ...SCORE, f: "matchplay" })));
+await check("result: only for players of the team", () => assertFails(admin.ref(`${T}/scores/2030-05-01`).set({ f: "stb", p: { nobody: { s: 30 } } })));
+await check("result: scores are numbers in range", () => assertFails(admin.ref(`${T}/scores/2030-05-01`).set({ f: "stb", p: { p1: { s: "36" } } })));
+await check("admin: ties shared or by handicap", async () => {
+  await assertSucceeds(admin.ref(`${T}/settings/tie`).set("share"));
+  await assertFails(admin.ref(`${T}/settings/tie`).set("coin"));
+});
+
 // ---- who is admin / member ----
 await check("member: can't make themselves admin", () => assertFails(member.ref(`${T}/admins/u-member`).set(true)));
 await check("admin: makes a linked member admin", () => assertSucceeds(admin.ref(`${T}/admins/u-member`).set(true)));

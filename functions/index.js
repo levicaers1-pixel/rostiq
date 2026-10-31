@@ -25,6 +25,7 @@ import { getMessaging } from "firebase-admin/messaging";
 import { buildFeed } from "./ics.js";
 import { noticeMessage } from "./notice.js";
 import { roleOf, roleText, promoteReserve, subText } from "./lineup.js";
+import { matchRanking, profileHcp, resultText } from "./ranking.js";
 import { runJob } from "./job.mjs";
 import { sendReminder, sendProfileAsk, sendNewsMail } from "./remind.mjs";
 import { trainText } from "./training.js";
@@ -128,6 +129,24 @@ export const notice = onValueCreated({ ref: "/notices/{tid}/{id}", instance: "wi
       }
       console.log(`notice n: ${sent} notifications sent, ${mailed} emails`);
     }
+    return done();
+  }
+  if (n.k === "r") { // a match result (golf ranking): the day's top 3, to every member but the admin who entered it
+    const T = `teams/${tid}`;
+    const [score, sched, brand, members, players, settings] = await Promise.all([val(`${T}/scores/${n.d}`), val(`${T}/schedule/${n.d}`),
+      val(`${T}/info/brand`), val(`${T}/members`), val(`${T}/players`), val(`${T}/settings`)]);
+    const rows = score && sched ? matchRanking(score, pid => profileHcp((players || {})[pid], settings), (settings || {}).tie === "share" ? "share" : "hcp") : [];
+    let sent = 0;
+    for (const uid of rows.length ? Object.keys(members || {}) : []) {
+      if (uid === n.by) continue;
+      for (const [dev, info] of Object.entries((await val(`pushTokens/${uid}`)) || {})) {
+        if (!info || !info.token) continue;
+        try { await getMessaging().send({ token: info.token, data: { title: String(brand || "RostiQ").slice(0, 60), body: resultText(info.lang, sched.opp, rows, players || {}),
+          tag: `${tid}-r-${n.d}`, link: `https://app.rostiq.be/?t=${encodeURIComponent(tid)}#m/${n.d}/r` }, webpush: { headers: { TTL: String(2 * 864e5) } } }); sent++; }
+        catch (e) { const code = (e && (e.code || e.errorInfo && e.errorInfo.code)) || ""; if (/registration-token-not-registered|invalid-registration-token/.test(code)) await db.ref(`pushTokens/${uid}/${dev}`).remove(); }
+      }
+    }
+    console.log(`notice r: ${sent} notifications sent`);
     return done();
   }
   if (n.k === "a" || n.k === "p") { // a reminder / a request to complete details: own recipients, also by email
