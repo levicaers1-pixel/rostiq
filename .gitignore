@@ -5,3 +5,5 @@ functions/node_modules/
 *-debug.log
 .firebase/
 .secret.local
+tests/node_modules/
+tests/out/

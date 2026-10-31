@@ -1,0 +1,19 @@
+{
+  "name": "rostiq-tests",
+  "private": true,
+  "type": "module",
+  "description": "RostiQ checks: page smoke test (signed-in, phone + desktop, light + dark), database rules, Cloud Function tests.",
+  "scripts": {
+    "test": "npm run functions && npm run smoke",
+    "test:all": "npm run functions && npm run smoke && npm run rules",
+    "smoke": "node smoke.mjs",
+    "rules": "node rules.run.mjs",
+    "functions": "node ../functions/ics.test.mjs",
+    "server": "node mock/server.cjs"
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^4.0.1",
+    "firebase": "^11.10.0",
+    "playwright-core": "^1.56.0"
+  }
+}
