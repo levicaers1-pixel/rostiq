@@ -7,6 +7,12 @@ import { fileURLToPath } from "node:url";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const env = { ...process.env };
+// A Java runtime unpacked in tests/.jre/<folder> (not in git) is used when JAVA_HOME isn't set.
+const local = path.join(HERE, ".jre");
+if (!env.JAVA_HOME && fs.existsSync(local)) {
+  const dir = fs.readdirSync(local).find(d => fs.existsSync(path.join(local, d, "bin")));
+  if (dir) env.JAVA_HOME = path.join(local, dir);
+}
 const PATH = Object.keys(env).find(k => k.toUpperCase() === "PATH") || "PATH"; // "Path" on Windows
 if (env.JAVA_HOME) env[PATH] = path.join(env.JAVA_HOME, "bin") + path.delimiter + (env[PATH] || "");
 const java = spawnSync("java -version", { env, shell: true, stdio: "ignore" });

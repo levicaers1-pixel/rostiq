@@ -7,3 +7,4 @@ functions/node_modules/
 .secret.local
 tests/node_modules/
 tests/out/
+tests/.jre/

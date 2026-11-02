@@ -9,6 +9,9 @@ npm test           # Cloud Function tests + page smoke test   (needs Edge or Chr
 npm run test:all   # the same + database rules tests           (also needs Java 11+)
 ```
 
+Java for the rules tests: `JAVA_HOME`, `java` on the PATH, or a Java runtime unpacked in `tests/.jre/<folder>` (not in
+git; on Levi's PC: Eclipse Temurin 21 JRE from adoptium.net, checksum verified).
+
 ## What's checked
 
 - **`npm run functions`**: the Cloud Function tests (`functions/ics.test.mjs`): calendar feed, notifications,
