@@ -310,6 +310,36 @@ await plans("pilot", { plan: "pro", until: "2099-12-31", src: "pilot" }, "/admin
   return r;
 });
 
+// ---- the RostiQ admin page (for the RostiQ admin only): the numbers ----
+if (!only || "rostiq-numbers".includes(only)) {
+  await put();
+  const day = 864e5, now = Date.now();
+  await fetch(`${BASE}/.json`, { method: "PATCH", body: JSON.stringify({
+    "teams/fresh/meta": { createdBy: USER.uid, createdAt: now - 2 * day }, "teams/golf/meta": { createdBy: USER.uid, createdAt: now - 20 * day },
+    "billing/fresh": { trial: now + 20 * day }, "billing/full": { plan: "pro", until: "2099-06-30", src: "paid",
+      history: { tr_a: { at: now - day, cents: 3900, plan: "pro", until: "2099-06-30", mode: "live" }, tr_t: { at: now - day, cents: 3900, plan: "pro", until: "2099-06-30", mode: "test" } } },
+    [`lastSeen/full/${USER.uid}`]: now - day }) });
+  const context = await browser.newContext({ viewport: { width: 1280, height: 900 }, locale: "nl-BE", serviceWorkers: "block" });
+  await context.addInitScript(() => { try { localStorage.setItem("fakeUser", JSON.stringify({ uid: "u-pa", email: "levicaers1@gmail.com", displayName: "Levi" }));
+    localStorage.setItem("lang", "nl"); localStorage.setItem("pushLater", String(Date.now())); } catch {} });
+  const page = await context.newPage(), errors = [];
+  page.on("pageerror", e => errors.push("script error: " + e.message));
+  try {
+    await page.goto(BASE + "/rostiq.html", { waitUntil: "domcontentloaded" });
+    await page.waitForSelector("#teams .swatch", { timeout: 10000 }); // the teams (and with them the numbers) are loaded
+    const text = await page.evaluate(`document.getElementById("numbers").innerText`);
+    for (const want of ["Ploegen", "Betalende ploegen", "Proef", "deze week"]) if (!text.includes(want)) errors.push("numbers lack " + want);
+    if (!/€\s?39(?!\d)/.test(text)) errors.push("the live payment isn't counted");
+    if (/€\s?78(?!\d)/.test(text)) errors.push("a test payment was counted as money");
+    if ((await page.$$("#numbers .wk")).length !== 8) errors.push("not 8 weeks in the chart");
+    await page.locator("#numbers").screenshot({ path: path.join(OUT, "rostiq-numbers.png") });
+  } catch (e) { errors.push("could not test: " + e.message.split("\n")[0]); }
+  checked++;
+  if (errors.length) failures.push({ where: "rostiq numbers", errors });
+  console.log(`${errors.length ? "✗" : "✓"} rostiq       numbers${errors.length ? "\n    " + errors.join("\n    ") : ""}`);
+  await context.close();
+}
+
 await browser.close();
 server.kill();
 console.log(`\n${checked - failures.length}/${checked} page checks passed. Screenshots: tests/out/`);

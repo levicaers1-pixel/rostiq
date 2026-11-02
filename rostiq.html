@@ -72,6 +72,29 @@
   .club-boxes { display: flex; flex-wrap: wrap; gap: 6px; }
   .club-boxes label { display: inline-flex; gap: 6px; align-items: center; padding: 5px 10px; border-radius: 999px; border: 1px solid var(--border); font-size: .82rem; cursor: pointer; }
   @media (max-width: 560px) { .club-form .two { grid-template-columns: 1fr; } }
+  /* Numbers */
+  .nums { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+  .num { padding: 14px; border-radius: 16px; border: 1px solid var(--border); background: var(--surface); }
+  .num b { display: block; font-family: Anton, var(--font-head, inherit); font-weight: 400; font-size: 2rem; line-height: 1.05; color: var(--text); }
+  .num span { display: block; font-size: .78rem; font-weight: 700; color: var(--muted); }
+  .num small { display: block; margin-top: 4px; font-size: .76rem; color: var(--muted); }
+  .num small.up { color: var(--yes); font-weight: 700; }
+  .nums-h { font-size: .7rem; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); margin: 18px 0 8px; }
+  .weeks { display: grid; grid-template-columns: repeat(8, 1fr); gap: 6px; align-items: end; height: 130px; padding: 0 2px; border-bottom: 1px solid var(--border); }
+  .wk { position: relative; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 4px; cursor: default; }
+  .wk i { display: block; width: 100%; max-width: 34px; min-height: 2px; background: var(--accent); border-radius: 4px 4px 0 0; }
+  .wk em { font-style: normal; font-size: .74rem; font-weight: 700; color: var(--text); }
+  .wk:hover i { opacity: .8; }
+  .wk .tip { position: absolute; bottom: calc(100% + 4px); left: 50%; transform: translateX(-50%); white-space: nowrap; font-size: .74rem; padding: 4px 8px;
+    border-radius: 8px; background: var(--text); color: var(--bg); opacity: 0; pointer-events: none; transition: opacity .12s; }
+  .wk:hover .tip, .wk:focus .tip { opacity: 1; }
+  .wk-labels { display: grid; grid-template-columns: repeat(8, 1fr); gap: 6px; font-size: .7rem; color: var(--muted); text-align: center; margin-top: 4px; }
+  .mix { display: grid; gap: 6px; }
+  .mix-row { display: grid; grid-template-columns: 110px 1fr 36px; gap: 10px; align-items: center; font-size: .86rem; }
+  .mix-row .track { height: 10px; border-radius: 99px; background: color-mix(in srgb, var(--accent) 8%, transparent); overflow: hidden; }
+  .mix-row .track i { display: block; height: 100%; background: var(--accent); border-radius: 99px; }
+  .mix-row b { text-align: right; font-variant-numeric: tabular-nums; }
+  @media (max-width: 700px) { .nums { grid-template-columns: 1fr 1fr; } }
 </style>
 <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/12.12.0/firebase-app.js" crossorigin>
 <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/12.12.0/firebase-auth.js" crossorigin>
@@ -88,6 +111,11 @@
   <p class="banner" id="no-access" hidden data-i18n="rostiq.noAccess"></p>
 
   <div id="platform" hidden>
+    <section class="panel">
+      <h2 data-i18n="rostiq.numbers">Numbers</h2>
+      <div id="numbers"><p class="muted">…</p></div>
+    </section>
+
     <section class="panel">
       <h2 data-i18n="rostiq.teams">Teams</h2>
       <ul class="teams" id="teams"><li class="muted">…</li></ul>
@@ -172,7 +200,7 @@ async function loadTeams() {
     // Who started it: teamCreators/<team> (older teams: still inside meta until the daily job moves it).
     const [meta, cr] = await Promise.all([getAbs(`teams/${id}/meta`), getAbs(`teamCreators/${id}`)]);
     const m = meta || cr ? { ...(meta || {}), ...(cr ? { creatorName: cr.n, creatorEmail: cr.e, code: cr.c } : {}) } : null;
-    return { id, info: (await getAbs(`teams/${id}/info`)) || {}, meta: m, memberIds, members: memberIds.length, admins };
+    return { id, info: (await getAbs(`teams/${id}/info`)) || {}, meta: m, memberIds, members: memberIds.length, admins, seen: (await getAbs(`lastSeen/${id}`)) || {} };
   }));
   signup = { open: (await getAbs("signup/open")) === true, codes: (await getAbs("signupCodes")) || {} };
   feedback = (await getAbs("feedback")) || {};
@@ -209,6 +237,7 @@ function render() {
   renderFeedback();
   renderErrors();
   renderClubs();
+  renderNumbers();
   // Plans
   const unmarked = teams.filter(pilotUnmarked);
   document.getElementById("plans-pilot").textContent = t("rostiq.plansPilot", { n: unmarked.length });
@@ -226,6 +255,63 @@ function render() {
     : `<li class="muted">${t("rostiq.noCodes")}</li>`;
 }
 let signup = { open: false, codes: {} }, bills = {};
+// ---- Numbers: growth, use, plans and money, from what this page already loads (nothing extra is stored) ----
+// Season: 1 July – 30 June. Money counts live Mollie payments only (test payments and refunds left out); clubs are
+// invoiced, so their amount is what the count of 1 October says (or so far).
+function renderNumbers() {
+  const box = document.getElementById("numbers"), now = Date.now(), DAY = 864e5, list = teams || [];
+  const today = new Date().toLocaleDateString("sv-SE"), y = Number(today.slice(0, 4)), m = Number(today.slice(5, 7));
+  const seasonFrom = `${m >= 7 ? y : y - 1}-07-01`, seasonStartMs = Date.parse(seasonFrom + "T00:00:00");
+  const created = x => (x.meta && x.meta.createdAt) || 0;
+  const newIn = days => list.filter(x => created(x) > now - days * DAY).length;
+  const uids = new Set(list.flatMap(x => x.memberIds || []));
+  const active = new Set(list.flatMap(x => Object.entries(x.seen || {}).filter(([, at]) => typeof at === "number" && at > now - 7 * DAY).map(([uid]) => uid)));
+  // Plans, per team
+  const kind = x => {
+    const b = bills[x.id] || {}, p = planOf(b);
+    if (p === "club") return "club";
+    if (p === "pro") return b.plan && b.src === "paid" ? "paid" : b.plan && b.src === "pilot" ? "pilot" : b.plan ? "gift" : "trial";
+    return "free";
+  };
+  const kinds = ["free", "trial", "paid", "pilot", "gift", "club"], count = Object.fromEntries(kinds.map(k => [k, 0]));
+  list.forEach(x => count[kind(x)]++);
+  // Trials: started, still running, ended; of the ended ones, how many pay now
+  const trials = list.filter(x => typeof (bills[x.id] || {}).trial === "number");
+  const ended = trials.filter(x => bills[x.id].trial < now), converted = ended.filter(x => kind(x) === "paid");
+  // Money this season
+  const receipts = Object.values(bills).flatMap(b => Object.values((b && b.history) || {})).filter(r => r && r.mode === "live" && r.at >= seasonStartMs);
+  const paid = receipts.filter(r => !r.refunded).reduce((n, r) => n + (r.cents || 0), 0);
+  const refunded = receipts.filter(r => r.refunded).reduce((n, r) => n + (r.cents || 0), 0);
+  const clubCents = Object.values(clubs).reduce((n, c) => n + ((c.stats && ((c.stats.count && c.stats.count.cents) || c.stats.cents)) || 0), 0);
+  const eur = c => new Intl.NumberFormat(LOCALE, { style: "currency", currency: "EUR", maximumFractionDigits: c % 100 ? 2 : 0 }).format(c / 100);
+  const tile = (value, label, sub, up) => `<div class="num"><span>${esc(label)}</span><b>${esc(String(value))}</b>${sub ? `<small class="${up ? "up" : ""}">${esc(sub)}</small>` : ""}</div>`;
+  // New teams per week, the last 8 weeks (Monday to Sunday)
+  const monday = d => { const x = new Date(d); x.setHours(0, 0, 0, 0); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); return x.getTime(); };
+  const thisWeek = monday(now), weeks = Array.from({ length: 8 }, (_, i) => thisWeek - (7 - i) * 7 * DAY);
+  const perWeek = weeks.map(w => list.filter(x => created(x) >= w && created(x) < w + 7 * DAY).length), top = Math.max(1, ...perWeek);
+  const wkLabel = w => new Date(w).toLocaleDateString(LOCALE, { day: "numeric", month: "short" });
+  box.innerHTML = `
+    <div class="nums">
+      ${tile(list.length, t("num.teams"), newIn(7) ? t("num.newWeek", { n: newIn(7) }) : t("num.newMonth", { n: newIn(30) }), newIn(7) > 0)}
+      ${tile(uids.size, t("num.accounts"), t("num.accountsSub"))}
+      ${tile(active.size, t("num.active"), uids.size ? t("num.activeShare", { p: Math.round(100 * active.size / uids.size) }) : "")}
+      ${tile(count.paid, t("num.paying"), t("num.payingSub", { n: count.pilot + count.gift }))}
+    </div>
+    <div class="nums" style="margin-top:10px">
+      ${tile(eur(paid), t("num.revenue"), refunded ? t("num.refunded", { amount: eur(refunded) }) : t("num.revenueSub"))}
+      ${tile(eur(clubCents), t("num.clubs", { n: Object.keys(clubs).length }), t("num.clubsSub"))}
+      ${tile(trials.length - ended.length, t("num.trials"), t("num.trialsSub", { n: trials.length }))}
+      ${tile(ended.length ? Math.round(100 * converted.length / ended.length) + "%" : "–", t("num.conversion"), t("num.conversionSub", { n: converted.length, of: ended.length }))}
+    </div>
+    <div class="nums-h">${esc(t("num.perWeek"))}</div>
+    <div class="weeks" role="img" aria-label="${esc(t("num.perWeek") + ": " + perWeek.join(", "))}">${perWeek.map((n, i) => `<div class="wk" tabindex="0">
+      <span class="tip">${esc(t("num.weekTip", { n, week: wkLabel(weeks[i]) }))}</span>${n ? `<em>${n}</em>` : ""}<i style="height:${Math.round(100 * n / top * .82)}%"></i></div>`).join("")}</div>
+    <div class="wk-labels">${weeks.map((w, i) => `<span>${i === 7 ? esc(t("num.thisWeek")) : esc(wkLabel(w))}</span>`).join("")}</div>
+    <div class="nums-h">${esc(t("num.plans"))}</div>
+    <div class="mix">${kinds.map(k => `<div class="mix-row"><span>${esc(t("num.k." + k))}</span>
+      <span class="track"><i style="width:${list.length ? Math.round(100 * count[k] / list.length) : 0}%"></i></span><b>${count[k]}</b></div>`).join("")}</div>`;
+}
+
 // ---- Clubs (functions/clubs.mjs): a club, its teams (all on the Club plan) and its people responsible ----
 let clubs = {}, clubForm = null, adminCands = {};
 const teamName = id => (((teams || []).find(x => x.id === id) || {}).info || {}).brand || id;
