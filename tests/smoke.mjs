@@ -208,7 +208,7 @@ await reopen("signed-out", () => localStorage.removeItem("fakeUser"), false);
 async function plans(name, billing, url, test, extra) {
   if (only && !("plans-" + name).includes(only)) return;
   await put();
-  if (billing) await fetch(`${BASE}/billing/golf.json`, { method: "PUT", body: JSON.stringify(billing) });
+  await fetch(`${BASE}/billing/golf.json`, { method: "PUT", body: JSON.stringify(billing) }); // null: no plan, so Free
   if (extra) await fetch(`${BASE}/.json`, { method: "PATCH", body: JSON.stringify(extra) });
   const context = await browser.newContext({ viewport: { width: 375, height: 812 }, locale: "nl-BE", serviceWorkers: "block" });
   await context.addInitScript(user => { try { localStorage.setItem("fakeUser", JSON.stringify(user)); localStorage.setItem("lang", "nl");

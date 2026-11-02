@@ -4,7 +4,7 @@
 // Written by the RostiQ admin (and later the payment webhook); members read it. No billing, or an ended plan: Free.
 // Pro features are hidden on Free, never deleted: switching back brings everything back.
 // PLANS_ON false: every team counts as Pro, as before the plans start. Switch together with window.PLANS_ON (config.js).
-export const PLANS_ON = false;
+export const PLANS_ON = true;
 export const TRIAL_DAYS = 30;
 export const FREE_ADMINS = 2, FREE_FIELDS = 2;
 

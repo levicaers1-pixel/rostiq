@@ -15,7 +15,7 @@ window.INVITES_ON = true;
 
 // Plans (Free, Pro, Club): false = every team counts as Pro, as before the plans start. Switch together with
 // PLANS_ON in functions/plan.js (the server's checks), after the pilot teams are marked in the RostiQ admin page.
-window.PLANS_ON = false;
+window.PLANS_ON = true;
 
 window.CAL_BASE = "https://wintermidam.web.app/cal/";
 

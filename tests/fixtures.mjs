@@ -72,5 +72,7 @@ export function seed(today = new Date()) {
     users: { [USER.uid]: { teams: { fresh: "p1", full: "p1", golf: "p1" }, profile: { gemeente: "Berchem" } } },
     quickKeys: { [QUICK_KEY]: { t: "full", p: "p2", at: Date.now() } },
     quickIndex: { full: { p2: QUICK_KEY } },
+    // The plans are on (config.js PLANS_ON): the test teams are pilot teams with Pro, like the real ones.
+    billing: Object.fromEntries(["fresh", "full", "golf"].map(t => [t, { plan: "pro", until: "2099-06-30", src: "pilot" }])),
   };
 }
