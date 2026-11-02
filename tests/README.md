@@ -1,6 +1,8 @@
 # RostiQ tests
 
 Run these before every push. Everything runs on this computer, nothing touches the live database.
+GitHub runs `test:all` on every push too (`.github/workflows/tests.yml`, the "Tests" tab under Actions), and also checks
+that `database.rules.json` was rebuilt from `tools/build_rules.py`. A failed run keeps the screenshots for 7 days.
 
 ```
 cd tests

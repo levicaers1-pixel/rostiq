@@ -1,0 +1,58 @@
+# The RostiQ checks (tests/README.md) on every push and pull request: the Cloud Function tests, the page smoke test
+# (Chrome; phone + desktop, light + dark; plans, payments, clubs), and the database rules in the Firebase emulator.
+# Also checks that database.rules.json was rebuilt from tools/build_rules.py. Uses no secrets and touches nothing live:
+# the smoke test runs against tests/mock, the rules test against the emulator. Screenshots are kept when something fails.
+name: Tests
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      TZ: Europe/Brussels
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            functions/package-lock.json
+            tests/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Database rules rebuilt from tools/build_rules.py
+        run: |
+          python tools/build_rules.py
+          git diff --exit-code database.rules.json database.rules.transition.json \
+            || { echo "::error::database.rules.json is out of date: run python tools/build_rules.py and commit it."; exit 1; }
+      - name: Install
+        run: |
+          npm ci --prefix functions
+          npm ci --prefix tests
+      - name: Cloud Function tests
+        run: npm run functions --prefix tests
+      - name: Page smoke test
+        run: npm run smoke --prefix tests
+      - name: Database rules (Firebase emulator)
+        run: npm run rules --prefix tests
+      - name: Screenshots
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-screenshots
+          path: tests/out/
+          retention-days: 7
