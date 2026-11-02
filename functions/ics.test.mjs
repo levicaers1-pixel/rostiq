@@ -269,3 +269,37 @@ import { checkRequest, nextCount, signinEmail, handleSignin, LIMITS } from "./si
   delete process.env.INVITE_TRANSPORT;
 }
 console.log("sign-in email tests passed");
+
+// Brevo's webhook: only problems are kept, the token is checked, problems go into the daily email.
+import { parseEvents, handleMailEvents, groupMailEvents } from "./mailevents.mjs";
+import { errorEmail as errMail2, groupErrors as groupErr2 } from "./errors.mjs";
+{
+  const brevo = [
+    { event: "error", email: "Tom@Hotmail.com", reason: "Sending has been rejected because the sender you used login@rostiq.be is not valid.", subject: "Aanmelden bij X", sender_email: "login@rostiq.be", ts_event: 1793614800 },
+    { event: "delivered", email: "a@b.be", ts_event: 1793614801 },
+    { event: "hard_bounce", email: "gone@nowhere.be", reason: "550 no such user", subject: "Herinnering", ts_event: 1793614900 },
+  ];
+  const parsed = parseEvents(brevo);
+  assert.deepEqual(parsed.map(e => e.ev), ["error", "hard_bounce"], "delivered is ignored");
+  assert.equal(parsed[0].to, "tom@hotmail.com");
+  assert.equal(parsed[0].at, 1793614800000);
+  assert.equal(parseEvents({ event: "blocked", email: "x@y.be" }, 5).length, 1, "a single event works too");
+  const pushed = [];
+  const fakeDb = { ref: () => ({ push: async e => pushed.push(e) }) };
+  assert.equal((await handleMailEvents({ db: fakeDb, body: brevo, token: "wrong", expected: "secret" })).status, 401);
+  assert.equal((await handleMailEvents({ db: fakeDb, body: brevo, token: "", expected: "" })).status, 401, "no token set: refuse");
+  assert.equal(pushed.length, 0);
+  const log = console.log; console.log = () => {};
+  const ok = await handleMailEvents({ db: fakeDb, body: brevo, token: "secret", expected: "secret" });
+  console.log = log;
+  assert.equal(ok.status, 200); assert.equal(pushed.length, 2);
+  const groups = groupMailEvents(Object.fromEntries(parsed.map((e, i) => ["m" + i, e])), 0);
+  assert.equal(groups.length, 2);
+  const onlyMail = errMail2(groupErr2({}, 0), "2026-11-02", groups);
+  assert(onlyMail.subject === "RostiQ: 2 mailproblemen sinds de vorige mail", onlyMail.subject);
+  assert(onlyMail.text.includes("Geweigerd door Brevo") && onlyMail.text.includes("login@rostiq.be is not valid") && onlyMail.html.includes("tom@hotmail.com"));
+  const both = errMail2(groupErr2({ e: { at: 9, items: { 0: { msg: "x" } } } }, 0), "2026-11-02", groups);
+  assert(both.subject.startsWith("RostiQ: 1 fout") && both.subject.endsWith("2 mailproblemen") && both.html.includes("Mailproblemen"));
+  assert(!errMail2(groupErr2({}, 0), "x", groupMailEvents({ a: { ev: "error", to: "x", reason: "<b>hi</b>", at: 5 } }, 0)).html.includes("<b>hi</b>"), "escaped");
+}
+console.log("mail problem tests passed");

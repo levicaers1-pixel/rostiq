@@ -33,6 +33,7 @@ import { sendReminder, sendProfileAsk, sendNewsMail } from "./remind.mjs";
 import { trainText } from "./training.js";
 import { getAuth } from "firebase-admin/auth";
 import { handleSignin } from "./signin.mjs";
+import { handleMailEvents } from "./mailevents.mjs";
 
 initializeApp({ databaseURL: process.env.FIREBASE_DATABASE_EMULATOR_HOST
   ? `http://${process.env.FIREBASE_DATABASE_EMULATOR_HOST}?ns=${process.env.DB_NS || "demo-rostiq"}`
@@ -89,6 +90,31 @@ export const calendar = onRequest({ region: "europe-west1", memory: "256MiB", ma
 
 // The trigger runs where the database is (europe-west1); the local emulator's database counts as us-central1.
 const BREVO = [defineSecret("BREVO_SMTP_LOGIN"), defineSecret("BREVO_SMTP_KEY")];
+
+// Brevo's webhook (mailevents.mjs): mails Brevo accepted but couldn't deliver. Kept for the daily error email, and
+// the RostiQ admin's devices get a notification at once (at most one an hour): if rostiq.be itself is refused, the
+// error email can't get through either. The token is a secret Levi sets; Brevo's webhook URL ends in ?k=<token>.
+const BREVO_HOOK = defineSecret("BREVO_WEBHOOK_TOKEN");
+const ADMIN_EMAIL = "levicaers1@gmail.com";
+export const brevoEvents = onRequest({ region: "europe-west1", memory: "256MiB", maxInstances: 2, timeoutSeconds: 30, secrets: [BREVO_HOOK] }, async (req, res) => {
+  if (req.method !== "POST") { res.status(405).json({ error: "method" }); return; }
+  const token = String(req.query.k || (req.get("authorization") || "").replace(/^Bearer\s+/i, ""));
+  const r = await handleMailEvents({ db, body: req.body, token, expected: (process.env.BREVO_WEBHOOK_TOKEN || "").trim() });
+  if (r.status === 200 && r.body.kept) {
+    const last = Number(await val("errorReport/mailAlert")) || 0;
+    if (Date.now() - last > 3600e3) {
+      await db.ref("errorReport/mailAlert").set(Date.now());
+      try {
+        const admin = await getAuth().getUserByEmail(ADMIN_EMAIL);
+        const ev = Array.isArray(req.body) ? req.body[0] : req.body;
+        const body = `📮 Mailprobleem bij Brevo: ${String((ev && (ev.reason || ev.event)) || "onbekend").slice(0, 140)}`;
+        for (const info of Object.values((await val(`pushTokens/${admin.uid}`)) || {}))
+          if (info && info.token) await getMessaging().send({ token: info.token, data: { title: "RostiQ", body, tag: "mail-problem", link: "https://app.rostiq.be/" } }).catch(() => {});
+      } catch (e) { console.warn("brevoEvents: alert failed", (e && e.code) || "error"); }
+    }
+  }
+  res.status(r.status).json(r.body);
+});
 
 // The sign-in email (signin.mjs). Only the app's own pages may call it (CORS); limits per address and per IP.
 const SIGNIN_ORIGINS = ["https://app.rostiq.be"];

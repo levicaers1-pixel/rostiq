@@ -113,6 +113,15 @@ await check("error email marker: nobody in the app", async () => {
   await assertFails(member.ref("errorReport/last").set(2));
 });
 await check("RostiQ admin: reads any team", () => assertSucceeds(platform.ref(T).get()));
+await check("mail problems (Brevo webhook): nobody in the app reads or writes them", async () => {
+  await assertFails(platform.ref("mailEvents").get());
+  await assertFails(member.ref("mailEvents/x").set({ ev: "error" }));
+});
+await check("sign-in email counters: nobody in the app reads or resets them", async () => {
+  await assertFails(member.ref("signinLog").get());
+  await assertFails(anon.ref("signinLog/abc").set(null));
+  await assertFails(member.ref("signinIp/abc").set({ n: 0, at: 0 }));
+});
 await check("unknown top-level paths: refused", () => assertFails(member.ref("whatever/x").set(1)));
 
 await env.cleanup();
