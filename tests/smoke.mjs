@@ -168,6 +168,42 @@ for (const run of RUNS) {
   }
   await context.close();
 }
+// ---- reopening the app: the stored team shows before the sign-in library is ready, and only for the same account ----
+async function reopen(name, change, expectTeam) {
+  if (only && !("reopen-" + name).includes(only)) return;
+  await put();
+  const context = await browser.newContext({ viewport: { width: 375, height: 812 }, locale: "nl-BE", serviceWorkers: "block" });
+  await context.addInitScript(user => { try { if (!sessionStorage.getItem("seeded")) { sessionStorage.setItem("seeded", "1");
+    localStorage.setItem("fakeUser", JSON.stringify(user)); localStorage.setItem("lang", "nl"); localStorage.setItem("pushLater", String(Date.now())); } } catch {} }, USER);
+  const page = await context.newPage(), errors = [];
+  page.on("pageerror", e => errors.push("script error: " + e.message));
+  try {
+    await page.goto(BASE + "/?t=full", { waitUntil: "domcontentloaded" });
+    await page.waitForFunction(() => /live/.test((document.getElementById("status") || {}).className), null, { timeout: 8000 });
+    await page.waitForTimeout(2000); // the stored copy is written 1.5 s after the data
+    await page.evaluate(change);
+    let release;
+    const held = new Promise(ok => { release = ok; });
+    await page.route("**/firebase-auth.js", async r => { await held; await r.continue(); });
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await page.waitForTimeout(800);
+    const early = await page.evaluate(`${vis} vis(document.getElementById("hero")) && !!document.querySelector("#hero [data-answer][aria-pressed=true]")`);
+    if (expectTeam && !early) errors.push("the stored team didn't show before sign-in was ready");
+    release();
+    await page.waitForTimeout(1500);
+    const after = await page.evaluate(`${vis} vis(document.getElementById("hero"))`);
+    if (expectTeam && !after) errors.push("the team disappeared after sign-in");
+    if (!expectTeam && after) errors.push("another account's stored team stayed visible");
+    await page.screenshot({ path: path.join(OUT, `reopen-${name}.png`) });
+  } catch (e) { errors.push("could not test: " + e.message.split("\n")[0]); }
+  checked++;
+  if (errors.length) failures.push({ where: "reopen " + name, errors });
+  console.log(`${errors.length ? "✗" : "✓"} reopen       ${name}${errors.length ? "\n    " + errors.join("\n    ") : ""}`);
+  await context.close();
+}
+await reopen("same-account", () => {}, true);
+await reopen("signed-out", () => localStorage.removeItem("fakeUser"), false);
+
 await browser.close();
 server.kill();
 console.log(`\n${checked - failures.length}/${checked} page checks passed. Screenshots: tests/out/`);

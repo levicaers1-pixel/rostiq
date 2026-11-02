@@ -418,6 +418,21 @@ function forgetSnapshot() {
   try { localStorage.removeItem("snap:" + TEAM_ID); } catch {}
   if (!es) { root = {}; dataLoaded = false; }
 }
+// Opening the app on a device where this account was signed in before: show the stored copy before the sign-in library
+// has even loaded. The account is provisional until Firebase confirms it: every database request waits for that (token()),
+// and a different account or none drops the copy again (initAuth).
+let prePaint = "", authSettle = null;
+const authSettled = new Promise(ok => { authSettle = ok; });
+function prePaintFromSnapshot() {
+  if (!AUTH_ON || DEMO || !TEAM_ID || NO_TEAM_PAGE || WANT_PICKER || /[?&](oobCode|apiKey)=/.test(location.search)) return;
+  let last = null;
+  try { last = JSON.parse(pref.get("lastUser", "null")); } catch {}
+  if (!last || !last.uid) return;
+  const uid = last.uid;
+  session.user = { uid, email: last.email || "", emailVerified: last.v === true, displayName: last.name || null, photoURL: null, provisional: true,
+    getIdToken: async force => { const u = await authSettled; if (!u || u.uid !== uid) throw new Error("auth/changed"); return u.getIdToken(force); } };
+  if (quickStart()) prePaint = uid; else session.user = null;
+}
 // Opening the app again: show the stored copy right away; the live data replaces it a moment later.
 function quickStart() {
   if (dataLoaded || !TEAM_ID || NO_TEAM_PAGE || WANT_PICKER || DEMO) return false;
@@ -1259,7 +1274,7 @@ function start() {
   }
   document.body.insertAdjacentHTML("beforeend", `<footer class="site-footer">${t("footer")} · <a href="#" data-feedback>${t("fb.footer")}</a> · <a href="${appUrl("privacy.html")}">${t("priv.footer")}</a></footer>`);
   injectShareDialog();
-  if (DEMO) startDemo(); else if (AUTH_ON) initAuth(); else if (!NO_TEAM_PAGE) connect(); else render();
+  if (DEMO) startDemo(); else if (AUTH_ON) { prePaintFromSnapshot(); initAuth(); } else if (!NO_TEAM_PAGE) connect(); else render();
 }
 
 // ---- Demo mode ----
@@ -1303,6 +1318,8 @@ async function initAuth() {
     fbApp = appMod.initializeApp(window.FIREBASE_CONFIG);
     fbAuth = A.getAuth(fbApp);
   } catch (e) {
+    authSettle(null);
+    if (prePaint) return goOffline(); // the stored copy stays readable
     gateMessage(t("auth.loadFailed"), true);
     return;
   }
@@ -1321,13 +1338,20 @@ async function initAuth() {
   A.getRedirectResult(fbAuth).catch(() =>
     gateMessage(t("auth.redirectFailed"), true));
   A.onAuthStateChanged(fbAuth, user => {
+    authSettle(user);
+    pref.set("lastUser", user ? JSON.stringify({ uid: user.uid, email: user.email || "", v: user.emailVerified, name: user.displayName || "" }) : "");
+    const same = !!prePaint && !!user && user.uid === prePaint; // the stored copy shown at once was this account's
+    if (prePaint && !same) disconnect(); // someone else, or signed out: drop it
+    prePaint = "";
     session.user = user;
     session.platformAdmin = !!user && user.emailVerified && PLATFORM.includes((user.email || "").toLowerCase());
-    session.admin = session.platformAdmin;
-    session.pid = null;
     session.pending = false;
     session.picking = false;
-    session.ready = !user; // with a user, wait until we know the team and the membership
+    if (!same) {
+      session.admin = session.platformAdmin;
+      session.pid = null;
+      session.ready = !user; // with a user, wait until we know the team and the membership
+    } else session.admin = session.admin || session.platformAdmin;
     Object.assign(profile, { data: null, teams: {}, settings: {}, pending: null, applied: false, ready: null });
     if (user) afterSignIn(); else { stopApprovalWatch(); disconnect(); brandUnknown = false; applyBranding(); }
     renderAuth();
@@ -1339,7 +1363,7 @@ async function initAuth() {
 async function afterSignIn() {
   const uid = session.user.uid;
   // Already in this team on this device: open the live data straight away; the membership is checked alongside.
-  const early = quickStart() && !!(session.pid || session.admin);
+  const early = (dataLoaded || quickStart()) && !!(session.pid || session.admin);
   if (early) connect();
   const mine = (await getAbs(`users/${uid}/teams`)) || {};
   session.teams = Object.keys(mine);
@@ -1463,7 +1487,7 @@ function gateMessage(text, err) { gateMsg = { text, err }; renderAuth(); }
 const appUrl = file => location.href.split(/[?#]/)[0].replace(/[^/]*$/, file);
 
 // ---- Feedback to RostiQ (account menu, footer): only the RostiQ admin reads it ----
-const APP_VERSION = "2026.11.74";
+const APP_VERSION = "2026.11.75";
 function deviceText() {
   const ua = navigator.userAgent;
   const os = /iPhone/.test(ua) ? "iPhone" : /iPad/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1) ? "iPad"
