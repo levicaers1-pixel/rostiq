@@ -205,10 +205,11 @@ await reopen("same-account", () => {}, true);
 await reopen("signed-out", () => localStorage.removeItem("fakeUser"), false);
 
 // ---- plans: with the plans previewed on this device, a team without Pro sees Free; the trial and a pilot plan unlock it ----
-async function plans(name, billing, url, test) {
+async function plans(name, billing, url, test, extra) {
   if (only && !("plans-" + name).includes(only)) return;
   await put();
   if (billing) await fetch(`${BASE}/billing/golf.json`, { method: "PUT", body: JSON.stringify(billing) });
+  if (extra) await fetch(`${BASE}/.json`, { method: "PATCH", body: JSON.stringify(extra) });
   const context = await browser.newContext({ viewport: { width: 375, height: 812 }, locale: "nl-BE", serviceWorkers: "block" });
   await context.addInitScript(user => { try { localStorage.setItem("fakeUser", JSON.stringify(user)); localStorage.setItem("lang", "nl");
     localStorage.setItem("pushLater", String(Date.now())); localStorage.setItem("plansPreview", "1"); } catch {} }, USER);
@@ -250,6 +251,20 @@ await plans("free-admin", null, "/admin.html?t=golf#sec-backup", async page => {
   if (!await page.evaluate(shown("#pro-dlg"))) r.push("backup on Free didn't open the Pro window");
   return r;
 });
+// A team's own logo and colours: hidden on Free (the team name as text, RostiQ's colours), back with Pro.
+const LOGO = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
+const OWN = { "teams/golf/info/logo": LOGO, "teams/golf/info/colors": { main: "#123456", highlight: "#abcdef", light: { "--brand": "#123456" }, dark: { "--brand": "#0a0a0a" } } };
+const header = `({ img: !!document.querySelector(".brand-inner > a img.logo"), brand: getComputedStyle(document.documentElement).getPropertyValue("--brand").trim() })`;
+await plans("free-own-logo", null, "/?t=golf", async page => {
+  const h = await page.evaluate(header), r = [];
+  if (h.img) r.push("Free: the team's own logo is still shown");
+  if (h.brand === "#123456") r.push("Free: the team's own colours are still used");
+  return r;
+}, OWN);
+await plans("pro-own-logo", { plan: "pro", until: "2099-12-31", src: "paid" }, "/?t=golf", async page => {
+  const h = await page.evaluate(header);
+  return [!h.img && "Pro: the team's own logo is missing", h.brand !== "#123456" && "Pro: the team's own colours are missing: " + h.brand].filter(Boolean);
+}, OWN);
 await plans("pilot", { plan: "pro", until: "2099-12-31", src: "pilot" }, "/admin.html?t=golf#sec-plan", async page => {
   const r = [], text = await page.evaluate(`document.getElementById("plan-body").innerText`);
   if (!/Pilootploeg/.test(text)) r.push("the subscription doesn't say pilot: " + text.slice(0, 80));

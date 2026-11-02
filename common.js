@@ -1264,6 +1264,12 @@ function markTabs() {
 window.addEventListener("hashchange", markTabs);
 function applyBranding() {
   const B = { ...TEAM, ...(brandPreview || {}) };
+  // Own logo and own colours are Pro: on Free the team name as text, and a colour set only when it's one of the presets
+  // (the stored logo and colours stay, and come back with Pro).
+  if (!isPro()) {
+    B.logo = "";
+    if (B.colors && !BRAND_PRESETS.some(([, m, h]) => m === B.colors.main && h === B.colors.highlight)) B.colors = null;
+  }
   const home = document.querySelector(".brand-inner > a");
   if (home) {
     home.href = pageUrl("");
@@ -1565,7 +1571,7 @@ function gateMessage(text, err) { gateMsg = { text, err }; renderAuth(); }
 const appUrl = file => location.href.split(/[?#]/)[0].replace(/[^/]*$/, file);
 
 // ---- Feedback to RostiQ (account menu, footer): only the RostiQ admin reads it ----
-const APP_VERSION = "2026.11.77";
+const APP_VERSION = "2026.11.78";
 function deviceText() {
   const ua = navigator.userAgent;
   const os = /iPhone/.test(ua) ? "iPhone" : /iPad/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1) ? "iPad"
