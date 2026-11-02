@@ -63,6 +63,8 @@ export function seed(today = new Date()) {
     scores: {
       [d(-20)]: { f: "stb", p: { p1: { s: 36, h: 4 }, p2: { s: 33, h: 10 }, p3: { s: 31, h: 14 }, p4: { s: 29, h: 15 } }, at: 1, by: USER.uid },
       [d(-6)]: { f: "net", p: { p1: { s: 76, h: 4 }, p2: { s: 81, h: 10 }, p3: { s: 86, h: 14 }, p4: { s: 90, h: 15 } }, at: 2, by: USER.uid },
+      // A result left behind by a match that was removed from the schedule: it must not count (Arnaud would win it).
+      [d(-30)]: { f: "stb", p: { p4: { s: 45, h: 15 } }, at: 0, by: USER.uid },
     },
   };
   return {

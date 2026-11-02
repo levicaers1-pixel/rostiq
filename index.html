@@ -1248,8 +1248,10 @@ function matchRanking(score, tie = tieMode()) {
   }
   return rows;
 }
+// Results of matches that are still in the schedule and not called off (a removed match's result never counts).
+const liveScores = () => Object.fromEntries(Object.entries(root.scores || {}).filter(([d, sc]) => sc && sc.p && EVENTS.some(e => e.date === d && !e.cancelled)));
 function seasonRanking(until = null, tie = tieMode()) {
-  const scores = root.scores || {}, by = {};
+  const scores = liveScores(), by = {};
   for (const date of Object.keys(scores).sort()) {
     if (until && date > until) continue;
     for (const r of matchRanking(scores[date], tie)) {
@@ -1281,7 +1283,7 @@ function renderRanking(players) {
   const box = document.getElementById("view-rank");
   if (!box || box.hidden || !dataLoaded) return;
   if (!rankOn()) { box.innerHTML = `<div class="ts-done">${esc(t("rk.off"))}</div>`; return; }
-  const dates = Object.keys(root.scores || {}).filter(d => (root.scores[d] || {}).p).sort();
+  const dates = Object.keys(liveScores()).sort();
   const list = seasonRanking(), total = EVENTS.filter(e => !e.cancelled).length;
   const before = dates.length > 1 ? Object.fromEntries(seasonRanking(dates[dates.length - 2]).map(x => [x.pid, x.place])) : {};
   // Played matches (newest first): the result, or "enter scores" for admins. Past matches are hidden in the Kalender.
@@ -1319,8 +1321,9 @@ rkDlg.className = "details-dlg rk-dlg";
 document.body.append(rkDlg);
 function openRankPlayer(pid) {
   const players = sortedPlayers(), x = seasonRanking().find(y => y.pid === pid);
-  const rows = Object.keys(root.scores || {}).sort().map(date => {
-    const sc = root.scores[date], r = matchRanking(sc).find(y => y.pid === pid), e = EVENTS.find(y => y.date === date);
+  const live = liveScores();
+  const rows = Object.keys(live).sort().map(date => {
+    const sc = live[date], r = matchRanking(sc).find(y => y.pid === pid), e = EVENTS.find(y => y.date === date);
     return r ? `<div class="rk-res"><div class="o"><b>${esc(e ? e.opp : date)}</b><small>${esc(fmt(date, { day: "numeric", month: "short" }))} · ${esc(fmtLabel(sc.f))} · ${esc(scoreText(sc.f, r))}</small></div>
       <span class="pl">${esc(ordinal(r.place))}</span><span class="pp">${r.pts}</span></div>` : "";
   }).join("");
@@ -1399,8 +1402,11 @@ document.getElementById("view-match").addEventListener("click", async ev => {
     scRecalc();
     const d = scDraft;
     if (!Object.keys(d.p).length) return toast(t("rk.nothing"), "err");
+    const missing = [...document.querySelectorAll("#view-match [data-sc-s]")].map(i => i.dataset.scS).filter(pid => !d.p[pid]);
+    if (missing.length && !confirm(t("rk.missingConfirm", { names: missing.map(pid => firstName(rkName(pid))).join(", ") }))) return;
+    const n = Object.keys(d.p).length;
     const ok = await update({ [`scores/${d.date}`]: { f: d.f, p: d.p, at: Date.now(), by: (session.user && session.user.uid) || "demo" } });
-    if (ok) { scDraft = null; notifyTeam("r", d.date); renderMatchPage(sortedPlayers()); }
+    if (ok) { scDraft = null; notifyTeam("r", d.date); renderMatchPage(sortedPlayers()); toast(t("rk.saved", { n }), "", 2500); }
   }
 });
 
@@ -1479,11 +1485,16 @@ function renderMatchPage(players) {
         `<ul class="history-list mp-hist">${mpHist.html || `<li class="h-empty">${esc(t("hist.loading"))}</li>`}</ul>`;
     }
   }
+  const typing = document.activeElement && box.contains(document.activeElement) ? document.activeElement : null;
+  const focusKey = typing && (typing.dataset.scS ? `[data-sc-s="${typing.dataset.scS}"]` : typing.dataset.scH ? `[data-sc-h="${typing.dataset.scH}"]` : "");
+  if (focusKey && scDraft) scRecalc(); // keep what's being typed in the draft before the page is redrawn
   box.innerHTML = `<a class="mp-back" href="#kalender">← ${esc(t("tab.calendar").replace(/^\S+\s/, ""))}</a>
     <section class="hero md mp-hero">${matchCardHtml(e, players, true)}</section>
     <div class="mp-tabs" role="tablist">${tabs.map(([k, l]) => `<button role="tab" data-mt="${k}" aria-selected="${mpTab === k}">${esc(l)}</button>`).join("")}</div>
     <div class="mp-pane">${pane}</div>`;
   if (mpTab === "r" && session.admin) scRecalc();
+  const back = focusKey && box.querySelector(focusKey);
+  if (back) { back.focus(); const n = back.value.length; try { back.setSelectionRange(n, n); } catch {} }
 }
 document.getElementById("view-match").addEventListener("click", ev => {
   const tb = ev.target.closest("[data-mt]");

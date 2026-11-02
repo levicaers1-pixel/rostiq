@@ -601,6 +601,8 @@ T.en = {
   "rk.noResult": "No result for this match yet.",
   "set.tie": "Ties in the ranking", "set.tieHcp": "Lowest handicap wins", "set.tieShare": "Share the points",
   "set.tieHelp": "Same score: the player with the lowest handicap gets the higher place. Or both players share those places' points.",
+  "rk.missingConfirm": ({ names }) => `No score yet for ${names}. Save anyway? Players without a score don't count for this match.`,
+  "rk.saved": ({ n }) => `Result saved for ${n} ${n === 1 ? "player" : "players"}`,
   "rem.title": ({ n, opp, when }) => `${n} without an answer · ${opp}, ${when}`,
   "rem.sub": "A personal reminder arrives as a notification on their phone, or else by email, with Yes / No / Maybe in it. One tap and their answer is in. Untick anyone you want to skip.",
   "rem.you": "That's you: answer above",
