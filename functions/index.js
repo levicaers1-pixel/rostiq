@@ -35,6 +35,7 @@ import { trainText } from "./training.js";
 import { getAuth } from "firebase-admin/auth";
 import { handleSignin } from "./signin.mjs";
 import { handleMailEvents } from "./mailevents.mjs";
+import { handleCheckout, handleWebhook, mollieApi } from "./payments.mjs";
 
 initializeApp({ databaseURL: process.env.FIREBASE_DATABASE_EMULATOR_HOST
   ? `http://${process.env.FIREBASE_DATABASE_EMULATOR_HOST}?ns=${process.env.DB_NS || "demo-rostiq"}`
@@ -115,6 +116,41 @@ export const brevoEvents = onRequest({ region: "europe-west1", memory: "256MiB",
     }
   }
   res.status(r.status).json(r.body);
+});
+
+// Paying for Pro through Mollie (payments.mjs). checkout: POST { tid, lang } with the admin's Firebase sign-in token
+// (Authorization: Bearer …), from the app's own pages only; answers { url } of Mollie's payment page.
+// mollieWebhook: Mollie posts id=tr_…; the payment is looked up at Mollie itself. The key is the secret MOLLIE_API_KEY.
+const MOLLIE = defineSecret("MOLLIE_API_KEY");
+const PLATFORM_ADMINS = [ADMIN_EMAIL]; // tools/build_rules.py PLATFORM_ADMINS
+const WEBHOOK_URL = "https://europe-west1-wintermidam.cloudfunctions.net/mollieWebhook";
+const mollieKey = () => (process.env.MOLLIE_API_KEY || "").trim();
+export const checkout = onRequest({ region: "europe-west1", memory: "256MiB", maxInstances: 3, timeoutSeconds: 30, secrets: [MOLLIE] }, async (req, res) => {
+  const origin = req.get("origin") || "";
+  if (SIGNIN_ORIGINS.includes(origin) || (process.env.FUNCTIONS_EMULATOR === "true" && /^http:\/\/localhost(:\d+)?$/.test(origin))) {
+    res.set("Access-Control-Allow-Origin", origin);
+    res.set("Vary", "Origin");
+  }
+  res.set("Access-Control-Allow-Methods", "POST");
+  res.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  if (req.method === "OPTIONS") { res.status(204).send(""); return; }
+  if (req.method !== "POST") { res.status(405).json({ error: "method" }); return; }
+  let user;
+  try { user = await getAuth().verifyIdToken(String(req.get("authorization") || "").replace(/^Bearer\s+/i, "")); }
+  catch { res.status(401).json({ error: "auth" }); return; }
+  if (!user.email_verified) { res.status(401).json({ error: "auth" }); return; }
+  const who = { uid: user.uid, platform: PLATFORM_ADMINS.includes(String(user.email || "").toLowerCase()) };
+  try {
+    const r = await handleCheckout({ db, body: req.body || {}, who, key: mollieKey(), mollie: mollieApi(mollieKey()), webhookUrl: WEBHOOK_URL });
+    res.status(r.status).json(r.body);
+  } catch (e) { console.error("checkout failed:", (e && (e.status || e.code)) || "error"); res.status(502).json({ error: "mollie" }); }
+});
+export const mollieWebhook = onRequest({ region: "europe-west1", memory: "256MiB", maxInstances: 3, timeoutSeconds: 30, secrets: [MOLLIE] }, async (req, res) => {
+  if (req.method !== "POST") { res.status(405).send("method"); return; }
+  try {
+    const r = await handleWebhook({ db, id: (req.body && req.body.id) || "", mollie: mollieApi(mollieKey()) });
+    res.status(r.status).send(r.body);
+  } catch (e) { console.error("mollieWebhook failed:", (e && (e.status || e.code)) || "error"); res.status(500).send("retry"); } // Mollie tries again later
 });
 
 // The sign-in email (signin.mjs). Only the app's own pages may call it (CORS); limits per address and per IP.

@@ -253,6 +253,7 @@ await plans("free-admin", null, "/admin.html?t=golf#sec-backup", async page => {
 await plans("pilot", { plan: "pro", until: "2099-12-31", src: "pilot" }, "/admin.html?t=golf#sec-plan", async page => {
   const r = [], text = await page.evaluate(`document.getElementById("plan-body").innerText`);
   if (!/Pilootploeg/.test(text)) r.push("the subscription doesn't say pilot: " + text.slice(0, 80));
+  if (!/19,50/.test(text)) r.push("no pilot price on the upgrade button: " + text.slice(0, 120));
   await page.goto(BASE + "/?t=golf#ranking", { waitUntil: "domcontentloaded" });
   await page.waitForTimeout(1500);
   if (await page.evaluate(shown("#view-rank .pro-lock"))) r.push("a pilot team's ranking is locked");

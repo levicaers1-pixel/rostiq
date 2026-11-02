@@ -688,20 +688,54 @@ function planLine() {
   if (plan === "pro") return t("plan.trialUntil", { date: dayText(b.trial) });
   return t("plan.freeLine");
 }
+// Paying: functions/payments.mjs makes the Mollie payment (price and season worked out there; shown here only as a hint).
+const CHECKOUT_FN = "https://europe-west1-wintermidam.cloudfunctions.net/checkout";
+const PRO_CENTS = 3900; // the same as functions/payments.mjs
+const money = cents => new Intl.NumberFormat(LOCALE, { style: "currency", currency: "EUR" }).format(cents / 100);
+let payWait = 0; // back from Mollie: waiting for the payment to be confirmed
 function renderPlan() {
   const box = document.getElementById("plan-body");
   if (!box) return;
-  const plan = planOf(billing), trialUsed = !!(billing && billing.trial);
+  const plan = planOf(billing), trialUsed = !!(billing && billing.trial), pilot = !!(billing && billing.src === "pilot");
+  const cents = pilot ? PRO_CENTS / 2 : PRO_CENTS;
+  const receipts = Object.entries((billing && billing.history) || {}).sort(([, a], [, b]) => b.at - a.at);
   box.innerHTML = `<div class="plan-name">${esc(t("plan." + plan))}</div>
-    <div class="plan-meta">${esc(planLine())}</div>
+    <div class="plan-meta">${esc(payWait ? t("plan.paying") : planLine())}</div>
     ${plan === "free" || (billing && !billing.plan) ? `<ul class="plan-feats">${["sel", "rank", "mail", "remind", "brand", "export"].map(f => `<li>${esc(t("pro.f." + f))}</li>`).join("")}</ul>` : ""}
     <div class="pro-acts">
-      ${plan === "free" && !trialUsed ? `<button type="button" class="primary" data-pro="trial-here">${esc(t("pro.trial"))}</button>` : ""}
+      ${plan !== "club" && plansOn() ? `<button type="button" class="primary" data-pay>${esc(t(pilot ? "plan.buyPilot" : plan === "pro" && billing && billing.plan ? "plan.renew" : "plan.buy", { price: money(cents) }))}</button>` : ""}
+      ${plan === "free" && !trialUsed ? `<button type="button" data-pro="trial-here">${esc(t("pro.trial"))}</button>` : ""}
       ${plan !== "club" ? `<a class="btn" href="mailto:levi@caersultancy.com?subject=${encodeURIComponent("RostiQ Pro · " + (TEAM.brand || TEAM_ID))}">${esc(t("plan.ask"))}</a>` : ""}
     </div>
+    ${receipts.length ? `<h3 class="plan-h">${esc(t("plan.history"))}</h3><ul class="plan-receipts">${receipts.map(([, r]) =>
+      `<li><span>${esc(dayText(r.at))}</span><span>${esc(t("plan.receipt", { plan: t("plan." + r.plan), season: `${Number(r.until.slice(0, 4)) - 1}-${r.until.slice(2, 4)}` }))}${r.mode === "test" ? " · test" : ""}</span><b>${esc(money(r.cents))}</b></li>`).join("")}</ul>` : ""}
     <p class="muted">${esc(t("plan.keep"))}</p>`;
 }
-document.getElementById("plan-body").addEventListener("click", ev => { if (ev.target.closest('[data-pro="trial-here"]')) startTrial(); });
+document.getElementById("plan-body").addEventListener("click", async ev => {
+  if (ev.target.closest('[data-pro="trial-here"]')) return startTrial();
+  const pay = ev.target.closest("[data-pay]");
+  if (!pay) return;
+  pay.disabled = true;
+  try {
+    const r = await fetch(CHECKOUT_FN, { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + await token() },
+      body: JSON.stringify({ tid: TEAM_ID, lang: LANG }) });
+    const j = await r.json().catch(() => ({}));
+    if (r.ok && j.url) { location.href = j.url; return; } // Mollie's payment page
+    toast(t(j.error === "test" ? "plan.payTest" : "plan.payFailed"), "err", 6000);
+  } catch { toast(t("plan.payFailed"), "err", 6000); }
+  pay.disabled = false;
+});
+// Back from Mollie (?paid=1): Mollie tells the server first (webhook); wait a minute for the plan to change.
+if (QUERY.has("paid")) {
+  history.replaceState(history.state, "", location.pathname + location.search.replace(/([?&])paid=1&?/, "$1").replace(/[?&]$/, "") + location.hash);
+  const t0 = payWait = Date.now();
+  const fresh = () => Object.values((billing && billing.history) || {}).some(r => r.at > t0 - 30 * 60e3);
+  const timer = setInterval(() => {
+    if (fresh()) { clearInterval(timer); payWait = 0; toast(t("plan.paid", { date: dayText(billing.until) }), "", 6000); return render(); }
+    if (Date.now() - t0 > 60e3) { clearInterval(timer); payWait = 0; toast(t("plan.payLater"), "", 8000); return render(); }
+    loadBilling(true);
+  }, 2500);
+}
 
 // (the old summary tiles, still filled for the request badge)
 function renderTiles() {

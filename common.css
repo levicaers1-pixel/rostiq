@@ -585,3 +585,7 @@ body.sel-off [data-select] { display: none !important; }
 .plan-card .plan-meta { color: var(--muted); font-size: .9rem; }
 .plan-card .plan-feats { margin: 10px 0 0; padding-left: 18px; color: var(--muted); font-size: .9rem; display: grid; gap: 2px; }
 .plan-card .pro-acts { justify-content: flex-start; }
+.plan-card .plan-h { margin: 18px 0 6px; font-size: .95rem; }
+.plan-receipts { list-style: none; margin: 0 0 8px; padding: 0; display: grid; gap: 4px; font-size: .9rem; }
+.plan-receipts li { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; padding: 6px 0; border-top: 1px solid var(--border); }
+.plan-receipts li span:first-child { color: var(--muted); }

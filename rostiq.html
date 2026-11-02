@@ -190,7 +190,7 @@ function render() {
   renderFeedback();
   renderErrors();
   // Plans
-  const unmarked = teams.filter(x => !bills[x.id] || !bills[x.id].plan);
+  const unmarked = teams.filter(pilotUnmarked);
   document.getElementById("plans-pilot").textContent = t("rostiq.plansPilot", { n: unmarked.length });
   document.getElementById("plans-pilot").disabled = !unmarked.length;
   document.getElementById("plans-state").textContent = t(window.PLANS_ON ? "rostiq.plansOn" : "rostiq.plansOff");
@@ -207,9 +207,12 @@ function render() {
 }
 let signup = { open: false, codes: {} }, bills = {};
 // Plans: mark every team without a plan as a pilot team (Pro until the end of the 2026-27 season).
+// Pilot teams: made here by the RostiQ admin (no creator record) or started with a pilot code. Teams started while sign-up
+// was open (no code) are not pilots: they start on Free once the plans are on.
 const PILOT_UNTIL = "2027-06-30";
+const pilotUnmarked = x => (!bills[x.id] || !bills[x.id].plan) && (!x.meta || !!x.meta.code);
 document.getElementById("plans-pilot").onclick = async () => {
-  const ids = teams.filter(x => !bills[x.id] || !bills[x.id].plan).map(x => x.id);
+  const ids = teams.filter(pilotUnmarked).map(x => x.id);
   if (!ids.length || !confirm(t("rostiq.plansPilotAsk", { n: ids.length, date: PILOT_UNTIL }))) return;
   const changes = {};
   for (const id of ids) Object.assign(changes, { [`billing/${id}/plan`]: "pro", [`billing/${id}/until`]: PILOT_UNTIL, [`billing/${id}/src`]: "pilot" });

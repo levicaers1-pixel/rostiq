@@ -142,6 +142,11 @@ await check("plan: a team admin starts the 30-day trial once", async () => {
   await assertFails(admin.ref("billing/t1/trial").set(Date.now() + 30 * DAY));
   await assertFails(admin.ref("billing/t1/trial").remove());
 });
+await check("payments (Mollie): nobody in the app reads or writes them; receipts can't be faked", async () => {
+  await assertFails(platform.ref("payments").get());
+  await assertFails(admin.ref("payments/tr_x").set({ tid: "t1", status: "paid" }));
+  await assertFails(admin.ref("billing/t1/history/tr_x").set({ at: 1, cents: 3900 }));
+});
 await check("unknown top-level paths: refused", () => assertFails(member.ref("whatever/x").set(1)));
 
 await env.cleanup();

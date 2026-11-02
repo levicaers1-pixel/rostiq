@@ -320,3 +320,58 @@ import { planOf, isPro } from "./plan.js";
   assert.equal(isPro({ trial: at("2026-12-01") }, at("2026-11-02"), true), true);
 }
 console.log("plan tests passed");
+
+// Paying for Pro (Mollie): the season, the price, checkout's checks, and the webhook trusting only Mollie's answer.
+import { seasonUntil, seasonName, priceOf, handleCheckout, handleWebhook } from "./payments.mjs";
+{
+  assert.equal(seasonUntil("2026-11-02"), "2027-06-30");
+  assert.equal(seasonUntil("2027-03-15"), "2027-06-30");
+  assert.equal(seasonUntil("2027-05-10"), "2028-06-30", "from May: the coming season");
+  assert.equal(seasonUntil("2027-07-01"), "2028-06-30");
+  assert.equal(seasonUntil("2026-11-02", "2027-06-30"), "2028-06-30", "a running (pilot) plan: the season after it");
+  assert.equal(seasonUntil("2027-08-01", "2027-06-30"), "2028-06-30", "an ended plan: the current season");
+  assert.equal(seasonName("2028-06-30"), "2027-28");
+  assert.equal(priceOf(null), 3900); assert.equal(priceOf({ src: "pilot" }), 1950); assert.equal(priceOf({ src: "paid" }), 3900);
+
+  // A tiny in-memory database with the bits the handlers use.
+  const fakeDb = data => {
+    const get = path => path.split("/").reduce((o, k) => (o == null ? undefined : o[k]), data);
+    const set = (path, v) => { const ks = path.split("/"), last = ks.pop(); let o = data; for (const k of ks) o = o[k] ??= {}; if (v === null) delete o[last]; else o[last] = v; };
+    return { data, ref: (path = "") => ({ get: async () => ({ val: () => get(path) ?? null }), set: async v => set(path, v),
+      update: async w => { for (const [k, v] of Object.entries(w)) set(k, v); } }) };
+  };
+  const mk = () => fakeDb({ teams: { t1: { info: { brand: "Team One" }, admins: { "u-admin": true } } }, billing: { t1: { plan: "pro", until: "2027-06-30", src: "pilot" } } });
+  const calls = [];
+  const fakeMollie = (status = "open", amount = "19.50") => async (method, path, body) => {
+    calls.push([method, path, body]);
+    if (method === "POST") return { id: "tr_test123", status: "open", mode: "test", _links: { checkout: { href: "https://mollie.test/pay" } } };
+    return { id: "tr_test123", status, mode: "test", amount: { currency: "EUR", value: amount }, metadata: { tid: "t1", plan: "pro", until: "2028-06-30" } };
+  };
+  const now = Date.parse("2026-11-02T10:00:00Z"), log = console.log; console.log = () => {};
+  let db = mk();
+  assert.equal((await handleCheckout({ db, body: { tid: "t1" }, who: { uid: "u-member" }, key: "live_x", mollie: fakeMollie(), now })).status, 403, "not an admin");
+  assert.equal((await handleCheckout({ db, body: { tid: "t1" }, who: { uid: "u-admin" }, key: "test_x", mollie: fakeMollie(), now })).status, 403, "test key: RostiQ admin only");
+  assert.equal((await handleCheckout({ db, body: { tid: "../x" }, who: { uid: "u-admin" }, key: "live_x", mollie: fakeMollie(), now })).status, 400);
+  const ok = await handleCheckout({ db, body: { tid: "t1", lang: "fr" }, who: { uid: "u-admin" }, key: "live_x", mollie: fakeMollie(), webhookUrl: "https://hook", now });
+  assert.equal(ok.status, 200); assert.equal(ok.body.url, "https://mollie.test/pay");
+  const sent = calls.at(-1)[2];
+  assert.equal(sent.amount.value, "19.50", "pilot: half price"); assert.equal(sent.metadata.until, "2028-06-30"); assert.equal(sent.locale, "fr_BE");
+  assert(sent.description.includes("2027-28") && sent.webhookUrl === "https://hook");
+  assert.equal(db.data.payments.tr_test123.cents, 1950);
+
+  // Webhook: unknown ids and open payments change nothing; paid sets the plan once; a mismatch is refused.
+  assert.equal((await handleWebhook({ db, id: "tr_nope99", mollie: fakeMollie("paid"), now })).status, 200);
+  await handleWebhook({ db, id: "tr_test123", mollie: fakeMollie("open"), now });
+  assert.equal(db.data.billing.t1.src, "pilot", "open: not yet");
+  await handleWebhook({ db, id: "tr_test123", mollie: fakeMollie("paid"), now });
+  assert.deepEqual([db.data.billing.t1.plan, db.data.billing.t1.until, db.data.billing.t1.src], ["pro", "2028-06-30", "paid"]);
+  assert.equal(db.data.billing.t1.history.tr_test123.cents, 1950);
+  await handleWebhook({ db, id: "tr_test123", mollie: fakeMollie("paid"), now: now + 5 });
+  assert.equal(db.data.billing.t1.history.tr_test123.at, now, "the same call twice changes nothing");
+  db = mk();
+  await handleCheckout({ db, body: { tid: "t1" }, who: { uid: "u-admin" }, key: "live_x", mollie: fakeMollie(), now });
+  await handleWebhook({ db, id: "tr_test123", mollie: fakeMollie("paid", "0.01"), now });
+  console.log = log;
+  assert.equal(db.data.billing.t1.src, "pilot", "a paid amount that doesn't match: no plan");
+}
+console.log("payment tests passed");
