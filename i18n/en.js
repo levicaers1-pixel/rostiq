@@ -603,6 +603,7 @@ T.en = {
   "set.tieHelp": "Same score: the player with the lowest handicap gets the higher place. Or both players share those places' points.",
   "rk.missingConfirm": ({ names }) => `No score yet for ${names}. Save anyway? Players without a score don't count for this match.`,
   "rk.saved": ({ n }) => `Result saved for ${n} ${n === 1 ? "player" : "players"}`,
+  "auth.tooMany": "You just asked for several sign-in links. Check your email (also spam) or try again in an hour.",
   "rem.title": ({ n, opp, when }) => `${n} without an answer · ${opp}, ${when}`,
   "rem.sub": "A personal reminder arrives as a notification on their phone, or else by email, with Yes / No / Maybe in it. One tap and their answer is in. Untick anyone you want to skip.",
   "rem.you": "That's you: answer above",

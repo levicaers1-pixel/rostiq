@@ -11,6 +11,8 @@
 // An announcement (k "n", i: the news id): to every member but the admin who posted it.
 // A training called off (k "t", d: its date): to every member.
 //
+// signinLink: POST { email, url, lang, tid }: makes a sign-in link and emails it from login@rostiq.be (signin.mjs).
+//
 // calendar: GET /cal/<key>.ics: a player's personal calendar feed (read-only). calKeys/<key> = { t: team, p: player,
 // l: language, h: hide "no" matches }. Served through Firebase Hosting (firebase.json rewrite), which caches each feed
 // for 15 minutes: calendar apps polling every hour mostly hit that cache, not this function or the database.
@@ -29,6 +31,8 @@ import { matchRanking, profileHcp, resultText } from "./ranking.js";
 import { runJob } from "./job.mjs";
 import { sendReminder, sendProfileAsk, sendNewsMail } from "./remind.mjs";
 import { trainText } from "./training.js";
+import { getAuth } from "firebase-admin/auth";
+import { handleSignin } from "./signin.mjs";
 
 initializeApp({ databaseURL: process.env.FIREBASE_DATABASE_EMULATOR_HOST
   ? `http://${process.env.FIREBASE_DATABASE_EMULATOR_HOST}?ns=${process.env.DB_NS || "demo-rostiq"}`
@@ -85,6 +89,23 @@ export const calendar = onRequest({ region: "europe-west1", memory: "256MiB", ma
 
 // The trigger runs where the database is (europe-west1); the local emulator's database counts as us-central1.
 const BREVO = [defineSecret("BREVO_SMTP_LOGIN"), defineSecret("BREVO_SMTP_KEY")];
+
+// The sign-in email (signin.mjs). Only the app's own pages may call it (CORS); limits per address and per IP.
+const SIGNIN_ORIGINS = ["https://app.rostiq.be"];
+export const signinLink = onRequest({ region: "europe-west1", memory: "256MiB", maxInstances: 3, timeoutSeconds: 30, secrets: BREVO }, async (req, res) => {
+  const origin = req.get("origin") || "";
+  if (SIGNIN_ORIGINS.includes(origin) || (process.env.FUNCTIONS_EMULATOR === "true" && /^http:\/\/localhost(:\d+)?$/.test(origin))) {
+    res.set("Access-Control-Allow-Origin", origin);
+    res.set("Vary", "Origin");
+  }
+  res.set("Access-Control-Allow-Methods", "POST");
+  res.set("Access-Control-Allow-Headers", "Content-Type");
+  if (req.method === "OPTIONS") { res.status(204).send(""); return; }
+  if (req.method !== "POST") { res.status(405).json({ error: "method" }); return; }
+  const ip = String(req.get("x-forwarded-for") || req.ip || "").split(",")[0].trim();
+  const r = await handleSignin({ db, body: req.body || {}, ip, makeLink: (email, settings) => getAuth().generateSignInWithEmailLink(email, settings) });
+  res.status(r.status).json(r.body);
+});
 
 export const notice = onValueCreated({ ref: "/notices/{tid}/{id}", instance: "wintermidam-default-rtdb",
   region: process.env.FUNCTIONS_EMULATOR === "true" ? "us-central1" : "europe-west1",

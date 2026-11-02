@@ -602,6 +602,7 @@ T.fr = {
   "set.tieHelp": "À score égal : le joueur au handicap le plus bas prend la meilleure place. Ou les deux joueurs partagent les points de ces places.",
   "rk.missingConfirm": ({ names }) => `Pas encore de score pour ${names}. Enregistrer quand même ? Sans score, un joueur ne compte pas pour ce match.`,
   "rk.saved": ({ n }) => `Résultat enregistré pour ${n} ${plural(n, "joueur", "joueurs")}`,
+  "auth.tooMany": "Tu viens de demander plusieurs liens. Regarde dans tes e-mails (aussi les indésirables) ou réessaie dans une heure.",
   "rem.title": ({ n, opp, when }) => `${n} sans réponse · ${opp}, ${when}`,
   "rem.sub": "Un rappel personnel arrive en notification sur leur téléphone, sinon par e-mail, avec Oui / Non / Peut-être. Un geste et leur réponse est enregistrée. Décoche ceux que tu veux passer.",
   "rem.you": "C'est toi : réponds plus haut",

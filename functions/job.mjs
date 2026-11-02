@@ -243,6 +243,15 @@ export async function runJob({ mode = "all", dry = false, verbose = false, clean
   if (verbose) console.log(JSON.stringify(Object.keys(logWrites).sort()));
   if (!DRY && Object.keys({ ...logWrites, ...deadTokens }).length) await db.ref().update({ ...logWrites, ...deadTokens });
 
+  // Daily: sign-in email counters older than a day go (signin.mjs).
+  if (MODE !== "requests") {
+    const [log, ips] = await Promise.all([db.ref("signinLog").once("value"), db.ref("signinIp").once("value")]);
+    const old = {};
+    for (const [base, snap] of [["signinLog", log], ["signinIp", ips]])
+      for (const [k, v] of Object.entries(snap.val() || {})) if (!v || typeof v.at !== "number" || v.at < Date.now() - 864e5) old[`${base}/${k}`] = null;
+    if (!DRY && Object.keys(old).length) await db.ref().update(old);
+  }
+
   // Daily: an email with the app's new error reports (see errors.mjs); old reports are removed.
   if (MODE !== "requests") {
     const errWrites = await runErrorReport({ db, dry: DRY, today });

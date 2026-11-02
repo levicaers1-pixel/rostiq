@@ -598,6 +598,7 @@ T.nl = {
   "set.tieHelp": "Bij dezelfde score: wie de laagste handicap heeft, krijgt de hogere plaats. Of beide spelers delen de punten van die plaatsen.",
   "rk.missingConfirm": ({ names }) => `Nog geen score voor ${names}. Toch bewaren? Wie geen score heeft, telt niet mee voor deze wedstrijd.`,
   "rk.saved": ({ n }) => `Uitslag bewaard voor ${n} ${n === 1 ? "speler" : "spelers"}`,
+  "auth.tooMany": "Je vroeg net al een paar aanmeldlinks. Kijk in je mail (ook bij spam) of probeer over een uur opnieuw.",
   "rem.title": ({ n, opp, when }) => `${n} zonder antwoord · ${opp}, ${when}`,
   "rem.sub": "Een persoonlijke herinnering komt als melding op hun gsm, of anders per e-mail, met Ja / Nee / Misschien erin. Eén tik en hun antwoord staat erin. Vink uit wie je overslaat.",
   "rem.you": "Dat ben jij: antwoord hierboven",

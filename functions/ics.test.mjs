@@ -227,3 +227,45 @@ import { matchRanking, seasonRanking, profileHcp, resultText, RANK_POINTS } from
     "🏆 Uitslag Het Woold is binnen: 1. Jonas, 2. Levi, 3. Jens");
 }
 console.log("ranking tests passed");
+
+// Own sign-in email: request checks, limits, the email, the whole flow with a stand-in database.
+import { checkRequest, nextCount, signinEmail, handleSignin, LIMITS } from "./signin.mjs";
+{
+  assert.deepEqual(checkRequest({ email: " Tom@Hotmail.com ", url: "https://app.rostiq.be/?t=bogey", lang: "fr", tid: "bogey" }),
+    { email: "tom@hotmail.com", url: "https://app.rostiq.be/?t=bogey", lang: "fr", tid: "bogey" });
+  assert.equal(checkRequest({ email: "nope", url: "https://app.rostiq.be/" }).error, "email");
+  assert.equal(checkRequest({ email: "a@b.be", url: "https://evil.example/" }).error, "url", "only app pages as target");
+  assert.equal(checkRequest({ email: "a@b.be", url: "https://app.rostiq.be/", lang: "xx", tid: "../x" }).lang, "nl");
+  assert.equal(checkRequest({ email: "a@b.be", url: "https://app.rostiq.be/", tid: "../x" }).tid, null);
+  // Limits: up to n per hour, then refused, fresh after the hour.
+  let c = null; for (let i = 0; i < LIMITS.perEmail; i++) c = nextCount(c, 1000, LIMITS.perEmail);
+  assert.equal(c.n, LIMITS.perEmail);
+  assert.equal(nextCount(c, 1000, LIMITS.perEmail), null);
+  assert.equal(nextCount(c, 1000 + LIMITS.windowMs + 1, LIMITS.perEmail).n, 1);
+  // The email: link in text and HTML, team name escaped, three languages.
+  const m = signinEmail("https://x.test/l?a=1&b=2", "nl", "Bogey <Bombers>");
+  assert(m.subject === "Aanmelden bij Bogey <Bombers> op RostiQ" && m.text.includes("https://x.test/l?a=1&b=2"));
+  assert(m.html.includes("Bogey &lt;Bombers&gt;") && m.html.includes("a=1&amp;b=2") && !m.html.includes("<Bombers>"));
+  assert(signinEmail("l", "en").subject === "Your RostiQ sign-in link" && signinEmail("l", "fr", "X").subject.startsWith("Connexion à X"));
+  // The flow: a stand-in database with transactions; the email goes to a test stream.
+  process.env.INVITE_TRANSPORT = "stream";
+  const store = {};
+  const fakeDb = { ref: p => ({
+    transaction: async fn => { const r = fn(store[p] ?? null); if (r !== undefined) store[p] = r; return { committed: r !== undefined }; },
+    get: async () => ({ val: () => ({ "teams/bogey/info/shortName": "Bogey Bombers" })[p] ?? null }) }) };
+  const log = console.log; let printed = ""; console.log = s => { printed += String(s) + "\n"; };
+  const ok = await handleSignin({ db: fakeDb, ip: "1.2.3.4", body: { email: "tom@hotmail.com", url: "https://app.rostiq.be/?t=bogey", lang: "nl", tid: "bogey" },
+    makeLink: async (email, s) => `https://wintermidam.firebaseapp.com/__/auth/action?mode=signIn&continueUrl=${encodeURIComponent(s.url)}&e=${email}` });
+  console.log = log;
+  assert.equal(ok.status, 200);
+  assert(printed.includes("From: Bogey Bombers via RostiQ <login@rostiq.be>") && printed.includes("Aanmelden bij Bogey Bombers op RostiQ"), "sent from login@rostiq.be");
+  console.log = () => {};
+  for (let i = 1; i < LIMITS.perEmail; i++) await handleSignin({ db: fakeDb, ip: "1.2.3." + i, body: { email: "tom@hotmail.com", url: "https://app.rostiq.be/" }, makeLink: async () => "l" });
+  console.log = () => {};
+  const limited = await handleSignin({ db: fakeDb, ip: "9.9.9.9", body: { email: "tom@hotmail.com", url: "https://app.rostiq.be/" }, makeLink: async () => "l" });
+  console.log = log;
+  assert.equal(limited.status, 429, "5th email within the hour is refused");
+  assert.equal((await handleSignin({ db: fakeDb, ip: "1.1.1.1", body: { email: "x", url: "https://app.rostiq.be/" }, makeLink: async () => "l" })).status, 400);
+  delete process.env.INVITE_TRANSPORT;
+}
+console.log("sign-in email tests passed");

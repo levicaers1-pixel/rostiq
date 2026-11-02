@@ -303,7 +303,8 @@ function apply(path, value, merge) {
 // pid: this account's player row in the team. pending: signed in, waiting for the team admin.
 const PLATFORM = (window.PLATFORM_ADMINS || []).map(e => e.toLowerCase());
 const AUTH_ON = !!window.FIREBASE_CONFIG;
-const SDK = "https://www.gstatic.com/firebasejs/12.12.0/"; // also preloaded in each page's <head>: keep the version the same
+const SDK = "https://www.gstatic.com/firebasejs/12.12.0/";
+const SIGNIN_FN = window.SIGNIN_URL || "https://europe-west1-wintermidam.cloudfunctions.net/signinLink"; // our own sign-in email // also preloaded in each page's <head>: keep the version the same
 const session = { user: null, platformAdmin: !AUTH_ON, admin: !AUTH_ON, pid: null, ready: !AUTH_ON,
   pending: false, request: null, picking: false, teams: null, noTeam: false };
 let fbAuth = null, A = null, fbApp = null;
@@ -1462,7 +1463,7 @@ function gateMessage(text, err) { gateMsg = { text, err }; renderAuth(); }
 const appUrl = file => location.href.split(/[?#]/)[0].replace(/[^/]*$/, file);
 
 // ---- Feedback to RostiQ (account menu, footer): only the RostiQ admin reads it ----
-const APP_VERSION = "2026.11.72";
+const APP_VERSION = "2026.11.73";
 function deviceText() {
   const ua = navigator.userAgent;
   const os = /iPhone/.test(ua) ? "iPhone" : /iPad/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1) ? "iPad"
@@ -1853,9 +1854,20 @@ async function onGateSubmit(ev) {
     return;
   }
   const email = ev.target.email.value.trim();
+  const url = location.origin + location.pathname + (TEAM_ID ? `?t=${TEAM_ID}` : "");
+  // Our own email from login@rostiq.be (functions/signin.mjs); Firebase's own email only if that service can't be reached.
+  let own = null;
+  if (!window.FIREBASE_CONFIG.fake) {
+    try {
+      const res = await fetch(SIGNIN_FN, { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, url, lang: LANG, tid: TEAM_ID || "" }) });
+      own = res.status === 200 ? "ok" : res.status === 429 ? "rate" : res.status === 400 ? "bad" : null;
+    } catch { own = null; }
+  }
+  if (own === "rate") return gateMessage(t("auth.tooMany"), true);
+  if (own === "bad") return gateMessage(t("auth.sendFailed"), true);
   try {
-    await A.sendSignInLinkToEmail(fbAuth, email, {
-      url: location.origin + location.pathname + (TEAM_ID ? `?t=${TEAM_ID}` : ""), handleCodeInApp: true });
+    if (own !== "ok") await A.sendSignInLinkToEmail(fbAuth, email, { url, handleCodeInApp: true });
     pref.set("signinEmail", email);
     gateMessage(t("auth.checkEmail", { email }), false);
   } catch (e) {
