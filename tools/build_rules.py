@@ -617,9 +617,27 @@ final["rules"]["billing"] = {".read": PA, "$tid": {
     "until": DATE,
     "src": {".validate": "newData.val() === 'pilot' || newData.val() === 'paid' || newData.val() === 'gift'"},
     "note": s(200),
+    "club": {".validate": "newData.isString() && newData.parent().parent().parent().child('clubs').child(newData.val()).exists()"},
     "trial": {".write": f"!data.exists() && {VERIFIED} && root.child('teams').child($tid).exists() && {TA_OF('$tid')}",
               ".validate": "newData.isNumber() && newData.val() > now + 29 * 86400000 && newData.val() < now + 31 * 86400000"},
     "$other": NO,
+}}
+# ---- Clubs (functions/clubs.mjs): clubs/<club> = { name, until, teams, admins, at, stats } ----
+# Only the RostiQ admin makes and changes clubs; the club's people responsible read their own club (with the daily
+# numbers in stats, written by the job). clubAdmins/<uid>/<club> = true tells the app whom to show the club page.
+final["rules"]["clubs"] = {".read": PA, "$cid": {
+    ".read": f"{PA} || (auth != null && data.child('admins').child(auth.uid).val() === true)",
+    ".write": PA,
+    ".validate": "$cid.matches(/^[a-z0-9][a-z0-9-]{1,39}$/) && newData.hasChildren(['name', 'until'])",
+    "name": s(80, 1), "until": DATE, "at": {".validate": "newData.isNumber()"},
+    "teams": {"$tid": {".validate": "newData.val() === true && root.child('teams').child($tid).exists()"}},
+    "admins": {"$uid": {".validate": "newData.val() === true"}},
+    "$other": NO,  # stats: written by the job only
+}}
+final["rules"]["clubAdmins"] = {".read": PA, "$uid": {
+    ".read": f"{PA} || (auth != null && auth.uid === $uid)",
+    ".write": PA,
+    "$cid": {".validate": "newData.val() === true"},
 }}
 final["rules"]["$other"] = final["rules"].pop("$other")  # keep the catch-all last
 

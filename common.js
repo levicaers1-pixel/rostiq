@@ -1449,6 +1449,8 @@ async function afterSignIn() {
   // Already in this team on this device: open the live data straight away; the membership is checked alongside.
   const early = (dataLoaded || quickStart()) && !!(session.pid || session.admin);
   if (early) connect();
+  // People responsible for a club (clubs.mjs): the "Club" item in the account menu.
+  getAbs(`clubAdmins/${uid}`).then(c => { session.clubs = Object.keys(c || {}); if (session.clubs.length) renderAccount(); });
   const mine = (await getAbs(`users/${uid}/teams`)) || {};
   session.teams = Object.keys(mine);
   profile.ready = loadProfile(mine).catch(() => {});
@@ -1571,7 +1573,7 @@ function gateMessage(text, err) { gateMsg = { text, err }; renderAuth(); }
 const appUrl = file => location.href.split(/[?#]/)[0].replace(/[^/]*$/, file);
 
 // ---- Feedback to RostiQ (account menu, footer): only the RostiQ admin reads it ----
-const APP_VERSION = "2026.11.78";
+const APP_VERSION = "2026.11.79";
 function deviceText() {
   const ua = navigator.userAgent;
   const os = /iPhone/.test(ua) ? "iPhone" : /iPad/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1) ? "iPad"
@@ -1808,6 +1810,7 @@ function renderAccount() {
       </div>`}
       <div class="menu-group">
         ${switchable && TEAM_ID ? `<a class="menu-item" role="menuitem" href="${appUrl("index.html")}?pick">${ic("switch")} ${t("pick.switch")}</a>` : ""}
+        ${(session.clubs || []).length ? `<a class="menu-item" role="menuitem" href="${appUrl("club.html")}">${ic("trophy")} ${t("club.menu")}</a>` : ""}
         <a class="menu-item" role="menuitem" href="${appUrl("start.html")}">${ic("plus")} ${t("menu.newTeam")}</a>
         ${session.platformAdmin ? `<a class="menu-item" role="menuitem" href="${appUrl("rostiq.html")}">${ic("settings")} ${t("menu.platform")}${
           session.feedbackNew ? ` <span class="pill cyan">${t("fb.newCount", { n: session.feedbackNew })}</span>` : ""}</a>` : ""}

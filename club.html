@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title data-i18n-doc="club.pageTitle">RostiQ · Club</title>
+<meta name="theme-color" content="#1e1b4b">
+<meta name="robots" content="noindex">
+<link rel="icon" type="image/png" href="assets/favicon.png">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Noto+Sans:wght@400;500;600;700;800&family=Cormorant+Garamond:wght@600&display=swap">
+<link rel="stylesheet" href="common.css">
+<script>try { if (localStorage.getItem("theme") === "dark") document.documentElement.classList.add("dark"); } catch (e) {}</script>
+<style>
+  main.club { max-width: 760px; }
+  .club-label { font-size: .7rem; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); margin: 22px 0 8px;
+    display: flex; justify-content: space-between; gap: 10px; }
+  .club-card { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; }
+  .club-kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .club-kpi { padding: 14px 10px; text-align: center; }
+  .club-kpi b { display: block; font-family: Anton, sans-serif; font-weight: 400; font-size: 1.8rem; line-height: 1.1; }
+  .club-kpi span { font-size: .74rem; color: var(--muted); font-weight: 600; }
+  .club-bill { padding: 16px 18px; display: grid; gap: 6px; background: var(--brand); color: var(--brand-text, #fff); border: 0; }
+  .club-bill .big { font-family: Anton, sans-serif; font-size: 2.1rem; color: var(--pampas); line-height: 1; }
+  .club-bill small { opacity: .8; font-size: .8rem; line-height: 1.45; }
+  .club-meter { height: 8px; border-radius: 99px; background: rgb(255 255 255 / .18); overflow: hidden; margin-top: 4px; }
+  .club-meter i { display: block; height: 100%; background: var(--pampas); border-radius: 99px; }
+  .club-team { display: grid; grid-template-columns: 38px 1fr auto; gap: 2px 12px; align-items: center; padding: 12px 14px; border-top: 1px solid var(--border);
+    color: inherit; text-decoration: none; }
+  .club-team:first-child { border-top: 0; }
+  .club-team .crest { width: 38px; height: 38px; border-radius: 12px; display: grid; place-items: center; background: color-mix(in srgb, var(--accent) 9%, transparent);
+    font-size: 1.1rem; grid-row: span 2; }
+  .club-team .meta { grid-column: 2; font-size: .78rem; color: var(--muted); }
+  .club-pill { font-size: .74rem; font-weight: 700; padding: 3px 10px; border-radius: 999px; white-space: nowrap; grid-row: span 2; }
+  .club-pill.ok { background: var(--yes-bg); color: var(--yes); }
+  .club-pill.mid { background: var(--maybe-bg); color: var(--maybe); }
+  .club-pill.bad { background: var(--no-bg); color: var(--no); }
+  .club-li { display: flex; justify-content: space-between; gap: 10px; padding: 11px 14px; border-top: 1px solid var(--border); font-size: .9rem; }
+  .club-li:first-child { border-top: 0; }
+  .club-li span:last-child { color: var(--muted); text-align: right; }
+  .club-pick { display: flex; gap: 6px; flex-wrap: wrap; margin: 0 0 12px; }
+</style>
+<link rel="modulepreload" href="https://www.gstatic.com/firebasejs/12.12.0/firebase-app.js" crossorigin>
+<link rel="modulepreload" href="https://www.gstatic.com/firebasejs/12.12.0/firebase-auth.js" crossorigin>
+</head>
+<body>
+<header class="brand">
+  <div class="brand-inner">
+    <a href="./"><img class="logo rostiq-logo" src="assets/rostiq-logo-header.webp" alt="RostiQ"></a>
+  </div>
+</header>
+<main class="club">
+  <h1 id="club-title" data-i18n="club.title">Club</h1>
+  <p class="sub" id="club-sub"></p>
+  <div id="club-body"></div>
+</main>
+
+<script>window.PLATFORM_PAGE = true;</script>
+<script src="icons.js"></script>
+<script src="config.js"></script>
+<script src="team.js"></script>
+<script src="i18n.js"></script>
+<script src="common.js"></script>
+<script>
+// The club page (functions/clubs.mjs): for a club's people responsible (clubAdmins/<uid>/<club>), and the RostiQ admin
+// (club.html?c=<club>). Only numbers per team, counted every night: no player names or details.
+const club = { ids: null, id: "", data: undefined, loading: false };
+async function loadClub() {
+  club.loading = true;
+  club.ids = Object.keys((await getAbs(`clubAdmins/${session.user.uid}`)) || {});
+  const want = QUERY.get("c") || "";
+  club.id = want && (club.ids.includes(want) || session.platformAdmin) ? want : club.ids[0] || "";
+  club.data = club.id ? (await getAbs(`clubs/${club.id}`)) || null : null;
+  club.loading = false;
+  render();
+}
+const dayText = d => new Date(d + "T12:00:00").toLocaleDateString(LOCALE, { day: "numeric", month: "long", year: "numeric" });
+const money = cents => new Intl.NumberFormat(LOCALE, { style: "currency", currency: "EUR", maximumFractionDigits: cents % 100 ? 2 : 0 }).format(cents / 100);
+const CLUB_MAX = 150000; // the same as functions/clubs.mjs
+
+function render() {
+  const box = document.getElementById("club-body"), sub = document.getElementById("club-sub");
+  if (!session.user) { box.innerHTML = ""; sub.textContent = ""; return; }
+  if (club.data === undefined) { box.innerHTML = skeletonCards(3); if (session.ready && !club.loading) loadClub(); return; }
+  if (!club.data) { sub.textContent = ""; box.innerHTML = emptyState("trophy", t("club.none"), t("club.noneHelp")); return; }
+  const c = club.data, st = c.stats || null, season = `${Number(c.until.slice(0, 4)) - 1}-${c.until.slice(2, 4)}`;
+  document.getElementById("club-title").textContent = c.name;
+  sub.innerHTML = `${esc(t("club.season", { season, date: dayText(c.until) }))} <span class="pro-tag">Club</span>`;
+  const pick = club.ids.length > 1 ? `<div class="club-pick">${club.ids.map(id => `<a class="btn${id === club.id ? " primary" : ""}" href="?c=${encodeURIComponent(id)}">${esc(id)}</a>`).join("")}</div>` : "";
+  if (!st) { box.innerHTML = pick + emptyState("clock", t("club.notYet"), t("club.notYetHelp")); return; }
+  const teams = Object.entries(st.teams || {}).sort(([, a], [, b]) => a.name.localeCompare(b.name));
+  const withNext = teams.filter(([, x]) => x.next), ans = withNext.reduce((n, [, x]) => n + x.next.answered, 0), of = withNext.reduce((n, [, x]) => n + x.players, 0);
+  const counted = st.count || null, cents = counted ? counted.cents : st.cents, active = counted ? counted.active : st.active;
+  const tone = x => !x.players ? "mid" : x.active / x.players >= .8 ? "ok" : x.active / x.players >= .5 ? "mid" : "bad";
+  const short = d => new Date(d + "T12:00:00").toLocaleDateString(LOCALE, { weekday: "short", day: "numeric", month: "short" });
+  box.innerHTML = pick + `
+    <div class="club-kpis">
+      <div class="club-card club-kpi"><b>${teams.length}</b><span>${esc(t("club.kTeams"))}</span></div>
+      <div class="club-card club-kpi"><b>${st.active}</b><span>${esc(t("club.kActive"))}</span></div>
+      <div class="club-card club-kpi"><b>${of ? Math.round(100 * ans / of) + "%" : "–"}</b><span>${esc(t("club.kAnswer"))}</span></div>
+    </div>
+    <div class="club-label">${esc(t("club.thisSeason"))}</div>
+    <div class="club-card club-bill">
+      <span style="font-size:.82rem;font-weight:700">${esc(counted ? t("club.counted", { date: dayText(new Date(counted.at).toLocaleDateString("sv-SE")) }) : t("club.soFar"))}</span>
+      <span class="big">${esc(money(cents))}</span>
+      <small>${esc(t("club.priceHelp", { n: active }))}</small>
+      <div class="club-meter"><i style="width:${Math.min(100, Math.round(100 * cents / CLUB_MAX))}%"></i></div>
+      <small>${esc(t("club.ofMax", { price: money(cents), max: money(CLUB_MAX) }))}</small>
+    </div>
+    <div class="club-label"><span>${esc(t("club.teams"))}</span><span>${esc(t("club.activeOf"))}</span></div>
+    <div class="club-card">${teams.map(([tid, x]) => `<a class="club-team" href="${appUrl("index.html")}?t=${encodeURIComponent(tid)}">
+        <span class="crest">${(SPORTS[x.sport] || SPORTS.other).icon}</span><b>${esc(x.name || tid)}</b>
+        <span class="club-pill ${tone(x)}">${x.active} / ${x.players}</span>
+        <span class="meta">${esc(x.next ? t("club.next", { date: short(x.next.date), opp: x.next.opp, n: x.next.answered, total: x.players }) : t("club.noMatch"))}${
+          x.never ? ` · ${esc(t("club.never", { n: x.never }))}` : ""}</span></a>`).join("")}</div>
+    <p class="muted" style="font-size:.82rem;margin:8px 2px 0">${esc(t("club.openHelp"))}</p>
+    <div class="club-label">${esc(t("club.gets"))}</div>
+    <div class="club-card">
+      <div class="club-li"><span>${esc(t("club.gPro"))}</span><span>${esc(t("club.gProN", { n: teams.length }))}</span></div>
+      <div class="club-li"><span>${esc(t("club.gInvoice"))}</span><span>${esc(t("club.gInvoiceHow"))}</span></div>
+      <div class="club-li"><span>${esc(t("club.gUpdated"))}</span><span>${esc(new Date(st.at).toLocaleString(LOCALE, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }))}</span></div>
+    </div>
+    <p class="muted" style="margin:14px 2px 10px">${esc(t("club.contact"))}</p>
+    <a class="btn primary" href="mailto:levi@caersultancy.com?subject=${encodeURIComponent("RostiQ Club · " + c.name)}">${ic("mail")} ${esc(t("club.mail"))}</a>`;
+}
+
+start();
+</script>
+</body>
+</html>

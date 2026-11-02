@@ -1489,12 +1489,55 @@
         "note": {
           ".validate": "newData.isString() && newData.val().length <= 200"
         },
+        "club": {
+          ".validate": "newData.isString() && newData.parent().parent().parent().child('clubs').child(newData.val()).exists()"
+        },
         "trial": {
           ".write": "!data.exists() && auth != null && auth.token.email_verified === true && root.child('teams').child($tid).exists() && root.child('teams').child($tid).child('admins').child(auth.uid).val() === true",
           ".validate": "newData.isNumber() && newData.val() > now + 29 * 86400000 && newData.val() < now + 31 * 86400000"
         },
         "$other": {
           ".validate": false
+        }
+      }
+    },
+    "clubs": {
+      ".read": "(auth != null && auth.token.email_verified === true && (auth.token.email === 'levicaers1@gmail.com'))",
+      "$cid": {
+        ".read": "(auth != null && auth.token.email_verified === true && (auth.token.email === 'levicaers1@gmail.com')) || (auth != null && data.child('admins').child(auth.uid).val() === true)",
+        ".write": "(auth != null && auth.token.email_verified === true && (auth.token.email === 'levicaers1@gmail.com'))",
+        ".validate": "$cid.matches(/^[a-z0-9][a-z0-9-]{1,39}$/) && newData.hasChildren(['name', 'until'])",
+        "name": {
+          ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 80"
+        },
+        "until": {
+          ".validate": "newData.isString() && newData.val().matches(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/)"
+        },
+        "at": {
+          ".validate": "newData.isNumber()"
+        },
+        "teams": {
+          "$tid": {
+            ".validate": "newData.val() === true && root.child('teams').child($tid).exists()"
+          }
+        },
+        "admins": {
+          "$uid": {
+            ".validate": "newData.val() === true"
+          }
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
+    },
+    "clubAdmins": {
+      ".read": "(auth != null && auth.token.email_verified === true && (auth.token.email === 'levicaers1@gmail.com'))",
+      "$uid": {
+        ".read": "(auth != null && auth.token.email_verified === true && (auth.token.email === 'levicaers1@gmail.com')) || (auth != null && auth.uid === $uid)",
+        ".write": "(auth != null && auth.token.email_verified === true && (auth.token.email === 'levicaers1@gmail.com'))",
+        "$cid": {
+          ".validate": "newData.val() === true"
         }
       }
     },

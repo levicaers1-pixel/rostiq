@@ -147,6 +147,25 @@ await check("payments (Mollie): nobody in the app reads or writes them; receipts
   await assertFails(admin.ref("payments/tr_x").set({ tid: "t1", status: "paid" }));
   await assertFails(admin.ref("billing/t1/history/tr_x").set({ at: 1, cents: 3900 }));
 });
+// ---- clubs ----
+const CLUB = { name: "KHC", until: "2027-06-30", teams: { t1: true }, admins: { "u-member": true } };
+await check("club: only the RostiQ admin makes one, with its teams on the club plan", async () => {
+  await assertFails(admin.ref("clubs/khc").set(CLUB));
+  await assertSucceeds(platform.ref().update({ "clubs/khc": CLUB, "clubAdmins/u-member/khc": true,
+    "billing/t1/plan": "club", "billing/t1/until": "2027-06-30", "billing/t1/club": "khc", "billing/t1/src": "paid" }));
+  await assertFails(platform.ref("billing/t1/club").set("nope"));
+  await assertFails(platform.ref("clubs/khc2").set({ ...CLUB, teams: { ghost: true } }));
+});
+await check("club: its people responsible read it, nobody else; they can't change it", async () => {
+  await env.withSecurityRulesDisabled(c => c.database().ref().update({ "clubs/khc": { ...CLUB, stats: { active: 3 } }, "clubAdmins/u-member/khc": true }));
+  await assertSucceeds(member.ref("clubs/khc").get());
+  await assertSucceeds(member.ref("clubAdmins/u-member").get());
+  await assertFails(admin.ref("clubs/khc").get());
+  await assertFails(admin.ref("clubAdmins/u-member").get());
+  await assertFails(member.ref("clubs/khc/admins/u-admin").set(true));
+  await assertFails(member.ref("clubs/khc/stats/active").set(999));
+  await assertFails(member.ref("clubAdmins/u-member/other").set(true));
+});
 await check("unknown top-level paths: refused", () => assertFails(member.ref("whatever/x").set(1)));
 
 await env.cleanup();

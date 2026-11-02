@@ -63,6 +63,15 @@
   .err-list code { font-size: .85rem; word-break: break-word; white-space: pre-wrap; }
   .err-list .ctx { font-size: .78rem; color: var(--muted); }
   .teams li.list-empty, .fb-list li.list-empty { display: block; border-top: none; }
+  .club-row { display: grid; grid-template-columns: 1fr auto auto; gap: 6px 12px; align-items: center; padding: 10px 0; border-top: 1px solid var(--border); }
+  .club-row:first-child { border-top: 0; }
+  .club-row small { display: block; color: var(--muted); }
+  .club-form { display: grid; gap: 10px; margin-top: 12px; padding: 14px; border: 1px solid var(--border); border-radius: 14px; }
+  .club-form .two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .club-form label { display: grid; gap: 4px; font-size: .85rem; }
+  .club-boxes { display: flex; flex-wrap: wrap; gap: 6px; }
+  .club-boxes label { display: inline-flex; gap: 6px; align-items: center; padding: 5px 10px; border-radius: 999px; border: 1px solid var(--border); font-size: .82rem; cursor: pointer; }
+  @media (max-width: 560px) { .club-form .two { grid-template-columns: 1fr; } }
 </style>
 <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/12.12.0/firebase-app.js" crossorigin>
 <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/12.12.0/firebase-auth.js" crossorigin>
@@ -102,6 +111,14 @@
       <p><button type="button" class="primary" id="plans-pilot">Mark pilot teams</button></p>
       <label class="check"><input type="checkbox" id="plans-preview"> <span data-i18n="rostiq.plansPreview">Preview the plans on this device</span></label>
       <p class="muted" data-i18n="rostiq.plansPreviewHelp"></p>
+    </section>
+
+    <section class="panel">
+      <h2 data-i18n="rostiq.clubs">Clubs</h2>
+      <p class="muted" data-i18n="rostiq.clubsHelp"></p>
+      <div id="club-list"></div>
+      <div id="club-form-box"></div>
+      <p><button type="button" id="club-new" data-i18n="rostiq.clubNew">+ New club</button></p>
     </section>
 
     <section class="panel signup">
@@ -161,6 +178,7 @@ async function loadTeams() {
   feedback = (await getAbs("feedback")) || {};
   errors = (await getAbs("errors")) || {};
   bills = (await getAbs("billing")) || {};
+  clubs = (await getAbs("clubs")) || {};
   teams.sort((a, b) => (a.info.brand || a.id).localeCompare(b.info.brand || b.id));
   render();
 }
@@ -189,6 +207,7 @@ function render() {
   }).join("") : `<li class="list-empty">${emptyState("users", t("rostiq.none"), "", "", true)}</li>`;
   renderFeedback();
   renderErrors();
+  renderClubs();
   // Plans
   const unmarked = teams.filter(pilotUnmarked);
   document.getElementById("plans-pilot").textContent = t("rostiq.plansPilot", { n: unmarked.length });
@@ -206,6 +225,99 @@ function render() {
     : `<li class="muted">${t("rostiq.noCodes")}</li>`;
 }
 let signup = { open: false, codes: {} }, bills = {};
+// ---- Clubs (functions/clubs.mjs): a club, its teams (all on the Club plan) and its people responsible ----
+let clubs = {}, clubForm = null, adminCands = {};
+const teamName = id => (((teams || []).find(x => x.id === id) || {}).info || {}).brand || id;
+const seasonEnd = () => { const d = new Date(); return `${d.getMonth() >= 4 ? d.getFullYear() + 1 : d.getFullYear()}-06-30`; }; // from May: the coming season
+const clubMoney = cents => new Intl.NumberFormat(LOCALE, { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(cents / 100);
+function renderClubs() {
+  const list = Object.entries(clubs).sort(([, a], [, b]) => a.name.localeCompare(b.name));
+  document.getElementById("club-list").innerHTML = list.length ? list.map(([cid, c]) => {
+    const st = c.stats, n = Object.keys(c.teams || {}).length, count = st && st.count;
+    return `<div class="club-row"><div><b>${esc(c.name)}</b><small>${esc(t("rostiq.clubLine", { teams: n, active: st ? st.active : "?", until: c.until }))}${
+      count ? ` · ${esc(t("rostiq.clubCounted", { price: clubMoney(count.cents) }))}` : st ? ` · ${esc(t("rostiq.clubSoFar", { price: clubMoney(st.cents) }))}` : ""}</small></div>
+      <a class="link" href="${appUrl("club.html")}?c=${encodeURIComponent(cid)}">${t("rostiq.open")}</a>
+      <button class="link" data-club-edit="${esc(cid)}">✏️</button></div>`;
+  }).join("") : `<p class="muted">${t("rostiq.noClubs")}</p>`;
+  const box = document.getElementById("club-form-box");
+  if (!clubForm) { box.innerHTML = ""; return; }
+  const f = clubForm, candIds = Object.keys(adminCands).filter(uid => adminCands[uid].teams.some(tid => f.teams.has(tid)) || f.admins.has(uid));
+  box.innerHTML = `<form class="club-form" id="club-form">
+    <div class="two"><label><span>${t("rostiq.clubName")}</span><input name="name" maxlength="80" required value="${esc(f.name)}"></label>
+      <label><span>${t("rostiq.clubUntil")}</span><input name="until" type="date" required value="${esc(f.until)}"></label></div>
+    <div><b style="font-size:.85rem">${t("rostiq.clubTeams")}</b><div class="club-boxes">${(teams || []).map(x => {
+      const other = Object.entries(clubs).find(([cid, c]) => cid !== f.id && (c.teams || {})[x.id]);
+      return `<label><input type="checkbox" data-ct="${esc(x.id)}"${f.teams.has(x.id) ? " checked" : ""}${other ? " disabled" : ""}> ${esc(x.info.brand || x.id)}${other ? ` <small>(${esc(other[1].name)})</small>` : ""}</label>`;
+    }).join("")}</div></div>
+    <div><b style="font-size:.85rem">${t("rostiq.clubAdmins")}</b><p class="muted" style="margin:2px 0 6px;font-size:.8rem">${t("rostiq.clubAdminsHelp")}</p>
+      <div class="club-boxes">${candIds.length ? candIds.map(uid => `<label><input type="checkbox" data-ca="${esc(uid)}"${f.admins.has(uid) ? " checked" : ""}> ${esc(adminCands[uid].name)} <small>(${esc(adminCands[uid].teams.map(teamName).join(", "))})</small></label>`).join("")
+        : `<span class="muted" style="font-size:.82rem">${t("rostiq.clubPickTeams")}</span>`}</div></div>
+    <div class="form-actions"><button class="primary">${t(f.id ? "rostiq.clubSave" : "rostiq.clubCreate")}</button>
+      <button type="button" data-club-cancel>${t("brand.cancel")}</button>
+      ${f.id ? `<button type="button" class="link del" data-club-del>${t("rostiq.delete")}</button>` : ""}</div></form>`;
+}
+// Who can be responsible: the admins of the club's teams (with their player name in that team).
+async function loadAdminCands(ids) {
+  for (const tid of ids) {
+    if (Object.values(adminCands).some(c => c.teams.includes(tid))) continue;
+    const [adm, mem] = await Promise.all([getAbs(`teams/${tid}/admins`), getAbs(`teams/${tid}/members`)]);
+    for (const uid of Object.keys(adm || {})) {
+      const pid = (mem || {})[uid], name = pid ? (await getAbs(`teams/${tid}/players/${pid}/name`)) || "?" : "?";
+      const c = adminCands[uid] || (adminCands[uid] = { name, teams: [] });
+      if (!c.teams.includes(tid)) c.teams.push(tid);
+      if (c.name === "?") c.name = name;
+    }
+  }
+  renderClubs();
+}
+function openClubForm(cid) {
+  const c = cid ? clubs[cid] : null;
+  clubForm = { id: cid || "", name: c ? c.name : "", until: c ? c.until : seasonEnd(), teams: new Set(Object.keys((c && c.teams) || {})),
+    admins: new Set(Object.keys((c && c.admins) || {})), before: c ? { teams: Object.keys(c.teams || {}), admins: Object.keys(c.admins || {}) } : { teams: [], admins: [] } };
+  renderClubs();
+  loadAdminCands([...clubForm.teams]);
+}
+document.getElementById("club-new").onclick = () => openClubForm("");
+document.getElementById("club-list").addEventListener("click", ev => { const b = ev.target.closest("[data-club-edit]"); if (b) openClubForm(b.dataset.clubEdit); });
+document.getElementById("club-form-box").addEventListener("change", ev => {
+  if (!clubForm) return;
+  const f = clubForm, el = ev.target;
+  if (el.name === "until") f.until = el.value;
+  if (el.dataset.ct) { el.checked ? f.teams.add(el.dataset.ct) : f.teams.delete(el.dataset.ct); loadAdminCands([...f.teams]); }
+  if (el.dataset.ca) el.checked ? f.admins.add(el.dataset.ca) : f.admins.delete(el.dataset.ca);
+});
+document.getElementById("club-form-box").addEventListener("input", ev => { if (clubForm && ev.target.name === "name") clubForm.name = ev.target.value; });
+// Saving: the club, its teams on the Club plan (teams that leave go back to no plan), and the people responsible.
+async function saveClub(remove) {
+  const f = clubForm, cid = f.id || (f.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40) || "club");
+  if (!remove && (!f.name.trim() || !/^\d{4}-06-30$/.test(f.until) || !f.teams.size)) return toast(t("rostiq.clubIncomplete"), "err");
+  if (!f.id && clubs[cid]) return toast(t("rostiq.clubExists"), "err");
+  const ch = {};
+  const leaveTeams = remove ? f.before.teams : f.before.teams.filter(tid => !f.teams.has(tid));
+  const leaveAdmins = remove ? f.before.admins : f.before.admins.filter(uid => !f.admins.has(uid));
+  if (leaveTeams.length && !confirm(t("rostiq.clubLeaveAsk", { teams: leaveTeams.map(teamName).join(", ") }))) return;
+  for (const tid of leaveTeams) for (const k of ["plan", "until", "club", "src"]) ch[`billing/${tid}/${k}`] = null;
+  for (const uid of leaveAdmins) ch[`clubAdmins/${uid}/${cid}`] = null;
+  if (remove) ch[`clubs/${cid}`] = null;
+  else {
+    Object.assign(ch, { [`clubs/${cid}/name`]: f.name.trim().slice(0, 80), [`clubs/${cid}/until`]: f.until, [`clubs/${cid}/at`]: Date.now(),
+      [`clubs/${cid}/teams`]: Object.fromEntries([...f.teams].map(tid => [tid, true])),
+      [`clubs/${cid}/admins`]: f.admins.size ? Object.fromEntries([...f.admins].map(uid => [uid, true])) : null });
+    for (const tid of f.teams) Object.assign(ch, { [`billing/${tid}/plan`]: "club", [`billing/${tid}/until`]: f.until, [`billing/${tid}/club`]: cid, [`billing/${tid}/src`]: "paid" });
+    for (const uid of f.admins) ch[`clubAdmins/${uid}/${cid}`] = true;
+  }
+  const ok = await send("PATCH", "", ch, true, true);
+  if (ok !== true) return toast(t("status.saveFailed"), "err");
+  clubForm = null;
+  [clubs, bills] = await Promise.all([getAbs("clubs").then(x => x || {}), getAbs("billing").then(x => x || {})]);
+  toast(t(remove ? "rostiq.clubDeleted" : "rostiq.clubSaved"));
+  render();
+}
+document.getElementById("club-form-box").addEventListener("submit", ev => { ev.preventDefault(); saveClub(false); });
+document.getElementById("club-form-box").addEventListener("click", ev => {
+  if (ev.target.closest("[data-club-cancel]")) { clubForm = null; renderClubs(); }
+  if (ev.target.closest("[data-club-del]") && confirm(t("rostiq.clubDelAsk", { name: clubForm.name }))) saveClub(true);
+});
 // Plans: mark every team without a plan as a pilot team (Pro until the end of the 2026-27 season).
 // Pilot teams: made here by the RostiQ admin (no creator record) or started with a pilot code. Teams started while sign-up
 // was open (no code) are not pilots: they start on Free once the plans are on.

@@ -217,7 +217,7 @@ async function plans(name, billing, url, test, extra) {
   page.on("pageerror", e => errors.push("script error: " + e.message));
   try {
     await page.goto(BASE + url, { waitUntil: "domcontentloaded" });
-    await page.waitForFunction(() => /live/.test((document.getElementById("status") || {}).className), null, { timeout: 8000 });
+    await page.waitForFunction(() => { const s = document.getElementById("status"); return s ? /live/.test(s.className) : !document.querySelector(".skel-card"); }, null, { timeout: 8000 });
     await page.waitForTimeout(900);
     errors.push(...await test(page));
     await page.waitForTimeout(500);
@@ -265,6 +265,19 @@ await plans("pro-own-logo", { plan: "pro", until: "2099-12-31", src: "paid" }, "
   const h = await page.evaluate(header);
   return [!h.img && "Pro: the team's own logo is missing", h.brand !== "#123456" && "Pro: the team's own colours are missing: " + h.brand].filter(Boolean);
 }, OWN);
+// The club page: numbers per team for the club's people responsible; the "Club" item in their account menu.
+const CLUB_STATS = { at: Date.now(), active: 84, players: 105, cents: 50400, teams: {
+  golf: { name: "Golf Ranking Club", sport: "golf", players: 19, linked: 18, active: 18, never: 1, next: { date: "2099-01-01", opp: "Rivalen", answered: 15 } },
+  full: { name: "Hockey Heren", sport: "hockey", players: 17, linked: 10, active: 8, never: 9 } } };
+await plans("club-page", null, "/club.html", async page => {
+  const r = [], text = await page.evaluate(`document.getElementById("club-body").innerText`);
+  if (await page.evaluate(`document.getElementById("club-title").textContent`) !== "KHC Proef") r.push("club name missing");
+  for (const want of ["84", "504", "Golf Ranking Club", "18 / 19", "8 / 17", "9 nog nooit geantwoord"]) if (!text.includes(want)) r.push("club page lacks " + want);
+  await page.click("#acct-btn").catch(() => {});
+  if (!await page.evaluate(`!!document.querySelector('#acct-menu a[href*="club.html"]')`)) r.push("no Club item in the account menu");
+  return r;
+}, { "clubs/khc": { name: "KHC Proef", until: "2099-06-30", teams: { golf: true, full: true }, admins: { [USER.uid]: true }, stats: CLUB_STATS },
+     [`clubAdmins/${USER.uid}/khc`]: true });
 await plans("pilot", { plan: "pro", until: "2099-12-31", src: "pilot" }, "/admin.html?t=golf#sec-plan", async page => {
   const r = [], text = await page.evaluate(`document.getElementById("plan-body").innerText`);
   if (!/Pilootploeg/.test(text)) r.push("the subscription doesn't say pilot: " + text.slice(0, 80));

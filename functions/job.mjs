@@ -16,6 +16,7 @@ import { REMIND_GAP } from "./remind.mjs";
 import { wxOn, forecast, wxAlerts, wxMessage } from "./weather.js";
 import { trainingDates } from "./training.js";
 import { runErrorReport } from "./errors.mjs";
+import { runClubs } from "./clubs.mjs";
 
 const APP = "https://app.rostiq.be";
 const TZ = "Europe/Brussels";
@@ -250,6 +251,12 @@ export async function runJob({ mode = "all", dry = false, verbose = false, clean
     for (const [base, snap] of [["signinLog", log], ["signinIp", ips]])
       for (const [k, v] of Object.entries(snap.val() || {})) if (!v || typeof v.at !== "number" || v.at < Date.now() - 864e5) old[`${base}/${k}`] = null;
     if (!DRY && Object.keys(old).length) await db.ref().update(old);
+  }
+
+  // Daily: every club's numbers per team (clubs.mjs).
+  if (MODE !== "requests") {
+    const clubWrites = await runClubs({ db, teams, today });
+    if (!DRY && Object.keys(clubWrites).length) await db.ref().update(clubWrites);
   }
 
   // Daily: an email with the app's new error reports (see errors.mjs); old reports are removed.

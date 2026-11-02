@@ -388,3 +388,33 @@ import { directLink } from "./signin.mjs";
   assert.equal(directLink("not a url"), "not a url");
 }
 console.log("direct sign-in link tests passed");
+
+// RostiQ Club: who counts as active, the price with its floor and ceiling, the count fixed from 1 October.
+import { clubCents, teamStats, clubStats } from "./clubs.mjs";
+{
+  assert.equal(clubCents(5), 9900, "minimum"); assert.equal(clubCents(84), 50400); assert.equal(clubCents(400), 150000, "maximum");
+  const team = {
+    info: { brand: "Heren 1" }, settings: { sport: "hockey" },
+    members: { u1: "p1", u2: "p2", u3: "p3" },
+    players: {
+      p1: { name: "A", avail: { "2026-09-07": "yes", "2026-11-09": "no" } },  // linked, answered: active
+      p2: { name: "B", avail: { "2026-05-01": "yes" } },                        // linked, only last season: not active
+      p3: { name: "C" },                                                        // linked, never answered
+      p4: { name: "D", avail: { "2026-11-09": "yes" } },                        // answered but no account: not active
+      p5: { avail: { "2026-11-09": "yes" } },                                   // no name: not a player
+    },
+    schedule: { "2026-11-09": { opp: "Rivalen" }, "2026-11-02": { opp: "Past" }, "2026-11-16": { opp: "Off", cancelled: true } },
+  };
+  const s = teamStats(team, "2026-07-01", "2027-06-30", "2026-11-03");
+  assert.deepEqual({ ...s, next: undefined }, { name: "Heren 1", sport: "hockey", players: 4, linked: 3, active: 1, never: 2, next: undefined });
+  assert.deepEqual(s.next, { date: "2026-11-09", opp: "Rivalen", answered: 2 }, "named players only");
+  const club = { name: "KHC", until: "2027-06-30", teams: { t1: true, gone: true } };
+  const before = clubStats(club, { t1: team }, "2026-09-20", 1);
+  assert.equal(before.active, 1); assert.equal(before.cents, 9900); assert.equal(before.count, undefined, "no count before 1 October");
+  const counted = clubStats(club, { t1: team }, "2026-10-01", 2);
+  assert.deepEqual(counted.count, { at: 2, until: "2027-06-30", active: 1, cents: 9900 });
+  const later = clubStats({ ...club, stats: counted }, { t1: { ...team, members: {} } }, "2026-12-01", 3);
+  assert.equal(later.active, 0); assert.equal(later.count.at, 2, "the count stays as it was on 1 October");
+  assert.equal(Object.keys(later.teams).join(), "t1", "a team that no longer exists is left out");
+}
+console.log("club tests passed");
