@@ -122,6 +122,26 @@ await check("sign-in email counters: nobody in the app reads or resets them", as
   await assertFails(anon.ref("signinLog/abc").set(null));
   await assertFails(member.ref("signinIp/abc").set({ n: 0, at: 0 }));
 });
+// ---- plans ----
+const DAY = 864e5;
+await check("plan: members read their team's plan", async () => {
+  await env.withSecurityRulesDisabled(c => c.database().ref("billing/t1").set({ plan: "pro", until: "2027-06-30", src: "pilot" }));
+  await assertSucceeds(member.ref("billing/t1").get());
+  await assertFails(stranger.ref("billing/t1").get());
+});
+await check("plan: only the RostiQ admin sets it", async () => {
+  await assertSucceeds(platform.ref("billing/t1").set({ plan: "pro", until: "2027-06-30", src: "pilot" }));
+  await assertFails(admin.ref("billing/t1/plan").set("club"));
+  await assertFails(admin.ref("billing/t1/until").set("2099-01-01"));
+  await assertFails(platform.ref("billing/t1/plan").set("gold"));
+});
+await check("plan: a team admin starts the 30-day trial once", async () => {
+  await assertFails(member.ref("billing/t1/trial").set(Date.now() + 30 * DAY));
+  await assertFails(admin.ref("billing/t1/trial").set(Date.now() + 365 * DAY));
+  await assertSucceeds(admin.ref("billing/t1/trial").set(Date.now() + 30 * DAY));
+  await assertFails(admin.ref("billing/t1/trial").set(Date.now() + 30 * DAY));
+  await assertFails(admin.ref("billing/t1/trial").remove());
+});
 await check("unknown top-level paths: refused", () => assertFails(member.ref("whatever/x").set(1)));
 
 await env.cleanup();

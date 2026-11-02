@@ -28,6 +28,7 @@ import { buildFeed } from "./ics.js";
 import { noticeMessage } from "./notice.js";
 import { roleOf, roleText, promoteReserve, subText } from "./lineup.js";
 import { matchRanking, profileHcp, resultText } from "./ranking.js";
+import { isPro } from "./plan.js";
 import { runJob } from "./job.mjs";
 import { sendReminder, sendProfileAsk, sendNewsMail } from "./remind.mjs";
 import { trainText } from "./training.js";
@@ -245,6 +246,7 @@ export const dropout = onValueWritten({ ref: "/teams/{tid}/players/{pid}/avail/{
   const [sched, match, brand, auto, players, admins, members, carpool] = await Promise.all([val(`${T}/schedule/${date}`), val(`${T}/matches/${date}`),
     val(`${T}/info/brand`), val(`${T}/settings/sel/auto`), val(`${T}/players`), val(`${T}/admins`), val(`${T}/members`), val(`${T}/carpool/${date}`)]);
   if (!sched || !sched.opp || sched.cancelled === true) return;
+  if (!isPro(await val(`billing/${tid}`))) return; // selections (and reserves stepping in) are Pro
   // In a transaction, so two players dropping out at the same moment can't both get the same reserve.
   let result = null;
   const tx = await db.ref(`${T}/selection/${date}`).transaction(sel => {

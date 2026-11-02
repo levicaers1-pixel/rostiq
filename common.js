@@ -100,9 +100,85 @@ function cachedTeamInfo() {
 // Line-ups (Selection): on unless the team switched them off (settings/selOff). Function declarations: also usable
 // before the rest of this file has run.
 function homeAwayOn() { const s = root.settings || {}; return typeof s.homeAway === "boolean" ? s.homeAway : (s.sport || "golf") !== "golf"; }
-function selOn() { return !(root.settings || {}).selOff; }
-// Golf ranking (Order of Merit): golf teams.
+function selOn() { return !(root.settings || {}).selOff && isPro(); } // line-ups are Pro
+// Golf ranking (Order of Merit): golf teams (the standings themselves are Pro; Free sees what it would look like).
 function rankOn() { return ((root.settings || {}).sport || "golf") === "golf"; }
+
+// ---- Plans: Free, Pro and Club (functions/plan.js has the same rules for the server; keep both the same) ----
+// billing/<team> = { plan: "pro" | "club", until: "YYYY-MM-DD", src, trial: <ms> }. window.PLANS_ON (config.js) switches
+// the plans on; until then every team counts as Pro. To try Free on one device first: localStorage plansPreview = "1".
+// Pro features are hidden on Free, never deleted.
+var billing; // undefined: not known yet (counts as Pro, so paying teams never see a flash of locks); null/{}: none
+const TRIAL_DAYS = 30, FREE_ADMINS = 2, FREE_FIELDS = 2;
+function plansOn() { return !!window.PLANS_ON || pref.get("plansPreview", "") === "1"; }
+function planOf(b, now = Date.now()) {
+  if (!b || typeof b !== "object") return "free";
+  const today = new Date(now).toLocaleDateString("sv-SE", { timeZone: "Europe/Brussels" });
+  if ((b.plan === "pro" || b.plan === "club") && typeof b.until === "string" && today <= b.until) return b.plan;
+  if (typeof b.trial === "number" && now < b.trial) return "pro";
+  return "free";
+}
+function isPro() { return DEMO || !AUTH_ON || NO_TEAM_PAGE || !plansOn() || billing === undefined || planOf(billing) !== "free"; }
+// A small "Pro" label next to a Pro feature, only while the team is on Free.
+const proTag = () => isPro() ? "" : `<span class="pro-tag">Pro</span>`;
+let billingFor = "";
+function loadBilling(force) {
+  if (!TEAM_ID || DEMO || !AUTH_ON || NO_TEAM_PAGE || !session.user || session.user.provisional || (billingFor === TEAM_ID && !force)) return;
+  if (billingFor !== TEAM_ID) try { const c = pref.get("billing:" + TEAM_ID, ""); billing = c ? JSON.parse(c) : undefined; } catch { billing = undefined; } // another team
+  billingFor = TEAM_ID;
+  getAbs(`billing/${TEAM_ID}`).then(b => {
+    if (netDown) { billingFor = ""; return; } // offline: keep what this device knew, try again later
+    const before = JSON.stringify(billing);
+    billing = b || null;
+    pref.set("billing:" + TEAM_ID, JSON.stringify(billing));
+    if (JSON.stringify(billing) !== before) syncSession();
+  });
+}
+// "This is Pro": what the feature does; a team admin can start the 30-day trial (once), others ask their admin.
+// alt: { label, run } for a free way to do it anyway (a reminder by WhatsApp, say).
+let proAlt = null;
+function proGate(feature, alt) {
+  if (isPro()) return true;
+  let d = document.getElementById("pro-dlg");
+  if (!d) {
+    document.body.insertAdjacentHTML("beforeend", `<dialog id="pro-dlg" class="pro-dlg" aria-labelledby="pro-title"><div id="pro-body"></div></dialog>`);
+    d = document.getElementById("pro-dlg");
+    d.addEventListener("click", ev => {
+      const b = ev.target.closest("[data-pro]");
+      if (!b) return;
+      if (b.dataset.pro === "trial") startTrial();
+      else { d.close(); if (b.dataset.pro === "alt" && proAlt) proAlt.run(); }
+    });
+  }
+  proAlt = alt || null;
+  const trialUsed = !!(billing && billing.trial);
+  document.getElementById("pro-body").innerHTML = `<span class="pro-tag big">Pro</span>
+    <h3 id="pro-title">${esc(t("pro.f." + feature))}</h3>
+    <p>${esc(t("pro.f." + feature + ".why"))}</p>
+    ${!session.admin ? `<p class="muted">${esc(t("pro.askAdmin", { admin: adminName() }))}</p>`
+      : !trialUsed ? `<p class="muted">${esc(t("pro.trialHelp"))}</p>`
+      : `<p class="muted">${t("pro.trialUsed")}</p>`}
+    <div class="pro-acts">${session.admin && !trialUsed ? `<button type="button" class="primary" data-pro="trial">${esc(t("pro.trial"))}</button>` : ""}
+      ${alt ? `<button type="button" data-pro="alt">${esc(alt.label)}</button>` : ""}
+      <button type="button" data-pro="close">${esc(t("pro.later"))}</button></div>`;
+  d.showModal();
+  return false;
+}
+// In place of a Pro screen (the ranking, the answer log): what it is, and a button to the "This is Pro" window.
+const proLock = feature => `<div class="pro-lock"><span class="pro-tag big">Pro</span><b>${esc(t("pro.f." + feature))}</b>
+  <p>${esc(t("pro.f." + feature + ".why"))}</p><button type="button" class="primary" data-pro-open="${feature}">${esc(t("pro.more"))}</button></div>`;
+document.addEventListener("click", ev => { const b = ev.target.closest("[data-pro-open]"); if (b) proGate(b.dataset.proOpen); });
+async function startTrial() {
+  const end = Date.now() + TRIAL_DAYS * 864e5;
+  const ok = await send("PUT", `billing/${TEAM_ID}/trial`, end, true, true);
+  if (ok !== true) return toast(t("pro.trialFailed"), "err");
+  billing = { ...(billing || {}), trial: end };
+  pref.set("billing:" + TEAM_ID, JSON.stringify(billing));
+  const d = document.getElementById("pro-dlg");
+  if (d && d.open) d.close();
+  toast(t("pro.trialOn", { date: new Date(end).toLocaleDateString(LOCALE, { day: "numeric", month: "long" }) }), "", 5000);
+  syncSession();
+}
 
 // Schedule: the team's list in the database (schedule/{date}); TEAM.events only as a fallback.
 let EVENTS = [];
@@ -940,6 +1016,7 @@ function stampLastSeen() {
 
 function syncSession() {
   if (root.info) mergeTeamInfo(root.info);
+  loadBilling();
   if (AUTH_ON) {
     const uid = session.user && session.user.uid;
     const pid = uid && root.members && root.members[uid];
@@ -1263,6 +1340,7 @@ function start() {
     navigator.serviceWorker.register("sw.js").catch(() => {});
   const cached = cachedTeamInfo();
   mergeTeamInfo(cached);
+  if (TEAM_ID) try { const b = pref.get("billing:" + TEAM_ID, ""); if (b) billing = JSON.parse(b); } catch {}
   brandUnknown = !!TEAM_ID && !NO_TEAM_PAGE && !cached;
   applyStaticTexts();
   applyBranding();
@@ -1487,7 +1565,7 @@ function gateMessage(text, err) { gateMsg = { text, err }; renderAuth(); }
 const appUrl = file => location.href.split(/[?#]/)[0].replace(/[^/]*$/, file);
 
 // ---- Feedback to RostiQ (account menu, footer): only the RostiQ admin reads it ----
-const APP_VERSION = "2026.11.75";
+const APP_VERSION = "2026.11.76";
 function deviceText() {
   const ua = navigator.userAgent;
   const os = /iPhone/.test(ua) ? "iPhone" : /iPad/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1) ? "iPad"

@@ -7,6 +7,7 @@
 //   - a CANCEL when a match disappears from the schedule or is called off: the event is removed.
 // Changes are only sent once they've been stable for one run (p === current), so a captain editing a match three times
 // in a row sends one email. inviteLog is only readable/writable by this job (Admin SDK); the rules give clients nothing.
+import { isPro } from "./plan.js";
 import crypto from "node:crypto";
 import nodemailer from "nodemailer";
 
@@ -96,7 +97,7 @@ ${kind === "can" ? "" : `<p><a href="${appUrl}" style="color:#2f2a8f;font-weight
 }
 
 /** One pass over all teams. Returns the database writes to make (merged into the job's own update). */
-export async function runInvites({ teams, subs, log, today, dry, verbose }) {
+export async function runInvites({ teams, subs, log, today, dry, verbose, billing = {}, now = Date.now() }) {
   const writes = {}, stats = { sent: 0, updated: 0, cancelled: 0, waiting: 0, failed: 0 };
   const user = (process.env.BREVO_SMTP_LOGIN || "").trim(), pass = (process.env.BREVO_SMTP_KEY || "").trim(); // pasted secrets often carry a newline
   const anySubs = Object.values(subs || {}).some(x => x && Object.keys(x).length);
@@ -121,6 +122,7 @@ export async function runInvites({ teams, subs, log, today, dry, verbose }) {
 
   for (const [tid, perTeam] of Object.entries(subs || {})) {
     const team = teams[tid];
+    if (team && !isPro(billing[tid], now)) continue; // calendar invitations by email are Pro; the log stays for later
     for (const [pid, sub] of Object.entries(perTeam || {})) {
       const player = team && (team.players || {})[pid];
       const mine = ((log || {})[tid] || {})[pid] || {};

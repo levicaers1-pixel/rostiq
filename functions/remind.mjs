@@ -13,6 +13,7 @@ import crypto from "node:crypto";
 import nodemailer from "nodemailer";
 import { getAuth } from "firebase-admin/auth";
 import { getMessaging } from "firebase-admin/messaging";
+import { isPro } from "./plan.js";
 
 export const REMIND_GAP = 12 * 3600e3; // at most one manual reminder per player and match in this time
 const APP = "https://app.rostiq.be";
@@ -93,6 +94,7 @@ export async function sendReminder(db, tid, n) {
     val(`${T}/info/brand`), val(`${T}/schedule/${date}`), val(`${T}/matches/${date}`), val(`${T}/settings/quickLinks`),
     val(`${T}/members`), val(`${T}/players`), val(`${T}/reminded/${date}`), val(`quickIndex/${tid}`), val(`inviteSubs/${tid}`)]);
   if (!sched || !sched.opp || sched.cancelled === true || date < today) return console.log("reminder: match not open, nothing sent");
+  const pro = isPro(await val(`billing/${tid}`)); // the email fallback is Pro; notifications are free
   const now = Date.now(), before = (reminded && reminded.p) || {}, mems = members || {}, pl = players || {};
   // Sent only by a team admin (the rules check that); a RostiQ admin outside the team has no player row: no name.
   const who = String(((pl[mems[n.by]] || {}).name || "").trim().split(/\s+/)[0] || "").slice(0, 30);
@@ -122,7 +124,7 @@ export async function sendReminder(db, tid, n) {
         if (/registration-token-not-registered|invalid-registration-token/.test(code)) writes[`pushTokens/${uid}/${dev}`] = null;
       }
     }
-    if (v === "none") { // no working notifications: email to the account's own (verified) address
+    if (v === "none" && pro) { // no working notifications: email to the account's own (verified) address
       const user = await getAuth().getUser(uid).catch(() => null);
       if (user && user.email && user.emailVerified) {
         mail = mail === undefined ? mailer() : mail;
@@ -200,6 +202,7 @@ export async function sendProfileAsk(db, tid, n) {
   const T = `teams/${tid}`;
   const [brand, settings, members, players, asked, subs] = await Promise.all([val(`${T}/info/brand`), val(`${T}/settings`),
     val(`${T}/members`), val(`${T}/players`), val(`${T}/profileAsked`), val(`inviteSubs/${tid}`)]);
+  const pro = isPro(await val(`billing/${tid}`)); // email is Pro; on Free only the notification
   const now = Date.now(), mems = members || {}, pl = players || {}, before = asked || {};
   const who = String(((pl[mems[n.by]] || {}).name || "").trim().split(/\s+/)[0] || "").slice(0, 30);
   const writes = {}, stats = { mail: 0, push: 0, none: 0, skipped: 0 };
@@ -214,7 +217,7 @@ export async function sendProfileAsk(db, tid, n) {
     if (!missing.length) continue; // filled in meanwhile
     const msg = profileEmail({ tid, brand, who, missing }, lang);
     let v = "none";
-    const user = await getAuth().getUser(uid).catch(() => null);
+    const user = pro ? await getAuth().getUser(uid).catch(() => null) : null;
     if (user && user.email && user.emailVerified) {
       mail = mail === undefined ? mailer() : mail;
       if (mail) try {
@@ -267,7 +270,8 @@ export function newsEmail({ tid, brand, item }, lang) {
 /** Emails the announcement to every linked player but the sender; returns how many emails went out. */
 export async function sendNewsMail(db, tid, n, item, brand) {
   const val = path => db.ref(path).get().then(s => s.val());
-  const [members, subs] = await Promise.all([val(`teams/${tid}/members`), val(`inviteSubs/${tid}`)]);
+  const [members, subs, billing] = await Promise.all([val(`teams/${tid}/members`), val(`inviteSubs/${tid}`), val(`billing/${tid}`)]);
+  if (!isPro(billing)) { console.log("announcement email: not on Pro, nothing sent"); return 0; }
   const mail = mailer();
   if (!mail) { console.log("announcement email: Brevo not set up"); return 0; }
   let sent = 0;

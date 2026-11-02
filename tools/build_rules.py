@@ -606,6 +606,21 @@ final["rules"]["teamCreators"] = {"$tid": {
     "n": s(60), "e": s(100), "c": s(30, 1),
     "$other": NO,
 }}
+# ---- Plans: billing/<team> = { plan: "pro" | "club", until: date, src, note, trial } (functions/plan.js) ----
+# Members read their team's plan. Only the RostiQ admin (and later the payment webhook, which bypasses the rules) sets
+# it. A team admin may start the 30-day trial once: trial = its end, about 30 days from now.
+B_MEMBER = "root.child('teams').child($tid).child('members').child(auth.uid).exists()"
+final["rules"]["billing"] = {".read": PA, "$tid": {
+    ".read": f"{PA} || (auth != null && ({B_MEMBER} || {TA_OF('$tid')}))",
+    ".write": PA,
+    "plan": {".validate": "newData.val() === 'pro' || newData.val() === 'club'"},
+    "until": DATE,
+    "src": {".validate": "newData.val() === 'pilot' || newData.val() === 'paid' || newData.val() === 'gift'"},
+    "note": s(200),
+    "trial": {".write": f"!data.exists() && {VERIFIED} && root.child('teams').child($tid).exists() && {TA_OF('$tid')}",
+              ".validate": "newData.isNumber() && newData.val() > now + 29 * 86400000 && newData.val() < now + 31 * 86400000"},
+    "$other": NO,
+}}
 final["rules"]["$other"] = final["rules"].pop("$other")  # keep the catch-all last
 
 # ---- Transition: also allow the old single-team structure at the root (Pampas, pre-migration) ----

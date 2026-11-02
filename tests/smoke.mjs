@@ -204,6 +204,61 @@ async function reopen(name, change, expectTeam) {
 await reopen("same-account", () => {}, true);
 await reopen("signed-out", () => localStorage.removeItem("fakeUser"), false);
 
+// ---- plans: with the plans previewed on this device, a team without Pro sees Free; the trial and a pilot plan unlock it ----
+async function plans(name, billing, url, test) {
+  if (only && !("plans-" + name).includes(only)) return;
+  await put();
+  if (billing) await fetch(`${BASE}/billing/golf.json`, { method: "PUT", body: JSON.stringify(billing) });
+  const context = await browser.newContext({ viewport: { width: 375, height: 812 }, locale: "nl-BE", serviceWorkers: "block" });
+  await context.addInitScript(user => { try { localStorage.setItem("fakeUser", JSON.stringify(user)); localStorage.setItem("lang", "nl");
+    localStorage.setItem("pushLater", String(Date.now())); localStorage.setItem("plansPreview", "1"); } catch {} }, USER);
+  const page = await context.newPage(), errors = [];
+  page.on("pageerror", e => errors.push("script error: " + e.message));
+  try {
+    await page.goto(BASE + url, { waitUntil: "domcontentloaded" });
+    await page.waitForFunction(() => /live/.test((document.getElementById("status") || {}).className), null, { timeout: 8000 });
+    await page.waitForTimeout(900);
+    errors.push(...await test(page));
+    await page.waitForTimeout(500);
+    await page.screenshot({ path: path.join(OUT, `plans-${name}.png`) });
+  } catch (e) { errors.push("could not test: " + e.message.split("\n")[0]); }
+  checked++;
+  if (errors.length) failures.push({ where: "plans " + name, errors });
+  console.log(`${errors.length ? "✗" : "✓"} plans        ${name}${errors.length ? "\n    " + errors.join("\n    ") : ""}`);
+  await context.close();
+}
+const shown = sel => `${vis} vis(document.querySelector(${JSON.stringify(sel)}))`;
+await plans("free-ranking-trial", null, "/?t=golf#ranking", async page => {
+  const r = [];
+  if (!await page.evaluate(shown("#view-rank .pro-lock"))) r.push("Free: the ranking isn't locked");
+  await page.screenshot({ path: path.join(OUT, "plans-free-ranking.png") });
+  await page.click("#view-rank [data-pro-open]");
+  await page.waitForTimeout(500);
+  await page.screenshot({ path: path.join(OUT, "plans-free-prowindow.png") });
+  if (!await page.evaluate(shown('#pro-dlg [data-pro="trial"]'))) return [...r, "no trial button in the Pro window"];
+  await page.click('#pro-dlg [data-pro="trial"]');
+  await page.waitForTimeout(800);
+  const b = await fetch(`${BASE}/billing/golf.json`).then(x => x.json());
+  if (!b || !(b.trial > Date.now() + 29 * 864e5)) r.push("the trial wasn't saved: " + JSON.stringify(b));
+  if (await page.evaluate(shown("#view-rank .pro-lock"))) r.push("the ranking is still locked during the trial");
+  return r;
+});
+await plans("free-admin", null, "/admin.html?t=golf#sec-backup", async page => {
+  const r = [];
+  if (!await page.evaluate(`!!document.querySelector("#f-settings .sel-pro .pro-tag")`)) r.push("no Pro label at 'make selections'");
+  await page.click("#backup");
+  if (!await page.evaluate(shown("#pro-dlg"))) r.push("backup on Free didn't open the Pro window");
+  return r;
+});
+await plans("pilot", { plan: "pro", until: "2099-12-31", src: "pilot" }, "/admin.html?t=golf#sec-plan", async page => {
+  const r = [], text = await page.evaluate(`document.getElementById("plan-body").innerText`);
+  if (!/Pilootploeg/.test(text)) r.push("the subscription doesn't say pilot: " + text.slice(0, 80));
+  await page.goto(BASE + "/?t=golf#ranking", { waitUntil: "domcontentloaded" });
+  await page.waitForTimeout(1500);
+  if (await page.evaluate(shown("#view-rank .pro-lock"))) r.push("a pilot team's ranking is locked");
+  return r;
+});
+
 await browser.close();
 server.kill();
 console.log(`\n${checked - failures.length}/${checked} page checks passed. Screenshots: tests/out/`);

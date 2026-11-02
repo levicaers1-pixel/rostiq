@@ -294,7 +294,7 @@
             <span class="ff-err" hidden></span><span class="ff-help" data-i18n="setup.minSub"></span></label>
         </div>
         <label class="ff check push-set"><input type="checkbox" name="homeAway"> <span><b data-i18n="set.homeAway">Home and away matches</b><br><small class="ff-help" data-i18n="set.homeAwayHelp"></small></span></label>
-        <label class="ff check push-set"><input type="checkbox" name="selOn"> <span><b data-i18n="set.selOn">Make selections</b><br><small class="ff-help" data-i18n="set.selOnHelp"></small></span></label>
+        <label class="ff check push-set"><input type="checkbox" name="selOn"> <span><b data-i18n="set.selOn">Make selections</b><span class="sel-pro"></span><br><small class="ff-help" data-i18n="set.selOnHelp"></small></span></label>
         <label class="ff rank-only"><span class="ff-label" data-i18n="set.tie">Ties in the ranking</span>
           <select name="tie"><option value="hcp" data-i18n="set.tieHcp">Lowest handicap wins</option><option value="share" data-i18n="set.tieShare">Share the points</option></select>
           <span class="ff-help" data-i18n="set.tieHelp"></span></label>
@@ -343,7 +343,7 @@
           <p class="field-label" data-i18n="brand.logo">Logo</p>
           <div class="logo-box">
             <div class="logo-preview" id="logo-preview"></div>
-            <label class="file-btn"><span data-i18n="brand.upload">Choose image…</span><input type="file" id="logo-file" accept="image/png,image/jpeg,image/webp,image/svg+xml"></label>
+            <label class="file-btn"><span data-i18n="brand.upload">Choose image…</span><span class="brand-pro"></span><input type="file" id="logo-file" accept="image/png,image/jpeg,image/webp,image/svg+xml"></label>
             <button type="button" class="link err" id="logo-remove" data-i18n="brand.logoRemove">Remove logo</button>
           </div>
           <p class="muted" data-i18n="brand.logoHelp"></p>
@@ -402,6 +402,12 @@
         <div class="form-actions"><button type="submit" class="primary" data-i18n="admin.addMatch">+ Add match</button>
           <span class="ff-help" data-i18n="admin.addMatchHelp"></span></div>
       </form>
+    </section>
+
+    <!-- Subscription (plans) -->
+    <section class="panel plan-card" id="sec-plan">
+      <h2 data-i18n="plan.title">Subscription</h2>
+      <div id="plan-body"></div>
     </section>
 
     <!-- Backup -->
@@ -489,6 +495,7 @@ function render() {
   loadLastSeen();
   cleanHistory();
   renderTiles();
+  renderPlan();
   renderRequests();
   renderPlayers();
   renderSettings();
@@ -611,7 +618,7 @@ function seenHtml(uid) {
 }
 
 // ---- Hub: how the team is doing, quick actions, and the sections as a grouped list ----
-const HUB_SECTIONS = ["requests-panel", "sec-players", "sec-fields", "sec-matches", "sec-train", "sec-settings", "sec-brand", "sec-backup", "sec-season"];
+const HUB_SECTIONS = ["requests-panel", "sec-players", "sec-fields", "sec-matches", "sec-train", "sec-settings", "sec-brand", "sec-plan", "sec-backup", "sec-season"];
 function applyAdminView() {
   const id = location.hash.slice(1), box = document.getElementById("admin");
   const open = HUB_SECTIONS.includes(id) ? id : "";
@@ -667,11 +674,35 @@ function renderHub() {
     <div class="hub-label">${t("hub.club")}</div>
     <div class="hub-group">
       ${cell("sec-brand", "image", t("brand.title"), t("hub.brandSub"))}
+      ${plansOn() ? cell("sec-plan", "trophy", t("plan.title"), esc(planLine())) : ""}
       ${cell("sec-backup", "download", t("admin.backup"), "")}
       ${cell("sec-season", "flag", t("admin.newSeason"), "", "", "danger")}
     </div>`;
   applyAdminView();
 }
+// ---- Subscription: the team's plan (billing/<team>, see common.js) ----
+const dayText = d => new Date(typeof d === "number" ? d : d + "T12:00:00").toLocaleDateString(LOCALE, { day: "numeric", month: "long", year: "numeric" });
+function planLine() {
+  const plan = planOf(billing), b = billing || {};
+  if (plan !== "free" && b.plan === plan) return t(b.src === "pilot" ? "plan.pilotUntil" : "plan.until", { plan: t("plan." + plan), date: dayText(b.until) });
+  if (plan === "pro") return t("plan.trialUntil", { date: dayText(b.trial) });
+  return t("plan.freeLine");
+}
+function renderPlan() {
+  const box = document.getElementById("plan-body");
+  if (!box) return;
+  const plan = planOf(billing), trialUsed = !!(billing && billing.trial);
+  box.innerHTML = `<div class="plan-name">${esc(t("plan." + plan))}</div>
+    <div class="plan-meta">${esc(planLine())}</div>
+    ${plan === "free" || (billing && !billing.plan) ? `<ul class="plan-feats">${["sel", "rank", "mail", "remind", "brand", "export"].map(f => `<li>${esc(t("pro.f." + f))}</li>`).join("")}</ul>` : ""}
+    <div class="pro-acts">
+      ${plan === "free" && !trialUsed ? `<button type="button" class="primary" data-pro="trial-here">${esc(t("pro.trial"))}</button>` : ""}
+      ${plan !== "club" ? `<a class="btn" href="mailto:levi@caersultancy.com?subject=${encodeURIComponent("RostiQ Pro · " + (TEAM.brand || TEAM_ID))}">${esc(t("plan.ask"))}</a>` : ""}
+    </div>
+    <p class="muted">${esc(t("plan.keep"))}</p>`;
+}
+document.getElementById("plan-body").addEventListener("click", ev => { if (ev.target.closest('[data-pro="trial-here"]')) startTrial(); });
+
 // (the old summary tiles, still filled for the request badge)
 function renderTiles() {
   renderHub();
@@ -716,7 +747,7 @@ function renderFields() {
   document.getElementById("custom-rows").innerHTML = d.custom.map((l, i) => `<div class="custom-row">
       <input data-ci="${i}" maxlength="30" value="${esc(l)}" placeholder="${t("fields.labelPh")}">
       <button type="button" class="link err" data-remove-field="${i}">${t("fields.remove")}</button></div>`).join("") +
-    (d.custom.length < 4 ? `<button type="button" data-add-field>${ic("plus")} ${t("fields.add")}</button>` : "");
+    (d.custom.length < 4 ? `<button type="button" data-add-field>${ic("plus")} ${t("fields.add")}${d.custom.length >= FREE_FIELDS ? proTag() : ""}</button>` : "");
   if (focus !== undefined) { const el = document.querySelector(`[data-ci="${focus}"]`); if (el) { el.focus(); el.setSelectionRange(el.value.length, el.value.length); } }
   // The usual minimum for the chosen sport, when the team's minimum differs.
   const usual = SPORTS[d.sport].min, curMin = (root.settings || {}).minPlayers || TEAM.minPlayers || 3;
@@ -739,6 +770,7 @@ ff.addEventListener("input", ev => {
 });
 ff.addEventListener("click", ev => {
   const d = fieldsDraft;
+  if ((ev.target.closest("[data-add-field]") || ev.target.closest("[data-suggest]")) && d.custom.length >= FREE_FIELDS && !proGate("fields")) return;
   if (ev.target.closest("[data-add-field]")) { d.custom.push(""); renderFields(); document.querySelector(`[data-ci="${d.custom.length - 1}"]`).focus(); }
   const rm = ev.target.closest("[data-remove-field]");
   if (rm) { d.custom.splice(Number(rm.dataset.removeField), 1); renderFields(); }
@@ -959,6 +991,7 @@ function renderPlayers() {
 
 // Settings: one form; the save button wakes up once something changed.
 const sf = document.getElementById("f-settings");
+sf.selOn.addEventListener("change", () => { if (sf.selOn.checked && !proGate("sel")) sf.selOn.checked = false; });
 let settingsDirty = false;
 function renderSettings() {
   const s = root.settings || {};
@@ -971,6 +1004,7 @@ function renderSettings() {
     sf.quickLinks.checked = s.quickLinks !== false;
     sf.homeAway.checked = homeAwayOn();
     sf.selOn.checked = selOn();
+    sf.querySelector(".sel-pro").innerHTML = proTag();
     sf.tie.value = (root.settings || {}).tie === "share" ? "share" : "hcp";
   }
   sf.querySelector(".rank-only").hidden = !rankOn();
@@ -1019,6 +1053,7 @@ document.getElementById("players").addEventListener("click", ev => {
   const adm = ev.target.closest("[data-admin]");
   if (adm) {
     const p = root.players[adm.dataset.admin], uid = p.uid, isAdm = root.admins && root.admins[uid];
+    if (!isAdm && Object.values(root.admins || {}).filter(v => v === true).length >= FREE_ADMINS && !proGate("admins")) return;
     if (!isAdm && !confirm(t("admin.makeAdminConfirm", { name: p.name || "?" }))) return;
     return write(`admins/${uid}`, isAdm ? null : true);
   }
@@ -1061,7 +1096,7 @@ sf.addEventListener("submit", async ev => {
   const ok = await update({ "settings/seasonName": season, "settings/minPlayers": n, "settings/waGroup": link || null, "settings/autoRemind": sf.autoRemind.checked ? null : false,
     "settings/wx": sf.wx.checked === WX_OUTDOOR.includes((root.settings || {}).sport || "golf") ? null : sf.wx.checked, "settings/quickLinks": sf.quickLinks.checked ? null : false,
     "settings/homeAway": sf.homeAway.checked === (((root.settings || {}).sport || "golf") !== "golf") ? null : sf.homeAway.checked,
-    "settings/selOff": sf.selOn.checked ? null : true, "settings/tie": sf.tie.value === "share" ? "share" : null });
+    ...(isPro() ? { "settings/selOff": sf.selOn.checked ? null : true } : {}), "settings/tie": sf.tie.value === "share" ? "share" : null });
   const msg = document.getElementById("settings-msg");
   if (!ok) { msg.textContent = t("status.saveFailed"); msg.className = "msg err"; return; }
   settingsDirty = false;
@@ -1091,6 +1126,7 @@ function renderBrand() {
   document.getElementById("logo-preview").innerHTML = B.logo
     ? `<img src="${esc(B.logo)}" alt="">` : `<span>${esc(B.brand || "")}</span>`;
   document.getElementById("logo-remove").hidden = !B.logo;
+  document.querySelector(".brand-pro").innerHTML = proTag();
   document.getElementById("brand-dirty").hidden = !brandPreview;
   const main = bf.main.value.toLowerCase(), hi = bf.highlight.value.toLowerCase();
   document.getElementById("swatches").innerHTML = BRAND_PRESETS.map(([key, a, b]) => {
@@ -1125,6 +1161,8 @@ document.getElementById("brand-cancel").onclick = () => {
   applyBranding(); renderBrand();
 };
 
+// Own logo and own colours are Pro; the colour presets are free.
+for (const el of [document.getElementById("logo-file"), bf.main, bf.highlight]) el.addEventListener("click", ev => { if (!proGate("brand")) ev.preventDefault(); });
 // Logo: scaled down in the browser (max 720x180) and stored with the team, so no file hosting is needed.
 document.getElementById("logo-file").addEventListener("change", async ev => {
   const file = ev.target.files[0], err = document.getElementById("logo-err");
@@ -1202,7 +1240,7 @@ function downloadBackup() {
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
-document.getElementById("backup").onclick = downloadBackup;
+document.getElementById("backup").onclick = () => { if (proGate("export")) downloadBackup(); };
 
 document.getElementById("new-season").onclick = () => {
   const word = t("admin.newSeasonWord");

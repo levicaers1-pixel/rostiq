@@ -794,7 +794,7 @@
     <textarea name="text" maxlength="500" rows="4" data-i18n-placeholder="news.ph"></textarea>
     <label class="news-until"><span data-i18n="news.until">Show until</span> <input type="date" name="until"></label>
     <label class="news-push"><input type="checkbox" name="push" checked> <span data-i18n="news.push">Send everyone a notification</span></label>
-    <label class="news-push"><input type="checkbox" name="mail"> <span data-i18n="news.mail">Also send it by email</span></label>
+    <label class="news-push"><input type="checkbox" name="mail"> <span data-i18n="news.mail">Also send it by email</span><span class="news-mail-pro"></span></label>
     <p class="muted news-mail-help" data-i18n="news.mailHelp"></p>
     <div class="row"><button value="cancel" data-i18n="news.cancel">Cancel</button><button type="button" class="primary" id="news-post" data-i18n="news.post">Post</button></div>
   </form>
@@ -1283,6 +1283,7 @@ function renderRanking(players) {
   const box = document.getElementById("view-rank");
   if (!box || box.hidden || !dataLoaded) return;
   if (!rankOn()) { box.innerHTML = `<div class="ts-done">${esc(t("rk.off"))}</div>`; return; }
+  if (!isPro()) { box.innerHTML = proLock("rank"); return; } // scores entered before stay, and come back with Pro
   const dates = Object.keys(liveScores()).sort();
   const list = seasonRanking(), total = EVENTS.filter(e => !e.cancelled).length;
   const before = dates.length > 1 ? Object.fromEntries(seasonRanking(dates[dates.length - 2]).map(x => [x.pid, x.place])) : {};
@@ -1422,7 +1423,7 @@ function renderMatchPage(players) {
   const wx = weatherFor(e), alerts = wx && wxOn() ? wxAlerts(wx) : [];
   const tabs = [["o", t("mp.tab.o")], ["l", t(selFormat().f === "squad" ? "mp.tab.lSquad" : "mp.tab.lOrder")], ["c", t("mp.tab.c")], ["h", t("mp.tab.h")]].filter(([k]) => k !== "l" || selOn());
   if (mpTab === "l" && !selOn()) mpTab = "o";
-  const resultTab = rankOn() && (e.date <= TODAY || !!(root.scores || {})[e.date]);
+  const resultTab = rankOn() && isPro() && (e.date <= TODAY || !!(root.scores || {})[e.date]);
   if (resultTab) tabs.splice(tabs.findIndex(([k]) => k === "c"), 0, ["r", t("mp.tab.r")]);
   if (mpTab === "r" && !resultTab) mpTab = "o";
   const group = (key, list) => list.length ? `<div class="mp-group"><div class="home-label"><span>${esc(t("mp.g." + key, { n: list.length }))}</span></div>
@@ -1478,6 +1479,7 @@ function renderMatchPage(players) {
       `<div class="mp-acts"><a class="btn primary" href="${carpoolUrl(e.date)}">${ic("car")} ${esc(t("mp.toCarpool"))}</a></div>`;
   } else {
     if (!session.admin) pane = `<div class="ts-done">${ic("clock")} ${esc(t("mp.logAdmin"))}</div>`;
+    else if (!isPro()) pane = proLock("log");
     else {
       if (mpHist.date !== e.date) { mpHist = { date: e.date, html: "" }; historyRows(e).then(html => { if (mpHist.date === e.date) { mpHist.html = html; renderMatchPage(sortedPlayers()); } }); }
       const sel = selOf(e), chg = sel && sel.chg;
@@ -1609,7 +1611,7 @@ function applyDeepDo() {
   const u = new URL(location.href); u.searchParams.delete("do"); history.replaceState(history.state, "", u);
   setTimeout(() => {
     if (what === "news") { const b = document.getElementById("news-new"); if (b) b.click(); }
-    else if (what === "remind" && e) openRemind(e);
+    else if (what === "remind" && e && proGate("remind", { label: t("pro.viaWhatsApp"), run: () => whatsappReminder(e) })) openRemind(e);
     else if (what === "sel" && e && selOn()) openSelection(e);
   }, 0);
 }
@@ -1864,7 +1866,8 @@ document.addEventListener("click", ev => {
   if (!b) return;
   const e = EVENTS.find(x => x.date === b.dataset.date);
   if (!e) return;
-  if (AUTH_ON && session.admin) openRemind(e); else whatsappReminder(e);
+  if (!(AUTH_ON && session.admin)) return whatsappReminder(e);
+  if (proGate("remind", { label: t("pro.viaWhatsApp"), run: () => whatsappReminder(e) })) openRemind(e);
 });
 
 const remDlg = document.getElementById("rem");
@@ -2056,7 +2059,7 @@ document.getElementById("news").addEventListener("click", async ev => {
   const mailB = ev.target.closest("[data-news-mail]");
   if (mailB && session.admin && session.user) {
     const id = mailB.dataset.newsMail, n = (root.news || {})[id];
-    if (!n) return;
+    if (!n || !proGate("mail")) return;
     if (!confirm(n.mailed != null ? t("news.mailAgainAsk", { n: n.mailed, when: agoText(n.mailedAt || n.at) }) : t("news.mailAsk"))) return;
     mailB.disabled = true;
     const ok = await send("PUT", `notices/${TEAM_ID}/${historyId()}`, { k: "n", d: TODAY, i: id, m: true, np: true, by: session.user.uid, at: { ".sv": "timestamp" } }, true, true, true);
@@ -2078,9 +2081,11 @@ document.getElementById("news").addEventListener("click", async ev => {
     f.until.value = isoDay(Date.now() + NEWS_DAYS * 864e5);
     f.push.checked = true;
     f.mail.checked = false;
+    f.querySelector(".news-mail-pro").innerHTML = proTag();
     newsDlg.showModal();
   }
 });
+document.getElementById("news-form").mail.addEventListener("change", ev => { if (ev.target.checked && !proGate("mail")) ev.target.checked = false; });
 document.getElementById("news-post").onclick = async () => {
   const f = document.getElementById("news-form"), text = f.text.value.trim().slice(0, 500);
   if (!text) return f.text.focus();
@@ -2667,6 +2672,7 @@ form.addEventListener("submit", () => {
 
 
 document.getElementById("export").onclick = () => {
+  if (!proGate("export")) return;
   const rows = [[t("csv.player"), ...EVENTS.map(e => `${e.date} ${e.opp}`)]];
   sortedPlayers().forEach((p, i) =>
     rows.push([displayName(p, i), ...EVENTS.map(e => LABEL[p.avail[e.date] || ""])]));
@@ -2789,7 +2795,7 @@ function renderCalendar() {
     <div class="cal-links"><button type="button" data-cal="download">${t("cal.download")}</button><button type="button" data-cal="reset">${t("cal.reset")}</button></div>
     ${window.INVITES_ON && session.user.email ? `<div class="cal-invite"><h4>${t("inv.title")}</h4>
       <label class="cal-check"><input type="checkbox" data-cal="invite"${cal.invite ? " checked" : ""}>
-        <span>${t("inv.toggle", { email: esc(session.user.email) })}<small>${t("inv.help")}</small></span></label></div>` : ""}`;
+        <span>${t("inv.toggle", { email: esc(session.user.email) })}${proTag()}<small>${t("inv.help")}</small></span></label></div>` : ""}`;
 }
 document.getElementById("cal-body").addEventListener("click", async ev => {
   const b = ev.target.closest("[data-cal]");
@@ -2808,6 +2814,7 @@ document.getElementById("cal-body").addEventListener("click", async ev => {
 document.getElementById("cal-body").addEventListener("change", async ev => {
   if (ev.target.matches('[data-cal="invite"]')) {
     const on = ev.target.checked;
+    if (on && !proGate("invite")) { ev.target.checked = false; return; }
     const ok = await send(on ? "PUT" : "DELETE", `inviteSubs/${TEAM_ID}/${session.pid}`,
       on ? { e: session.user.email, l: LANG, at: { ".sv": "timestamp" } } : undefined, true, true);
     if (ok === true) { cal.invite = on; calRemember(); toast(t(on ? "inv.on" : "inv.off"), "", 4000); }

@@ -53,7 +53,7 @@ export async function runJob({ mode = "all", dry = false, verbose = false, clean
   }
   const whenText = (date, lang) => new Date(date + "T12:00:00Z").toLocaleDateString(LOCALES[lang], { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" });
 
-  const [teamsSnap, tokensSnap, logSnap, quickSnap, subsSnap, invLogSnap, reqSnap] = await Promise.all(["teams", "pushTokens", "pushLog", "quickIndex", "inviteSubs", "inviteLog", "requests"].map(p => db.ref(p).once("value")));
+  const [teamsSnap, tokensSnap, logSnap, quickSnap, subsSnap, invLogSnap, reqSnap, billSnap] = await Promise.all(["teams", "pushTokens", "pushLog", "quickIndex", "inviteSubs", "inviteLog", "requests", "billing"].map(p => db.ref(p).once("value")));
   const teams = teamsSnap.val() || {}, tokens = tokensSnap.val() || {}, log = logSnap.val() || {}, quickIndex = quickSnap.val() || {};
 
   // MODE=requests (every 10 minutes): only new access requests. Otherwise (daily run, manual run): everything.
@@ -123,7 +123,7 @@ export async function runJob({ mode = "all", dry = false, verbose = false, clean
   }
 
   // ---- Calendar invitations by email (every run): new / changed / cancelled matches, see invites.mjs ----
-  const inv = await runInvites({ teams, subs: subsSnap.val() || {}, log: invLogSnap.val() || {}, today, dry: DRY, verbose: !!verbose });
+  const inv = await runInvites({ teams, subs: subsSnap.val() || {}, log: invLogSnap.val() || {}, billing: billSnap.val() || {}, today, dry: DRY, verbose: !!verbose });
   Object.assign(logWrites, inv.writes);
 
   // ---- Holidays (players/<pid>/away): matches in such a period without an answer get "no" (logged as "away") ----

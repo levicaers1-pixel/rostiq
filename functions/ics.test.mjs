@@ -303,3 +303,20 @@ import { errorEmail as errMail2, groupErrors as groupErr2 } from "./errors.mjs";
   assert(!errMail2(groupErr2({}, 0), "x", groupMailEvents({ a: { ev: "error", to: "x", reason: "<b>hi</b>", at: 5 } }, 0)).html.includes("<b>hi</b>"), "escaped");
 }
 console.log("mail problem tests passed");
+
+// Plans: which plan a billing record gives, and that everything counts as Pro while the plans are off.
+import { planOf, isPro } from "./plan.js";
+{
+  const at = d => new Date(d + "T10:00:00Z").getTime();
+  assert.equal(planOf(null, at("2026-11-02")), "free");
+  assert.equal(planOf({ plan: "pro", until: "2027-06-30", src: "pilot" }, at("2027-06-30")), "pro", "the last day still counts");
+  assert.equal(planOf({ plan: "pro", until: "2027-06-30" }, at("2027-07-01")), "free", "ended");
+  assert.equal(planOf({ plan: "club", until: "2027-06-30" }, at("2027-01-01")), "club");
+  assert.equal(planOf({ plan: "gold", until: "2099-01-01" }, at("2027-01-01")), "free", "unknown plan");
+  assert.equal(planOf({ trial: at("2026-12-01") }, at("2026-11-20")), "pro", "trial running");
+  assert.equal(planOf({ trial: at("2026-12-01") }, at("2026-12-02")), "free", "trial over");
+  assert.equal(isPro(null, at("2026-11-02"), false), true, "plans off: everyone Pro");
+  assert.equal(isPro(null, at("2026-11-02"), true), false);
+  assert.equal(isPro({ trial: at("2026-12-01") }, at("2026-11-02"), true), true);
+}
+console.log("plan tests passed");

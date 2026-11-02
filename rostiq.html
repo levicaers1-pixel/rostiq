@@ -96,6 +96,14 @@
       <ul class="err-list" id="err-list"><li class="muted">…</li></ul>
     </section>
 
+    <section class="panel">
+      <h2 data-i18n="rostiq.plans">Plans</h2>
+      <p class="muted" id="plans-state"></p>
+      <p><button type="button" class="primary" id="plans-pilot">Mark pilot teams</button></p>
+      <label class="check"><input type="checkbox" id="plans-preview"> <span data-i18n="rostiq.plansPreview">Preview the plans on this device</span></label>
+      <p class="muted" data-i18n="rostiq.plansPreviewHelp"></p>
+    </section>
+
     <section class="panel signup">
       <h2 data-i18n="rostiq.signup">Self-service</h2>
       <p class="muted" data-i18n-html="rostiq.signupHelp"></p>
@@ -152,6 +160,7 @@ async function loadTeams() {
   signup = { open: (await getAbs("signup/open")) === true, codes: (await getAbs("signupCodes")) || {} };
   feedback = (await getAbs("feedback")) || {};
   errors = (await getAbs("errors")) || {};
+  bills = (await getAbs("billing")) || {};
   teams.sort((a, b) => (a.info.brand || a.id).localeCompare(b.info.brand || b.id));
   render();
 }
@@ -169,7 +178,8 @@ function render() {
       <span class="swatch" style="background:${esc(color)}"></span>
       <div class="grow"><div class="name">${esc(x.info.brand || x.id)}</div>
         <div class="muted">${esc(x.info.season || "")} · ${esc(x.id)} · ${t("rostiq.members", { n: x.members })}
-          ${!x.members ? `<span class="pill gray">${t("rostiq.emptyTeam")}</span>` : !x.admins ? `<span class="pill maybe">${t("rostiq.noAdmin")}</span>` : ""}</div>
+          ${!x.members ? `<span class="pill gray">${t("rostiq.emptyTeam")}</span>` : !x.admins ? `<span class="pill maybe">${t("rostiq.noAdmin")}</span>` : ""}
+          <span class="pill ${planOf(bills[x.id]) === "free" ? "gray" : "yes"}">${esc(t("plan." + planOf(bills[x.id])))}${bills[x.id] && bills[x.id].src === "pilot" ? " · pilot" : ""}</span></div>
         ${x.meta ? `<div class="by">${t("rostiq.startedBy", { who: esc(x.meta.creatorName || "?") + (x.meta.creatorEmail ? ` (${esc(x.meta.creatorEmail)})` : ""),
           when: esc(new Date(x.meta.createdAt || 0).toLocaleDateString(LOCALE)) })}${x.meta.code ? ` · ${esc(x.meta.code)}` : ""}</div>` : ""}</div>
       <button class="link" data-copy="${esc(link)}">${t("rostiq.copyInvite")}</button>
@@ -179,6 +189,12 @@ function render() {
   }).join("") : `<li class="list-empty">${emptyState("users", t("rostiq.none"), "", "", true)}</li>`;
   renderFeedback();
   renderErrors();
+  // Plans
+  const unmarked = teams.filter(x => !bills[x.id] || !bills[x.id].plan);
+  document.getElementById("plans-pilot").textContent = t("rostiq.plansPilot", { n: unmarked.length });
+  document.getElementById("plans-pilot").disabled = !unmarked.length;
+  document.getElementById("plans-state").textContent = t(window.PLANS_ON ? "rostiq.plansOn" : "rostiq.plansOff");
+  document.getElementById("plans-preview").checked = pref.get("plansPreview", "") === "1";
   // Self-service
   document.getElementById("signup-open").checked = signup.open;
   const codes = Object.entries(signup.codes).sort(([a], [b]) => a.localeCompare(b));
@@ -189,7 +205,21 @@ function render() {
       <button class="link del" data-code-del="${esc(c)}">${t("rostiq.delete")}</button></li>`).join("")
     : `<li class="muted">${t("rostiq.noCodes")}</li>`;
 }
-let signup = { open: false, codes: {} };
+let signup = { open: false, codes: {} }, bills = {};
+// Plans: mark every team without a plan as a pilot team (Pro until the end of the 2026-27 season).
+const PILOT_UNTIL = "2027-06-30";
+document.getElementById("plans-pilot").onclick = async () => {
+  const ids = teams.filter(x => !bills[x.id] || !bills[x.id].plan).map(x => x.id);
+  if (!ids.length || !confirm(t("rostiq.plansPilotAsk", { n: ids.length, date: PILOT_UNTIL }))) return;
+  const changes = {};
+  for (const id of ids) Object.assign(changes, { [`billing/${id}/plan`]: "pro", [`billing/${id}/until`]: PILOT_UNTIL, [`billing/${id}/src`]: "pilot" });
+  const ok = await send("PATCH", "", changes, true, true);
+  if (ok !== true) return toast(t("status.saveFailed"), "err");
+  bills = (await getAbs("billing")) || {};
+  toast(t("rostiq.plansPilotDone", { n: ids.length }));
+  render();
+};
+document.getElementById("plans-preview").onchange = ev => { pref.set("plansPreview", ev.target.checked ? "1" : ""); toast(t(ev.target.checked ? "rostiq.previewOn" : "rostiq.previewOff"), "", 4000); };
 // ---- Feedback inbox ----
 let feedback = {}, fbFilter = "open";
 function renderFeedback() {
