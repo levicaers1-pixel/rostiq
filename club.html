@@ -42,6 +42,28 @@
   .club-li:first-child { border-top: 0; }
   .club-li span:last-child { color: var(--muted); text-align: right; }
   .club-pick { display: flex; gap: 6px; flex-wrap: wrap; margin: 0 0 12px; }
+  .club-tabs { display: flex; gap: 6px; margin: 0 0 16px; overflow-x: auto; }
+  .club-tabs button { font: inherit; font-weight: 700; font-size: .88rem; padding: 8px 14px; border-radius: 999px; border: 1px solid var(--border);
+    background: var(--surface); color: var(--muted); cursor: pointer; white-space: nowrap; }
+  .club-tabs button[aria-pressed=true] { background: var(--brand); color: var(--brand-text, #fff); border-color: var(--brand); }
+  .cal-day { margin: 16px 0 6px; font-size: .74rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+  .cal-m { display: grid; grid-template-columns: 54px 1fr auto; gap: 2px 12px; align-items: center; padding: 11px 14px; border-top: 1px solid var(--border); }
+  .cal-m:first-child { border-top: 0; }
+  .cal-m .tm { font-weight: 800; font-variant-numeric: tabular-nums; grid-row: span 2; }
+  .cal-m .tm small { display: block; font-weight: 600; color: var(--muted); font-size: .7rem; }
+  .cal-m .who { font-size: .75rem; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+  .cal-m .ha { font-size: .72rem; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: color-mix(in srgb, var(--accent) 9%, transparent); grid-row: span 2; }
+  .cal-m.clash { background: var(--no-bg); }
+  .cal-m .warn { grid-column: 2 / -1; font-size: .78rem; font-weight: 700; color: var(--no); }
+  .club-news-form { display: grid; gap: 10px; padding: 14px; }
+  .club-news-form textarea { min-height: 110px; font: inherit; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--border);
+    background: var(--surface); color: var(--text); resize: vertical; }
+  .club-news-form .row2 { display: flex; gap: 10px; align-items: end; flex-wrap: wrap; justify-content: space-between; }
+  .club-news-form label { display: grid; gap: 4px; font-size: .82rem; color: var(--muted); }
+  .club-news-form input[type=date] { font: inherit; padding: 7px 9px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface); color: var(--text); }
+  .club-sent { padding: 12px 14px; border-top: 1px solid var(--border); display: grid; gap: 4px; }
+  .club-sent:first-child { border-top: 0; }
+  .club-sent small { color: var(--muted); }
 </style>
 <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/12.12.0/firebase-app.js" crossorigin>
 <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/12.12.0/firebase-auth.js" crossorigin>
@@ -67,7 +89,8 @@
 <script>
 // The club page (functions/clubs.mjs): for a club's people responsible (clubAdmins/<uid>/<club>), and the RostiQ admin
 // (club.html?c=<club>). Only numbers per team, counted every night: no player names or details.
-const club = { ids: null, id: "", data: undefined, loading: false };
+const club = { ids: null, id: "", data: undefined, loading: false, tab: ["cal", "news"].includes(location.hash.slice(1)) ? location.hash.slice(1) : "home",
+  cal: null, news: null };
 async function loadClub() {
   club.loading = true;
   club.ids = Object.keys((await getAbs(`clubAdmins/${session.user.uid}`)) || {});
@@ -90,13 +113,16 @@ function render() {
   document.getElementById("club-title").textContent = c.name;
   sub.innerHTML = `${esc(t("club.season", { season, date: dayText(c.until) }))} <span class="pro-tag">Club</span>`;
   const pick = club.ids.length > 1 ? `<div class="club-pick">${club.ids.map(id => `<a class="btn${id === club.id ? " primary" : ""}" href="?c=${encodeURIComponent(id)}">${esc(id)}</a>`).join("")}</div>` : "";
-  if (!st) { box.innerHTML = pick + emptyState("clock", t("club.notYet"), t("club.notYetHelp")); return; }
+  const tabs = `<div class="club-tabs" role="tablist">${["home", "cal", "news"].map(k => `<button type="button" data-club-tab="${k}" aria-pressed="${club.tab === k}">${esc(t("club.tab." + k))}</button>`).join("")}</div>`;
+  if (club.tab === "cal") { box.innerHTML = pick + tabs + calendarHtml(); return; }
+  if (club.tab === "news") { box.innerHTML = pick + tabs + newsHtml(); return; }
+  if (!st) { box.innerHTML = pick + tabs + emptyState("clock", t("club.notYet"), t("club.notYetHelp")); return; }
   const teams = Object.entries(st.teams || {}).sort(([, a], [, b]) => a.name.localeCompare(b.name));
   const withNext = teams.filter(([, x]) => x.next), ans = withNext.reduce((n, [, x]) => n + x.next.answered, 0), of = withNext.reduce((n, [, x]) => n + x.players, 0);
   const counted = st.count || null, cents = counted ? counted.cents : st.cents, active = counted ? counted.active : st.active;
   const tone = x => !x.players ? "mid" : x.active / x.players >= .8 ? "ok" : x.active / x.players >= .5 ? "mid" : "bad";
   const short = d => new Date(d + "T12:00:00").toLocaleDateString(LOCALE, { weekday: "short", day: "numeric", month: "short" });
-  box.innerHTML = pick + `
+  box.innerHTML = pick + tabs + `
     <div class="club-kpis">
       <div class="club-card club-kpi"><b>${teams.length}</b><span>${esc(t("club.kTeams"))}</span></div>
       <div class="club-card club-kpi"><b>${st.active}</b><span>${esc(t("club.kActive"))}</span></div>
@@ -126,6 +152,90 @@ function render() {
     <p class="muted" style="margin:14px 2px 10px">${esc(t("club.contact"))}</p>
     <a class="btn primary" href="mailto:levi@caersultancy.com?subject=${encodeURIComponent("RostiQ Club · " + c.name)}">${ic("mail")} ${esc(t("club.mail"))}</a>`;
 }
+
+// ---- Club calendar: every upcoming match of the club's teams, by day; clashes marked ----
+// A clash: the same day, both at home (or at the same venue), and the times overlap (a match without a time: possibly).
+const mins = hhmm => Number(hhmm.slice(0, 2)) * 60 + Number(hhmm.slice(3, 5));
+function markClashes(list) {
+  for (const m of list) m.clash = [];
+  const span = m => m.start ? [mins(m.start), m.end ? mins(m.end) : mins(m.start) + 60 * (SPORTS[m.sport] || SPORTS.other).hours] : null;
+  for (let i = 0; i < list.length; i++) for (let j = i + 1; j < list.length; j++) {
+    const a = list[i], b = list[j];
+    if (a.date !== b.date) continue;
+    const place = (a.home === true && b.home === true) || (!!a.venue && a.venue.toLowerCase() === (b.venue || "").toLowerCase());
+    const A = span(a), B = span(b);
+    if (place && (!A || !B || (A[0] < B[1] && B[0] < A[1]))) { a.clash.push(b.team); b.clash.push(a.team); }
+  }
+  return list;
+}
+async function loadCalendar() {
+  club.cal = "loading";
+  const today = new Date().toLocaleDateString("sv-SE"), st = (club.data.stats || {}).teams || {};
+  const per = await Promise.all(Object.keys(club.data.teams || {}).map(async tid => {
+    const [sched, matches] = await Promise.all([getAbs(`teams/${tid}/schedule`), getAbs(`teams/${tid}/matches`)]);
+    return Object.entries(sched || {}).filter(([d, x]) => d >= today && x && x.opp && x.cancelled !== true).map(([date, x]) => {
+      const m = (matches || {})[date] || {};
+      return { tid, team: (st[tid] && st[tid].name) || tid, sport: (st[tid] && st[tid].sport) || "other", date, opp: x.opp, home: x.home,
+        start: m.start || "", end: m.end || "", venue: (m.venue && (m.venue.name || m.venue.address)) || "" };
+    });
+  }));
+  club.cal = markClashes(per.flat().sort((a, b) => a.date.localeCompare(b.date) || (a.start || "99").localeCompare(b.start || "99")));
+  render();
+}
+function calendarHtml() {
+  if (club.cal === null) loadCalendar();
+  if (!Array.isArray(club.cal)) return skeletonCards(3);
+  if (!club.cal.length) return emptyState("calendar", t("club.calNone"), "");
+  const clashes = club.cal.filter(m => m.clash.length).length;
+  const days = [...new Set(club.cal.map(m => m.date))];
+  return (clashes ? `<p class="club-card" style="padding:12px 14px;margin:0 0 6px;background:var(--no-bg);border-color:transparent">⚠️ ${esc(t("club.calClashes", { n: clashes }))}</p>` : "") +
+    days.map(d => `<div class="cal-day">${esc(new Date(d + "T12:00:00").toLocaleDateString(LOCALE, { weekday: "long", day: "numeric", month: "long",
+      ...(d.slice(0, 4) !== String(new Date().getFullYear()) ? { year: "numeric" } : {}) }))}</div>
+      <div class="club-card">${club.cal.filter(m => m.date === d).map(m => `<div class="cal-m${m.clash.length ? " clash" : ""}">
+        <span class="tm">${esc(m.start || "–")}${m.end ? `<small>${esc(m.end)}</small>` : ""}</span>
+        <span class="who">${(SPORTS[m.sport] || SPORTS.other).icon} ${esc(m.team)}</span>
+        <span class="ha">${esc(m.home === true ? t("match.home") : m.home === false ? t("match.away") : "–")}</span>
+        <b>${esc(m.opp)}${m.venue ? ` <span class="muted" style="font-weight:500">· ${esc(m.venue)}</span>` : ""}</b>
+        ${m.clash.length ? `<span class="warn">${esc(t("club.calClash", { teams: m.clash.join(", ") }))}</span>` : ""}</div>`).join("")}</div>`).join("");
+}
+
+// ---- Announcement to the whole club: clubNews/<club>/<id>; the clubNews function does the rest ----
+async function loadNews() { club.news = "loading"; club.news = (await getAbs(`clubNews/${club.id}`)) || {}; render(); }
+function newsHtml() {
+  if (club.news === null) loadNews();
+  const until = new Date(Date.now() + 7 * 864e5).toLocaleDateString("sv-SE"), n = Object.keys(club.data.teams || {}).length;
+  const sent = club.news && typeof club.news === "object" ? Object.entries(club.news).sort(([, a], [, b]) => b.at - a.at) : [];
+  return `<form class="club-card club-news-form" id="club-news">
+      <b>${esc(t("club.newsTitle"))}</b>
+      <p class="muted" style="margin:0;font-size:.85rem">${esc(t("club.newsHelp", { n }))}</p>
+      <textarea name="text" maxlength="500" required placeholder="${esc(t("club.newsPh"))}"></textarea>
+      <div class="row2"><label>${esc(t("club.newsUntil"))}<input type="date" name="until" value="${until}" min="${new Date().toLocaleDateString("sv-SE")}"></label>
+        <button class="primary">${ic("send")} ${esc(t("club.newsSend", { n }))}</button></div>
+    </form>
+    ${sent.length ? `<div class="club-label">${esc(t("club.newsSent"))}</div><div class="club-card">${sent.map(([, x]) => `<div class="club-sent">
+      <span>${esc(x.text)}</span><small>${esc(new Date(x.at).toLocaleString(LOCALE, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }))} · ${
+        esc(typeof x.sent === "number" ? t("club.newsReached", { n: x.sent, teams: x.teams }) : t("club.newsSending"))}</small></div>`).join("")}</div>` : ""}`;
+}
+document.getElementById("club-body").addEventListener("submit", async ev => {
+  if (ev.target.id !== "club-news") return;
+  ev.preventDefault();
+  const f = ev.target, text = f.text.value.trim().slice(0, 500), n = Object.keys(club.data.teams || {}).length;
+  if (!text || !confirm(t("club.newsAsk", { n }))) return;
+  f.querySelector("button").disabled = true;
+  const ok = await send("PUT", `clubNews/${club.id}/${historyId()}`, { text, by: session.user.uid, at: { ".sv": "timestamp" },
+    ...(/^\d{4}-\d{2}-\d{2}$/.test(f.until.value) ? { until: f.until.value } : {}) }, true, true);
+  if (ok !== true) { f.querySelector("button").disabled = false; return toast(t("status.saveFailed"), "err"); }
+  toast(t("club.newsDone"), "", 4000);
+  club.news = null; render();
+  setTimeout(() => { club.news = null; if (club.tab === "news") render(); }, 8000); // the function's "reached" count
+});
+document.getElementById("club-body").addEventListener("click", ev => {
+  const b = ev.target.closest("[data-club-tab]");
+  if (!b) return;
+  club.tab = b.dataset.clubTab;
+  history.replaceState(history.state, "", location.pathname + location.search + (club.tab === "home" ? "" : "#" + club.tab));
+  render();
+});
 
 start();
 </script>

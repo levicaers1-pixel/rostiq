@@ -36,6 +36,7 @@ import { getAuth } from "firebase-admin/auth";
 import { handleSignin } from "./signin.mjs";
 import { handleMailEvents } from "./mailevents.mjs";
 import { handleCheckout, handleWebhook, mollieApi } from "./payments.mjs";
+import { clubNewsTargets, clubNewsItem } from "./clubs.mjs";
 
 initializeApp({ databaseURL: process.env.FIREBASE_DATABASE_EMULATOR_HOST
   ? `http://${process.env.FIREBASE_DATABASE_EMULATOR_HOST}?ns=${process.env.DB_NS || "demo-rostiq"}`
@@ -151,6 +152,41 @@ export const mollieWebhook = onRequest({ region: "europe-west1", memory: "256MiB
     const r = await handleWebhook({ db, id: (req.body && req.body.id) || "", mollie: mollieApi(mollieKey()) });
     res.status(r.status).send(r.body);
   } catch (e) { console.error("mollieWebhook failed:", (e && (e.status || e.code)) || "error"); res.status(500).send("retry"); } // Mollie tries again later
+});
+
+// clubNews: a club's people responsible posted an announcement (clubNews/<club>/<id>; the rules check who). It goes on the
+// home page of every club team (teams/<t>/news/<id>, under the club's name), and every member of those teams gets one
+// notification, even when they play in several of them. sent / teams: written back for the club page.
+export const clubNews = onValueCreated({ ref: "/clubNews/{cid}/{id}", instance: "wintermidam-default-rtdb",
+  region: process.env.FUNCTIONS_EMULATOR === "true" ? "us-central1" : "europe-west1",
+  memory: "256MiB", maxInstances: 2, timeoutSeconds: 300 }, async event => {
+  const { cid, id } = event.params, n = event.data.val() || {};
+  const club = await val(`clubs/${cid}`);
+  if (!club || !n.text || !/^[0-9a-z]{10,24}$/.test(id) || !(club.admins || {})[n.by]) return;
+  const tids = Object.keys(club.teams || {}).filter(tid => /^[a-z0-9][a-z0-9-]{1,39}$/.test(tid));
+  const item = clubNewsItem(n, club), writes = {};
+  for (const tid of tids) writes[`teams/${tid}/news/${id}`] = item;
+  await db.ref().update(writes);
+  const targets = clubNewsTargets(await Promise.all(tids.map(async tid => [tid, await val(`teams/${tid}/members`)])), n.by);
+  const body = `📣 ${String(n.text).replace(/\s+/g, " ").slice(0, 160)}`;
+  let sent = 0;
+  for (const [uid, tid] of targets) {
+    let reached = false;
+    for (const [dev, info] of Object.entries((await val(`pushTokens/${uid}`)) || {})) {
+      if (!info || !info.token) continue;
+      try {
+        await getMessaging().send({ token: info.token, data: { title: String(club.name).slice(0, 60), body, tag: `club-${cid}-${id}`,
+          link: `https://app.rostiq.be/?t=${encodeURIComponent(tid)}` }, webpush: { headers: { Urgency: "high", TTL: String(24 * 3600) } } });
+        reached = true;
+      } catch (e) {
+        const code = (e && (e.code || e.errorInfo && e.errorInfo.code)) || "";
+        if (/registration-token-not-registered|invalid-registration-token/.test(code)) await db.ref(`pushTokens/${uid}/${dev}`).remove();
+      }
+    }
+    if (reached) sent++;
+  }
+  await db.ref(`clubNews/${cid}/${id}`).update({ sent, teams: tids.length });
+  console.log(`clubNews: ${tids.length} teams, ${sent} people notified`);
 });
 
 // The sign-in email (signin.mjs). Only the app's own pages may call it (CORS); limits per address and per IP.

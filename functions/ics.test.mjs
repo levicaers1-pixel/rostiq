@@ -418,3 +418,14 @@ import { clubCents, teamStats, clubStats } from "./clubs.mjs";
   assert.equal(Object.keys(later.teams).join(), "t1", "a team that no longer exists is left out");
 }
 console.log("club tests passed");
+
+// Club announcements: everyone in the club's teams once, not the sender; the news item under the club's name.
+import { clubNewsTargets, clubNewsItem } from "./clubs.mjs";
+{
+  const to = clubNewsTargets([["h1", { u1: "p1", u2: "p2", boss: "p9" }], ["d1", { u2: "p4", u3: "p5" }], ["x", null]], "boss");
+  assert.deepEqual([...to], [["u1", "h1"], ["u2", "h1"], ["u3", "d1"]], "u2 plays in two teams: one notification");
+  const item = clubNewsItem({ text: "Clubhuis dicht", by: "boss", at: 5, until: "2026-11-10", extra: 1 }, { name: "KHC Proef met een hele lange naam die te lang is" });
+  assert.deepEqual(Object.keys(item), ["text", "by", "name", "at", "until"]); assert.equal(item.name.length, 40);
+  assert.equal(clubNewsItem({ text: "x", until: "bad" }, { name: "K" }).until, undefined);
+}
+console.log("club announcement tests passed");

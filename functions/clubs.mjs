@@ -53,3 +53,15 @@ export async function runClubs({ db, teams, today, now = Date.now() }) {
   if (Object.keys(writes).length) console.log(`Clubs: ${Object.keys(writes).length} counted.`);
   return writes;
 }
+
+// ---- Club announcements (clubNews/<club>/<id>, the clubNews function in index.js) ----
+/** Who gets the club's announcement: every member of every club team once (uid → the first team, for the link), not
+ *  the person who posted it. membersByTeam: [[tid, { uid: pid }], …]. */
+export function clubNewsTargets(membersByTeam, by) {
+  const to = new Map();
+  for (const [tid, members] of membersByTeam) for (const uid of Object.keys(members || {})) if (uid !== by && !to.has(uid)) to.set(uid, tid);
+  return to;
+}
+/** The announcement as each team's news item (teams/<t>/news/<id>): shown on the home page, under the club's name. */
+export const clubNewsItem = (n, club) => ({ text: String(n.text || "").slice(0, 500), by: String(n.by || ""), name: String(club.name || "").slice(0, 40),
+  at: typeof n.at === "number" ? n.at : Date.now(), ...(/^\d{4}-\d{2}-\d{2}$/.test(n.until || "") ? { until: n.until } : {}) });

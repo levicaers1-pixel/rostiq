@@ -278,6 +278,28 @@ await plans("club-page", null, "/club.html", async page => {
   return r;
 }, { "clubs/khc": { name: "KHC Proef", until: "2099-06-30", teams: { golf: true, full: true }, admins: { [USER.uid]: true }, stats: CLUB_STATS },
      [`clubAdmins/${USER.uid}/khc`]: true });
+const CLUB_DB = { "clubs/khc": { name: "KHC Proef", until: "2099-06-30", teams: { golf: true, full: true }, admins: { [USER.uid]: true }, stats: CLUB_STATS },
+  [`clubAdmins/${USER.uid}/khc`]: true,
+  "teams/golf/schedule/2099-03-01": { opp: "Thuisclub A", home: true }, "teams/golf/matches/2099-03-01": { start: "14:00", end: "16:00" },
+  "teams/full/schedule/2099-03-01": { opp: "Thuisclub B", home: true }, "teams/full/matches/2099-03-01": { start: "15:00" } };
+await plans("club-calendar", null, "/club.html#cal", async page => {
+  await page.waitForTimeout(800);
+  const r = [], clash = await page.evaluate(`[...document.querySelectorAll(".cal-m.clash .warn")].map(x => x.textContent)`);
+  if (clash.length !== 2) r.push("expected the two home matches on 1 March 2099 to clash, got: " + JSON.stringify(clash));
+  if (!/Hockey Heren/.test(clash.join())) r.push("the clash doesn't name the other team");
+  return r;
+}, CLUB_DB);
+await plans("club-announcement", null, "/club.html#news", async page => {
+  page.on("dialog", d => d.accept());
+  await page.fill("#club-news textarea", "Clubhuis dicht zondag");
+  await page.click("#club-news button.primary");
+  await page.waitForTimeout(1000);
+  const all = await fetch(`${BASE}/clubNews/khc.json`).then(x => x.json()), item = Object.values(all || {})[0] || {};
+  const r = [];
+  if (item.text !== "Clubhuis dicht zondag" || item.by !== USER.uid || !/^\d{4}-\d{2}-\d{2}$/.test(item.until || "")) r.push("announcement not saved right: " + JSON.stringify(all));
+  if (!/wordt verstuurd/.test(await page.evaluate(`document.getElementById("club-body").innerText`))) r.push("no 'being sent' line");
+  return r;
+}, CLUB_DB);
 await plans("pilot", { plan: "pro", until: "2099-12-31", src: "pilot" }, "/admin.html?t=golf#sec-plan", async page => {
   const r = [], text = await page.evaluate(`document.getElementById("plan-body").innerText`);
   if (!/Pilootploeg/.test(text)) r.push("the subscription doesn't say pilot: " + text.slice(0, 80));

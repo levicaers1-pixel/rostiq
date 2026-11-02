@@ -29,6 +29,9 @@ TA = f"({PA} || (auth != null && {T}.child('admins').child(auth.uid).val() === t
 MEMBER = f"(auth != null && {T}.child('members').child(auth.uid).exists())"
 OWNER = f"(auth != null && {T}.child('players').child($pid).child('uid').val() === auth.uid)"
 MYPID = f"{T}.child('members').child(auth.uid).val()"
+CLUB_OF = "root.child('billing').child($tid).child('club')"
+CLUB_ADMIN = (f"(auth != null && {CLUB_OF}.isString() && "
+              f"root.child('clubs').child({CLUB_OF}.val()).child('admins').child(auth.uid).val() === true)")
 
 
 def s(maxlen, minlen=0):
@@ -448,8 +451,10 @@ TA_OF = lambda tid: f"root.child('teams').child({tid}).child('admins').child(aut
 
 t = final["rules"]["teams"]["$tid"]
 t["info"][".read"] = f"({t['info']['.read']}) || {QUICK_TEAM}"
-t["schedule"][".read"] = QUICK_TEAM
-t["matches"][".read"] = QUICK_TEAM
+# The club's people responsible (clubs/<club>/admins) also read the match list and match details of the club's teams,
+# for the club calendar; nothing about the players.
+t["schedule"][".read"] = f"{QUICK_TEAM} || {CLUB_ADMIN}"
+t["matches"][".read"] = f"{QUICK_TEAM} || {CLUB_ADMIN}"
 t["members"][".read"] = QUICK_TEAM  # which players have an account (ids only): for the "9/11" count
 for k in ("minPlayers", "seasonName"):
     t["settings"][k][".read"] = QUICK_TEAM
@@ -634,6 +639,17 @@ final["rules"]["clubs"] = {".read": PA, "$cid": {
     "admins": {"$uid": {".validate": "newData.val() === true"}},
     "$other": NO,  # stats: written by the job only
 }}
+# Club announcements: clubNews/<club>/<id> = { text, by, at, until }, written by the club's people responsible; the
+# clubNews function puts it on every club team's home page and notifies every member once (sent, teams: written there).
+CA_OF = "root.child('clubs').child($cid).child('admins').child(auth.uid).val() === true"
+final["rules"]["clubNews"] = {"$cid": {
+    ".read": f"{PA} || (auth != null && {CA_OF})",
+    "$id": {
+        ".write": f"!data.exists() && {VERIFIED} && ({PA} || {CA_OF})",
+        ".validate": "$id.matches(/^[0-9a-z]{10,24}$/) && newData.hasChildren(['text', 'by', 'at'])",
+        "text": s(500, 1), "by": {".validate": "newData.val() === auth.uid"}, "at": {".validate": "newData.val() === now"},
+        "until": DATE, "sent": num(0, 100000), "teams": num(0, 1000),
+        "$other": NO}}}
 final["rules"]["clubAdmins"] = {".read": PA, "$uid": {
     ".read": f"{PA} || (auth != null && auth.uid === $uid)",
     ".write": PA,

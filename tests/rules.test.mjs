@@ -166,6 +166,28 @@ await check("club: its people responsible read it, nobody else; they can't chang
   await assertFails(member.ref("clubs/khc/stats/active").set(999));
   await assertFails(member.ref("clubAdmins/u-member/other").set(true));
 });
+await check("club calendar: people responsible read the club teams' matches, nothing about players", async () => {
+  await env.withSecurityRulesDisabled(c => c.database().ref().update({ "clubs/khc": CLUB, "billing/t1/plan": "club", "billing/t1/until": "2027-06-30", "billing/t1/club": "khc",
+    "users/u-stranger/x": null }));
+  const boss = db("u-boss");
+  await env.withSecurityRulesDisabled(c => c.database().ref("clubs/khc/admins/u-boss").set(true));
+  await assertSucceeds(boss.ref(`${T}/schedule`).get());
+  await assertSucceeds(boss.ref(`${T}/matches`).get());
+  await assertFails(boss.ref(`${T}/players`).get());
+  await assertFails(boss.ref(T).get());
+  await assertFails(boss.ref(`${T}/schedule/2030-07-01`).set({ opp: "Fake" }));
+  await assertFails(stranger.ref(`${T}/schedule`).get());
+});
+await check("club announcement: only its people responsible post one, as themselves", async () => {
+  await env.withSecurityRulesDisabled(c => c.database().ref("clubs/khc").set({ ...CLUB, admins: { "u-member": true } }));
+  const item = { text: "Clubhuis dicht zondag", by: "u-member", at: { ".sv": "timestamp" }, until: "2030-01-01" };
+  await assertSucceeds(member.ref("clubNews/khc/abcdefghij1").set(item));
+  await assertFails(member.ref("clubNews/khc/abcdefghij1").set(item)); // no overwriting
+  await assertFails(member.ref("clubNews/khc/abcdefghij2").set({ ...item, by: "u-admin" }));
+  await assertFails(admin.ref("clubNews/khc/abcdefghij3").set({ ...item, by: "u-admin" }));
+  await assertSucceeds(member.ref("clubNews/khc").get());
+  await assertFails(admin.ref("clubNews/khc").get());
+});
 await check("unknown top-level paths: refused", () => assertFails(member.ref("whatever/x").set(1)));
 
 await env.cleanup();
