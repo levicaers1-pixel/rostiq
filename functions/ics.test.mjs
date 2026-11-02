@@ -375,3 +375,16 @@ import { seasonUntil, seasonName, priceOf, handleCheckout, handleWebhook } from 
   assert.equal(db.data.billing.t1.src, "pilot", "a paid amount that doesn't match: no plan");
 }
 console.log("payment tests passed");
+
+// The sign-in link in our email: straight to app.rostiq.be with Firebase's code, never the project's own domain.
+import { directLink } from "./signin.mjs";
+{
+  const fb = "https://wintermidam.firebaseapp.com/__/auth/action?apiKey=AIza123&mode=signIn&oobCode=CODE_1&continueUrl="
+    + encodeURIComponent("https://app.rostiq.be/?t=bogey") + "&lang=nl";
+  const d = new URL(directLink(fb));
+  assert.equal(d.origin, "https://app.rostiq.be");
+  assert.deepEqual(["t", "apiKey", "oobCode", "mode", "lang"].map(k => d.searchParams.get(k)), ["bogey", "AIza123", "CODE_1", "signIn", "nl"]);
+  assert.equal(directLink(fb.replace("app.rostiq.be", "evil.example")), fb.replace("app.rostiq.be", "evil.example"), "only to the app");
+  assert.equal(directLink("not a url"), "not a url");
+}
+console.log("direct sign-in link tests passed");

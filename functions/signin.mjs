@@ -65,6 +65,17 @@ export function signinEmail(link, lang, team) {
   return { subject: T.subject(name), text, html };
 }
 
+/** Firebase's link goes through <project>.firebaseapp.com/__/auth/action, which only forwards to the app page with the
+ *  code added. The email gets that app address straight away, so people see app.rostiq.be (not the project's name). */
+export function directLink(link) {
+  try {
+    const q = new URL(link).searchParams, to = new URL(q.get("continueUrl") || "");
+    if (q.get("mode") !== "signIn" || !q.get("oobCode") || !q.get("apiKey") || !APP_ORIGINS.includes(to.origin)) return link;
+    for (const k of ["apiKey", "oobCode", "mode", "lang"]) if (q.get(k)) to.searchParams.set(k, q.get(k));
+    return to.href;
+  } catch { return link; }
+}
+
 let transport = null;
 function mailer() {
   if (transport) return transport;
@@ -92,7 +103,7 @@ export async function handleSignin({ db, body, ip, makeLink, now = Date.now() })
   try { link = await makeLink(req.email, { url: req.url, handleCodeInApp: true }); }
   catch (e) { console.error("signin: link failed", (e && e.code) || "error"); return { status: 500, body: { error: "link" } }; }
   const team = req.tid ? ((await db.ref(`teams/${req.tid}/info/shortName`).get()).val() || (await db.ref(`teams/${req.tid}/info/brand`).get()).val()) : null;
-  const msg = signinEmail(link, req.lang, team);
+  const msg = signinEmail(directLink(link), req.lang, team);
   try {
     const info = await mailer().sendMail({ from: { name: team ? `${String(team).slice(0, 40)} via RostiQ` : "RostiQ", address: SIGNIN_FROM },
       to: req.email, subject: msg.subject, text: msg.text, html: msg.html });
