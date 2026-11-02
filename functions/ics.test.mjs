@@ -374,6 +374,42 @@ import { seasonUntil, seasonName, priceOf, handleCheckout, handleWebhook } from 
   console.log = log;
   assert.equal(db.data.billing.t1.src, "pilot", "a paid amount that doesn't match: no plan");
 }
+// Refunds: a full refund (or a chargeback) ends that season's Pro; a pilot team gets its pilot plan back; a partial
+// refund changes nothing; another paid season still standing keeps the team on Pro.
+{
+  const fakeDb = data => {
+    const get = path => path.split("/").reduce((o, k) => (o == null ? undefined : o[k]), data);
+    const set = (path, v) => { const ks = path.split("/"), last = ks.pop(); let o = data; for (const k of ks) o = o[k] ??= {}; if (v === null) delete o[last]; else o[last] = v; };
+    return { data, ref: (path = "") => ({ get: async () => ({ val: () => get(path) ?? null }), set: async v => set(path, v),
+      update: async w => { for (const [k, v] of Object.entries(w)) set(k, v); } }) };
+  };
+  const now = Date.parse("2026-11-02T10:00:00Z"), log = console.log; console.log = () => {};
+  const mollie = extra => async () => ({ id: "tr_ref1234", status: "paid", mode: "live", amount: { currency: "EUR", value: "19.50" },
+    metadata: { tid: "t1", plan: "pro", until: "2028-06-30" }, ...extra });
+  const pilotDb = () => fakeDb({ teams: { t1: { info: { brand: "T" }, admins: { a: true } } }, billing: { t1: { plan: "pro", until: "2027-06-30", src: "pilot" } },
+    payments: { tr_ref1234: { tid: "t1", plan: "pro", until: "2028-06-30", cents: 1950, status: "open" } } });
+  let db = pilotDb();
+  await handleWebhook({ db, id: "tr_ref1234", mollie: mollie({}), now });
+  assert.equal(db.data.billing.t1.src, "paid"); assert.deepEqual(db.data.payments.tr_ref1234.before, { plan: "pro", until: "2027-06-30", src: "pilot" });
+  await handleWebhook({ db, id: "tr_ref1234", mollie: mollie({ amountRefunded: { currency: "EUR", value: "5.00" } }), now: now + 1 });
+  assert.equal(db.data.billing.t1.until, "2028-06-30", "a partial refund changes nothing");
+  await handleWebhook({ db, id: "tr_ref1234", mollie: mollie({ amountRefunded: { currency: "EUR", value: "19.50" } }), now: now + 2 });
+  assert.deepEqual([db.data.billing.t1.plan, db.data.billing.t1.until, db.data.billing.t1.src], ["pro", "2027-06-30", "pilot"], "back to the pilot plan");
+  assert.equal(db.data.billing.t1.history.tr_ref1234.refunded, true);
+  await handleWebhook({ db, id: "tr_ref1234", mollie: mollie({ amountRefunded: { currency: "EUR", value: "19.50" } }), now: now + 3 });
+  assert.equal(db.data.payments.tr_ref1234.refundedAt, now + 2, "the same refund twice changes nothing");
+  // A team that paid two seasons: refunding the later one keeps the earlier one.
+  db = fakeDb({ billing: { t1: { plan: "pro", until: "2028-06-30", src: "paid", history: { tr_old1111: { until: "2027-06-30", cents: 3900 }, tr_ref1234: { until: "2028-06-30", cents: 3900 } } } },
+    payments: { tr_ref1234: { tid: "t1", plan: "pro", until: "2028-06-30", cents: 3900, status: "paid", paidAt: 1 } } });
+  await handleWebhook({ db, id: "tr_ref1234", mollie: mollie({ amount: { currency: "EUR", value: "39.00" }, amountChargedBack: { currency: "EUR", value: "39.00" } }), now });
+  assert.deepEqual([db.data.billing.t1.until, db.data.billing.t1.src], ["2027-06-30", "paid"], "a chargeback: the earlier season stays");
+  // Nothing else: Free.
+  db = fakeDb({ billing: { t1: { plan: "pro", until: "2027-06-30", src: "paid", history: { tr_ref1234: { until: "2027-06-30" } } } },
+    payments: { tr_ref1234: { tid: "t1", plan: "pro", until: "2027-06-30", cents: 3900, status: "paid", paidAt: 1 } } });
+  await handleWebhook({ db, id: "tr_ref1234", mollie: mollie({ amount: { currency: "EUR", value: "39.00" }, amountRefunded: { currency: "EUR", value: "39.00" } }), now });
+  console.log = log;
+  assert.equal(db.data.billing.t1.plan, undefined, "refunded, nothing else: Free");
+}
 console.log("payment tests passed");
 
 // The sign-in link in our email: straight to app.rostiq.be with Firebase's code, never the project's own domain.

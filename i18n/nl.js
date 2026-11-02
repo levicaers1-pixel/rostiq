@@ -1074,4 +1074,9 @@ Nu: *${when}*
   "club.newsSending": "wordt verstuurd…",
   "club.newsAsk": ({ n }) => `Deze mededeling naar alle ${n} ploegen van de club sturen?`,
   "club.newsDone": "Verstuurd. Ze staat nu op de startpagina van elke ploeg.",
+  "plan.refunded": "terugbetaald",
+  "rostiq.planEdit": "Abonnement…", "rostiq.planIsClub": "Deze ploeg hoort bij een club: pas het aan onder Clubs.",
+  "rostiq.planAsk": ({ team, now }) => `${team}: nu ${now}.\nPro tot (JJJJ-MM-DD)? Leeg laten voor geen abonnement (Free).`,
+  "rostiq.planBadDate": "Geef een datum als JJJJ-MM-DD.", "rostiq.planPaidAsk": "Deze ploeg betaalde voor haar abonnement. Toch aanpassen? (Terugbetalen gaat via Mollie.)",
+  "rostiq.planSet": ({ team, date }) => `${team}: Pro tot ${date}.`, "rostiq.planCleared": ({ team }) => `${team}: geen abonnement (Free).`,
 };

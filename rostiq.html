@@ -200,6 +200,7 @@ function render() {
           <span class="pill ${planOf(bills[x.id]) === "free" ? "gray" : "yes"}">${esc(t("plan." + planOf(bills[x.id])))}${bills[x.id] && bills[x.id].src === "pilot" ? " · pilot" : ""}</span></div>
         ${x.meta ? `<div class="by">${t("rostiq.startedBy", { who: esc(x.meta.creatorName || "?") + (x.meta.creatorEmail ? ` (${esc(x.meta.creatorEmail)})` : ""),
           when: esc(new Date(x.meta.createdAt || 0).toLocaleDateString(LOCALE)) })}${x.meta.code ? ` · ${esc(x.meta.code)}` : ""}</div>` : ""}</div>
+      <button class="link" data-plan-edit="${esc(x.id)}">${t("rostiq.planEdit")}</button>
       <button class="link" data-copy="${esc(link)}">${t("rostiq.copyInvite")}</button>
       <a class="open" href="${esc(link)}">${t("rostiq.open")}</a>
       <button class="link del" data-delete="${esc(x.id)}">${t("rostiq.delete")}</button>
@@ -435,7 +436,27 @@ async function deleteTeam(id) {
   else toast(t("status.saveFailed"), "err");
 }
 
+// One team's plan by hand: Pro until a date (a gift), or no plan. Paid and club plans are changed in Mollie / under Clubs.
+async function editPlan(id) {
+  const b = bills[id] || {};
+  if (b.plan === "club") return toast(t("rostiq.planIsClub"), "err");
+  const answer = prompt(t("rostiq.planAsk", { team: teamName(id), now: b.plan ? `${b.plan} → ${b.until} (${b.src || "?"})` : t("plan.free") }), b.until || seasonEnd());
+  if (answer === null) return;
+  const until = answer.trim();
+  if (until && !/^\d{4}-\d{2}-\d{2}$/.test(until)) return toast(t("rostiq.planBadDate"), "err");
+  if (b.src === "paid" && !confirm(t("rostiq.planPaidAsk"))) return;
+  const base = `billing/${id}/`;
+  const ok = await send("PATCH", "", until
+    ? { [base + "plan"]: "pro", [base + "until"]: until, [base + "src"]: b.src === "pilot" ? "pilot" : "gift" }
+    : { [base + "plan"]: null, [base + "until"]: null, [base + "src"]: null }, true, true);
+  if (ok !== true) return toast(t("status.saveFailed"), "err");
+  bills = (await getAbs("billing")) || {};
+  toast(t(until ? "rostiq.planSet" : "rostiq.planCleared", { team: teamName(id), date: until }));
+  render();
+}
 document.getElementById("teams").addEventListener("click", ev => {
+  const pe = ev.target.closest("[data-plan-edit]");
+  if (pe) return editPlan(pe.dataset.planEdit);
   const del = ev.target.closest("[data-delete]");
   if (del) return deleteTeam(del.dataset.delete);
   const b = ev.target.closest("[data-copy]");

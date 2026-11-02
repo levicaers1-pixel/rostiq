@@ -1087,4 +1087,9 @@ Now: *${when}*
   "club.newsSending": "being sent…",
   "club.newsAsk": ({ n }) => `Send this announcement to all ${n} teams of the club?`,
   "club.newsDone": "Sent. It's on every team's home page now.",
+  "plan.refunded": "refunded",
+  "rostiq.planEdit": "Plan…", "rostiq.planIsClub": "This team is in a club: change it under Clubs.",
+  "rostiq.planAsk": ({ team, now }) => `${team}: now ${now}.\nPro until (YYYY-MM-DD)? Leave empty for no plan (Free).`,
+  "rostiq.planBadDate": "Give a date as YYYY-MM-DD.", "rostiq.planPaidAsk": "This team paid for its plan. Change it anyway? (A refund goes through Mollie.)",
+  "rostiq.planSet": ({ team, date }) => `${team}: Pro until ${date}.`, "rostiq.planCleared": ({ team }) => `${team}: no plan (Free).`,
 };

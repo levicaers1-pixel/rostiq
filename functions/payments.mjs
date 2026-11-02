@@ -5,7 +5,8 @@
 // send back Mollie's payment page. The admin pays there and comes back to admin.html?paid=1.
 // mollieWebhook (index.js): Mollie posts only the payment's id. We ask Mollie for the payment ourselves, so a made-up
 // call can't unlock anything; when it's paid and matches what we stored, billing/<team> gets the plan and the season,
-// and billing/<team>/history/<id> the receipt. Handling the same call twice changes nothing.
+// and billing/<team>/history/<id> the receipt. Handling the same call twice changes nothing. A full refund or a
+// chargeback (Mollie calls the webhook again) ends that season's Pro.
 // With a test key (test_…) only the RostiQ admin can pay, so nobody gets Pro with Mollie's test payments.
 // Logs only ids' kinds and outcomes, never names or addresses.
 export const PRO_CENTS = 3900;           // € 39 per team per season, VAT included
@@ -28,6 +29,8 @@ export const seasonName = until => `${Number(until.slice(0, 4)) - 1}-${until.sli
 /** The price in cents. Pilot teams pay half for their first paid season. */
 export const priceOf = billing => Math.round(PRO_CENTS * (billing && billing.src === "pilot" ? 1 - PILOT_DISCOUNT : 1));
 const euros = cents => (cents / 100).toFixed(2);
+// Mollie: a payment stays "paid" when it's refunded; amountRefunded / amountChargedBack say how much came back.
+const fullyReturned = p => !!p.amount && (Number((p.amountRefunded || {}).value || 0) >= Number(p.amount.value) || Number((p.amountChargedBack || {}).value || 0) > 0);
 
 /** Mollie's REST API with the key: mollie("POST", "/payments", body) → the JSON answer. */
 export function mollieApi(key) {
@@ -84,8 +87,24 @@ export async function handleWebhook({ db, id, mollie, now = Date.now() }) {
       [`billing/${rec.tid}/plan`]: rec.plan, [`billing/${rec.tid}/until`]: until, [`billing/${rec.tid}/src`]: "paid",
       [`billing/${rec.tid}/history/${id}`]: { at: now, cents: rec.cents, plan: rec.plan, until: rec.until, mode: p.mode || "" },
       [`payments/${id}/paidAt`]: now,
+      // What the team had before (a pilot plan, say): back to that if this payment is refunded.
+      ...(billing.plan && billing.src !== "paid" ? { [`payments/${id}/before`]: { plan: billing.plan, until: billing.until, src: billing.src } } : {}),
     });
     console.log(`mollieWebhook: ${p.mode || "?"} payment paid, plan set`);
+  } else if (rec.paidAt && !rec.refundedAt && fullyReturned(p)) {
+    // Refunded in full in Mollie's dashboard, or charged back: this season's Pro ends. The plan comes from the other paid
+    // seasons still standing, else what the team had before paying (if it still runs), else none (Free).
+    const billing = (await db.ref(`billing/${rec.tid}`).get()).val() || {};
+    writes[`payments/${id}/refundedAt`] = now;
+    writes[`billing/${rec.tid}/history/${id}/refunded`] = true;
+    if (billing.src === "paid") {
+      const today = new Date(now).toLocaleDateString("sv-SE", { timeZone: "Europe/Brussels" });
+      const left = Object.entries(billing.history || {}).filter(([hid, h]) => hid !== id && h && !h.refunded && typeof h.until === "string").map(([, h]) => h.until).sort().pop();
+      const back = rec.before && typeof rec.before.until === "string" && rec.before.until >= today ? rec.before : null;
+      const next = left ? { plan: rec.plan, until: left, src: "paid" } : back || { plan: null, until: null, src: null };
+      for (const k of ["plan", "until", "src"]) writes[`billing/${rec.tid}/${k}`] = next[k];
+    }
+    console.log(`mollieWebhook: ${p.mode || "?"} payment returned, plan updated`);
   } else console.log(`mollieWebhook: status ${p.status}`);
   await db.ref().update(writes);
   return ok;

@@ -17,7 +17,7 @@ window.INVITES_ON = true;
 // PLANS_ON in functions/plan.js (the server's checks), after the pilot teams are marked in the RostiQ admin page.
 window.PLANS_ON = true;
 
-window.CAL_BASE = "https://wintermidam.web.app/cal/";
+window.CAL_BASE = "https://cal.rostiq.be/cal/"; // also wintermidam.web.app/cal/: older subscriptions keep working
 
 window.FIREBASE_CONFIG = {
   apiKey: "AIzaSyCUyqCemJncGy0tWRUi6JXfrclAGWePzto",

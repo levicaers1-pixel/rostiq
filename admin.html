@@ -708,7 +708,7 @@ function renderPlan() {
       ${plan !== "club" ? `<a class="btn" href="mailto:levi@caersultancy.com?subject=${encodeURIComponent("RostiQ Pro · " + (TEAM.brand || TEAM_ID))}">${esc(t("plan.ask"))}</a>` : ""}
     </div>
     ${receipts.length ? `<h3 class="plan-h">${esc(t("plan.history"))}</h3><ul class="plan-receipts">${receipts.map(([, r]) =>
-      `<li><span>${esc(dayText(r.at))}</span><span>${esc(t("plan.receipt", { plan: t("plan." + r.plan), season: `${Number(r.until.slice(0, 4)) - 1}-${r.until.slice(2, 4)}` }))}${r.mode === "test" ? " · test" : ""}</span><b>${esc(money(r.cents))}</b></li>`).join("")}</ul>` : ""}
+      `<li><span>${esc(dayText(r.at))}</span><span>${esc(t("plan.receipt", { plan: t("plan." + r.plan), season: `${Number(r.until.slice(0, 4)) - 1}-${r.until.slice(2, 4)}` }))}${r.mode === "test" ? " · test" : ""}${r.refunded ? ` · ${esc(t("plan.refunded"))}` : ""}</span><b>${esc(money(r.cents))}</b></li>`).join("")}</ul>` : ""}
     <p class="muted">${esc(t("plan.keep"))}</p>`;
 }
 document.getElementById("plan-body").addEventListener("click", async ev => {
