@@ -1091,4 +1091,7 @@ Nu: *${when}*
   "num.perWeek": "Nieuwe ploegen per week", "num.thisWeek": "deze week", "num.weekTip": ({ n, week }) => `${n} nieuw · week van ${week}`,
   "num.plans": "Ploegen per abonnement",
   "num.k.free": "Free", "num.k.trial": "Proef", "num.k.paid": "Pro (betaald)", "num.k.pilot": "Pro (piloot)", "num.k.gift": "Pro (cadeau)", "num.k.club": "Club",
+  "big.bar": ({ n }) => `${n} spelers: een grote ploeg. Free blijft gratis, hoe groot ook; Pro maakt een grote groep makkelijker.`,
+  "pro.f.big": "Pro voor grote ploegen", "pro.f.big.why": "Herinneringen per mail voor wie nog niet antwoordde, selecties, het antwoordlogboek en meer beheerders. Een hele club in één ploeg? Daarvoor is het Club-abonnement.",
+  "num.big": ({ n, hint, biggest }) => `Free-ploegen met meer dan ${hint} spelers: ${n} · grootste ploeg: ${biggest} spelers`,
 };

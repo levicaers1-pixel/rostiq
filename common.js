@@ -110,6 +110,8 @@ function rankOn() { return ((root.settings || {}).sport || "golf") === "golf"; }
 // Pro features are hidden on Free, never deleted.
 var billing; // undefined: not known yet (counts as Pro, so paying teams never see a flash of locks); null/{}: none
 const TRIAL_DAYS = 30, FREE_ADMINS = 2, FREE_FIELDS = 2;
+// Free has no player limit. From this many players Beheer shows a soft hint about Pro (nothing is blocked).
+const FREE_PLAYERS_HINT = 25;
 function plansOn() { return !!window.PLANS_ON || pref.get("plansPreview", "") === "1"; }
 function planOf(b, now = Date.now()) {
   if (!b || typeof b !== "object") return "free";
@@ -1573,7 +1575,7 @@ function gateMessage(text, err) { gateMsg = { text, err }; renderAuth(); }
 const appUrl = file => location.href.split(/[?#]/)[0].replace(/[^/]*$/, file);
 
 // ---- Feedback to RostiQ (account menu, footer): only the RostiQ admin reads it ----
-const APP_VERSION = "2026.11.83";
+const APP_VERSION = "2026.11.84";
 function deviceText() {
   const ua = navigator.userAgent;
   const os = /iPhone/.test(ua) ? "iPhone" : /iPad/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1) ? "iPad"

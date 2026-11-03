@@ -251,6 +251,17 @@ await plans("free-admin", null, "/admin.html?t=golf#sec-backup", async page => {
   if (!await page.evaluate(shown("#pro-dlg"))) r.push("backup on Free didn't open the Pro window");
   return r;
 });
+// A big team on Free: a hint about Pro above the players, nothing blocked; no hint on Pro.
+const BIG = Object.fromEntries(Array.from({ length: 30 }, (_, i) => [`teams/golf/players/big${i}`, { name: `Speler ${i + 1}` }]));
+await plans("free-big-team", null, "/admin.html?t=golf#sec-players", async page => {
+  const r = [];
+  if (!await page.evaluate(shown("#big-bar"))) r.push("Free with 30+ players: no hint about Pro");
+  await page.click("#big-bar [data-pro-open]");
+  if (!await page.evaluate(shown("#pro-dlg"))) r.push("the big-team hint didn't open the Pro window");
+  return r;
+}, BIG);
+await plans("pro-big-team", { plan: "pro", until: "2099-12-31", src: "paid" }, "/admin.html?t=golf#sec-players", async page =>
+  await page.evaluate(shown("#big-bar")) ? ["Pro: the big-team hint is shown"] : [], BIG);
 // A team's own logo and colours: hidden on Free (the team name as text, RostiQ's colours), back with Pro.
 const LOGO = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
 const OWN = { "teams/golf/info/logo": LOGO, "teams/golf/info/colors": { main: "#123456", highlight: "#abcdef", light: { "--brand": "#123456" }, dark: { "--brand": "#0a0a0a" } } };
@@ -328,7 +339,7 @@ if (!only || "rostiq-numbers".includes(only)) {
     await page.goto(BASE + "/rostiq.html", { waitUntil: "domcontentloaded" });
     await page.waitForSelector("#teams .swatch", { timeout: 10000 }); // the teams (and with them the numbers) are loaded
     const text = await page.evaluate(`document.getElementById("numbers").innerText`);
-    for (const want of ["Ploegen", "Betalende ploegen", "Proef", "deze week"]) if (!text.includes(want)) errors.push("numbers lack " + want);
+    for (const want of ["Ploegen", "Betalende ploegen", "Proef", "deze week", "grootste ploeg"]) if (!text.includes(want)) errors.push("numbers lack " + want);
     if (!/€\s?39(?!\d)/.test(text)) errors.push("the live payment isn't counted");
     if (/€\s?78(?!\d)/.test(text)) errors.push("a test payment was counted as money");
     if ((await page.$$("#numbers .wk")).length !== 8) errors.push("not 8 weeks in the chart");

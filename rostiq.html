@@ -197,10 +197,11 @@ async function loadTeams() {
   teams = await Promise.all(ids.map(async id => {
     const memberIds = Object.keys((await fetch(await shallow(`teams/${id}/members`)).then(r => r.json()).catch(() => null)) || {});
     const admins = Object.keys((await fetch(await shallow(`teams/${id}/admins`)).then(r => r.json()).catch(() => null)) || {}).length;
+    const players = Object.keys((await fetch(await shallow(`teams/${id}/players`)).then(r => r.json()).catch(() => null)) || {}).length;
     // Who started it: teamCreators/<team> (older teams: still inside meta until the daily job moves it).
     const [meta, cr] = await Promise.all([getAbs(`teams/${id}/meta`), getAbs(`teamCreators/${id}`)]);
     const m = meta || cr ? { ...(meta || {}), ...(cr ? { creatorName: cr.n, creatorEmail: cr.e, code: cr.c } : {}) } : null;
-    return { id, info: (await getAbs(`teams/${id}/info`)) || {}, meta: m, memberIds, members: memberIds.length, admins, seen: (await getAbs(`lastSeen/${id}`)) || {} };
+    return { id, info: (await getAbs(`teams/${id}/info`)) || {}, meta: m, memberIds, members: memberIds.length, admins, players, seen: (await getAbs(`lastSeen/${id}`)) || {} };
   }));
   signup = { open: (await getAbs("signup/open")) === true, codes: (await getAbs("signupCodes")) || {} };
   feedback = (await getAbs("feedback")) || {};
@@ -275,6 +276,8 @@ function renderNumbers() {
   };
   const kinds = ["free", "trial", "paid", "pilot", "gift", "club"], count = Object.fromEntries(kinds.map(k => [k, 0]));
   list.forEach(x => count[kind(x)]++);
+  // Big Free teams (more players than the hint in Beheer): would a player limit matter?
+  const big = list.filter(x => kind(x) === "free" && x.players > FREE_PLAYERS_HINT), biggest = Math.max(0, ...list.map(x => x.players || 0));
   // Trials: started, still running, ended; of the ended ones, how many pay now
   const trials = list.filter(x => typeof (bills[x.id] || {}).trial === "number");
   const ended = trials.filter(x => bills[x.id].trial < now), converted = ended.filter(x => kind(x) === "paid");
@@ -309,7 +312,8 @@ function renderNumbers() {
     <div class="wk-labels">${weeks.map((w, i) => `<span>${i === 7 ? esc(t("num.thisWeek")) : esc(wkLabel(w))}</span>`).join("")}</div>
     <div class="nums-h">${esc(t("num.plans"))}</div>
     <div class="mix">${kinds.map(k => `<div class="mix-row"><span>${esc(t("num.k." + k))}</span>
-      <span class="track"><i style="width:${list.length ? Math.round(100 * count[k] / list.length) : 0}%"></i></span><b>${count[k]}</b></div>`).join("")}</div>`;
+      <span class="track"><i style="width:${list.length ? Math.round(100 * count[k] / list.length) : 0}%"></i></span><b>${count[k]}</b></div>`).join("")}</div>
+    <p class="muted" id="num-big">${esc(t("num.big", { n: big.length, hint: FREE_PLAYERS_HINT, biggest }))}</p>`;
 }
 
 // ---- Clubs (functions/clubs.mjs): a club, its teams (all on the Club plan) and its people responsible ----

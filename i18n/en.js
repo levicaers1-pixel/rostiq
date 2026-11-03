@@ -1104,4 +1104,7 @@ Now: *${when}*
   "num.perWeek": "New teams per week", "num.thisWeek": "this week", "num.weekTip": ({ n, week }) => `${n} new · week of ${week}`,
   "num.plans": "Teams per plan",
   "num.k.free": "Free", "num.k.trial": "Trial", "num.k.paid": "Pro (paid)", "num.k.pilot": "Pro (pilot)", "num.k.gift": "Pro (gift)", "num.k.club": "Club",
+  "big.bar": ({ n }) => `${n} players: a big team. Free stays free at any size; Pro makes a big squad easier.`,
+  "pro.f.big": "Pro for big teams", "pro.f.big.why": "Email reminders for those who haven't answered, selections, the answer log and more admins. A whole club in one team? The Club plan is made for that.",
+  "num.big": ({ n, hint, biggest }) => `Free teams with more than ${hint} players: ${n} · biggest team: ${biggest} players`,
 };

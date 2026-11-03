@@ -1103,4 +1103,7 @@ Maintenant : *${when}*
   "num.perWeek": "Nouvelles équipes par semaine", "num.thisWeek": "cette semaine", "num.weekTip": ({ n, week }) => `${n} nouvelles · semaine du ${week}`,
   "num.plans": "Équipes par abonnement",
   "num.k.free": "Free", "num.k.trial": "Essai", "num.k.paid": "Pro (payé)", "num.k.pilot": "Pro (pilote)", "num.k.gift": "Pro (offert)", "num.k.club": "Club",
+  "big.bar": ({ n }) => `${n} joueurs : une grande équipe. Free reste gratuit, quelle que soit la taille ; Pro facilite la gestion d'un grand groupe.`,
+  "pro.f.big": "Pro pour les grandes équipes", "pro.f.big.why": "Rappels par e-mail pour ceux qui n'ont pas répondu, sélections, l'historique des réponses et plus d'administrateurs. Tout un club dans une équipe ? L'abonnement Club est fait pour ça.",
+  "num.big": ({ n, hint, biggest }) => `Équipes Free de plus de ${hint} joueurs : ${n} · plus grande équipe : ${biggest} joueurs`,
 };

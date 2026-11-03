@@ -271,6 +271,7 @@
       <h2 data-i18n="admin.players">Players & accounts</h2>
       <p class="help" data-i18n="admin.playersHelp"></p>
       <div class="pa-bar" id="pa-bar" hidden></div>
+      <div class="pa-bar" id="big-bar" hidden></div>
       <ul class="plist" id="players"></ul>
       <form class="form-card" id="add-player" novalidate>
         <label class="ff"><span class="ff-label" data-i18n="admin.addTitle">Add a player</span>
@@ -989,8 +990,17 @@ document.getElementById("pa-send").onclick = async () => {
   paState.phase = "done"; paState.result = `<span>${esc(t("pa.later"))}</span>`; renderPaDlg();
 };
 
+// A big team on Free: a hint about Pro, never a limit (Free keeps any number of players).
+function renderBigBar() {
+  const bar = document.getElementById("big-bar"), n = Object.keys(root.players || {}).length;
+  bar.hidden = !session.admin || isPro() || n <= FREE_PLAYERS_HINT;
+  if (bar.hidden) return;
+  bar.innerHTML = `<span class="grow">${ic("users")} ${esc(t("big.bar", { n }))}</span>
+    <button type="button" data-pro-open="big">${esc(t("pro.more"))}</button>`;
+}
 function renderPlayers() {
   renderPaBar();
+  renderBigBar();
   if (paState) renderPaDlg();
   const me = session.user && session.user.uid;
   const word = key => t(key).replace(/^\S+\s/, ""); // "📱 number" → "number"
