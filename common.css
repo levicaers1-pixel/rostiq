@@ -3,55 +3,57 @@
    white fails WCAG AA); cyan is the highlight, and the accent in dark mode.
    Teams override the colour variables with their own (Admin → Branding). */
 :root {
-  --bg: #f6f7fa;
+  --bg: #f4f3ef;
   --surface: #ffffff;
-  --text: #0b0d14;
-  --muted: #556074;
-  --border: #e2e8f0;
+  --text: #14122b;
+  --muted: #67657e;
+  --border: #e3e0d6;
   --accent: #1e1b4b;
   --on-accent: #ffffff;
   --brand: #1e1b4b;
   --brand-text: #f6f7fa;
   --pampas: #00d4ff;
-  --yes: #2f7a4a;
-  --yes-bg: #e1ecdc;
-  --maybe: #9c7424;
-  --maybe-bg: #f5e8cb;
-  --no: #ad4a31;
-  --no-bg: #f5ddd4;
+  --yes: #0b7d45;
+  --yes-bg: #e0f5e9;
+  --maybe: #96630f;
+  --maybe-bg: #fbf0d9;
+  --no: #c7313e;
+  --no-bg: #fde6e8;
   --final: #7c5cf0;
   /* Fonts: RostiQ's geometric sans; teams can pick the classic serif headings ("font-serif"). */
-  --font-body: "Noto Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  --font-head: "Noto Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  /* Big sporty numbers and match titles (scoreboard style). */
-  --font-display: "Anton", Impact, "Arial Narrow", sans-serif;
-  --head-weight: 700;
-  --head-spacing: -.01em;
+  --font-body: "Geist", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-head: "Bricolage Grotesque", "Geist", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  /* Small labels and counters ("4/6", "12:30"). */
+  --font-mono: "Geist Mono", ui-monospace, "SF Mono", Consolas, monospace;
+  /* Big numbers and page titles. */
+  --font-display: "Bricolage Grotesque", "Geist", system-ui, sans-serif;
+  --head-weight: 800;
+  --head-spacing: -.025em;
   /* Shape & depth */
-  --radius: 20px;
-  --radius-sm: 12px;
-  --shadow-sm: 0 1px 2px rgb(11 13 20 / .04), 0 2px 8px -2px rgb(11 13 20 / .07);
-  --shadow: 0 1px 2px rgb(11 13 20 / .05), 0 14px 32px -14px rgb(30 27 75 / .22);
+  --radius: 24px;
+  --radius-sm: 14px;
+  --shadow-sm: 0 1px 2px rgb(20 18 43 / .04), 0 6px 18px -10px rgb(20 18 43 / .12);
+  --shadow: 0 1px 2px rgb(20 18 43 / .04), 0 14px 32px -14px rgb(20 18 43 / .2);
   --ease: cubic-bezier(.2, .7, .2, 1);
 }
 /* dark: only when chosen in the account menu (html.dark) */
 html.dark {
-    --bg: #0b0d14;
-    --surface: #172036;
-    --text: #f1f5f9;
-    --muted: #94a3b8;
-    --border: #283449;
+    --bg: #0a0918;
+    --surface: #14122a;
+    --text: #f2f1ff;
+    --muted: #9a97bd;
+    --border: #262349;
     --accent: #00d4ff;
     --on-accent: #0b0d14;
     --brand: #1e1b4b;
     --brand-text: #f6f7fa;
     --pampas: #00d4ff;
-    --yes: #83c99c;
-    --yes-bg: #20402f;
-    --maybe: #e0b766;
-    --maybe-bg: #3e3421;
-    --no: #e58b72;
-    --no-bg: #452821;
+    --yes: #3ddc84;
+    --yes-bg: #0f2c21;
+    --maybe: #f5b84b;
+    --maybe-bg: #33270f;
+    --no: #ff6b78;
+    --no-bg: #351319;
     --final: #8b7cff;
     --shadow-sm: 0 1px 2px rgb(0 0 0 / .3), 0 2px 8px -2px rgb(0 0 0 / .35);
     --shadow: 0 1px 2px rgb(0 0 0 / .35), 0 16px 36px -14px rgb(0 0 0 / .6);
@@ -292,20 +294,20 @@ body.gated { padding-bottom: 0 !important; }
   body.has-bottom-nav { padding-bottom: calc(68px + env(safe-area-inset-bottom)); }
   body.has-bottom-nav { padding-bottom: calc(92px + env(safe-area-inset-bottom)); }
   .bottom-nav:not([hidden]) {
-    display: grid; grid-auto-flow: column; grid-auto-columns: 1fr;
-    position: fixed; left: max(10px, env(safe-area-inset-left)); right: max(10px, env(safe-area-inset-right)); bottom: calc(10px + env(safe-area-inset-bottom)); z-index: 20;
-    padding: 6px; border-radius: 22px;
-    background: color-mix(in srgb, var(--surface) 86%, transparent); backdrop-filter: saturate(1.4) blur(16px); -webkit-backdrop-filter: saturate(1.4) blur(16px);
-    border: 1px solid var(--border); box-shadow: 0 10px 30px -10px rgb(11 13 20 / .3);
+    display: flex; gap: 4px; width: max-content; max-width: calc(100% - 20px);
+    position: fixed; left: 50%; translate: -50% 0; bottom: calc(12px + env(safe-area-inset-bottom)); z-index: 20;
+    padding: 6px; border-radius: 999px;
+    background: color-mix(in srgb, var(--surface) 82%, transparent); backdrop-filter: saturate(1.6) blur(18px); -webkit-backdrop-filter: saturate(1.6) blur(18px);
+    border: 1px solid var(--border); box-shadow: 0 10px 30px -10px rgb(20 18 43 / .35);
   }
   .bottom-nav a[hidden] { display: none; }
   .bottom-nav a {
-    display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 6px 2px 4px; border-radius: 12px;
-    color: var(--muted); text-decoration: none; font-size: .68rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    -webkit-tap-highlight-color: transparent; transition: color .15s var(--ease), background .15s var(--ease);
+    display: flex; align-items: center; justify-content: center; gap: 7px; height: 46px; min-width: 50px; padding: 0 14px; border-radius: 999px;
+    color: var(--muted); text-decoration: none; font-size: 0; font-weight: 600; white-space: nowrap;
+    -webkit-tap-highlight-color: transparent; transition: color .15s var(--ease), background .2s var(--ease), padding .2s var(--ease);
   }
-  .bottom-nav a svg.i { width: 22px; height: 22px; vertical-align: 0; }
-  .bottom-nav a[aria-current="page"] { color: var(--accent); background: color-mix(in srgb, var(--accent) 11%, transparent); font-weight: 800; }
+  .bottom-nav a svg.i { width: 21px; height: 21px; vertical-align: 0; flex: none; }
+  .bottom-nav a[aria-current="page"] { font-size: .84rem; padding: 0 17px 0 15px; color: var(--bg); background: var(--text); }
 }
 
 /* Toast: short confirmation at the bottom of the screen */
@@ -509,14 +511,14 @@ html.dark .av { border-color: color-mix(in srgb, var(--bg) 70%, var(--surface));
 
 /* ---- RostiQ next: the same look on every page ---- */
 /* Page titles in the scoreboard font. */
-main > h1, .page-title { font-family: var(--font-display); font-weight: 400; text-transform: uppercase; letter-spacing: .02em; line-height: 1; }
+main > h1, .page-title { font-family: var(--font-display); font-weight: 800; letter-spacing: -.02em; line-height: 1; }
 main h2 { letter-spacing: -.01em; }
 /* Section labels on the main page ("Wedstrijden", "Trainingen", "Overzicht"). */
-#view-cal .section-head h2 { font-family: var(--font-display); font-weight: 400; text-transform: uppercase; letter-spacing: .03em; }
+#view-cal .section-head h2 { font-family: var(--font-display); font-weight: 800; letter-spacing: -.02em; }
 /* Match cards: date block like a ticket stub, scoreboard numbers. */
 .match { border-radius: 22px; }
 .m-date { border-radius: 16px; }
-.m-date b { font-family: var(--font-display); font-weight: 400; font-size: 1.7rem; }
+.m-date b { font-family: var(--font-display); font-weight: 800; letter-spacing: -.02em; font-size: 1.46rem; }
 /* Fields and buttons: a bit rounder and calmer. */
 input:not([type=checkbox]):not([type=radio]):not([type=range]), select, textarea { border-radius: var(--radius-sm); }
 /* Dialogs: on a phone they slide up from the bottom (a sheet). */
@@ -581,7 +583,7 @@ body.sel-off [data-select] { display: none !important; }
 .pro-acts { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; margin-top: 14px; }
 .pro-lock { border: 1px dashed var(--border); border-radius: 16px; padding: 18px; text-align: center; display: grid; gap: 8px; justify-items: center; }
 .pro-lock p { margin: 0; color: var(--muted); max-width: 42ch; }
-.plan-card .plan-name { font-family: Anton, var(--font-head, inherit); font-size: 1.5rem; letter-spacing: .02em; text-transform: uppercase; }
+.plan-card .plan-name { font-family: var(--font-display); font-weight: 800; font-size: 1.29rem; letter-spacing: -.02em; }
 .plan-card .plan-meta { color: var(--muted); font-size: .9rem; }
 .plan-card .plan-feats { margin: 10px 0 0; padding-left: 18px; color: var(--muted); font-size: .9rem; display: grid; gap: 2px; }
 .plan-card .pro-acts { justify-content: flex-start; }

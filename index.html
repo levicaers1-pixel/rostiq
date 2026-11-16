@@ -36,7 +36,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Noto+Sans:wght@400;500;600;700;800&family=Cormorant+Garamond:wght@600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Geist:wght@400;500;600;700;800&family=Geist+Mono:wght@500;600&family=Cormorant+Garamond:wght@600&display=swap">
 <link rel="stylesheet" href="common.css">
 <script src="boot.js"></script>
 <style>
@@ -457,11 +457,11 @@
   .hero.md { grid-template-columns: minmax(0, 1fr); }
   .md-team { display: grid; justify-items: center; gap: 6px; font-weight: 700; font-size: .88rem; min-width: 0; }
   .md-team span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .md-crest { width: 64px; height: 64px; border-radius: 20px; display: grid; place-items: center; overflow: hidden; font-family: var(--font-display); font-size: 1.3rem; letter-spacing: .04em;
+  .md-crest { width: 64px; height: 64px; border-radius: 20px; display: grid; place-items: center; overflow: hidden; font-family: var(--font-display); font-weight: 800; font-size: 1.12rem; letter-spacing: -.02em;
     color: var(--pampas); background: color-mix(in srgb, var(--pampas) 18%, transparent); box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--pampas) 50%, transparent); }
   .md-crest img { width: 100%; height: 100%; object-fit: contain; padding: 8px; }
   .md-crest.them { color: var(--brand-text); background: color-mix(in srgb, var(--brand-text) 12%, transparent); box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--brand-text) 28%, transparent); }
-  .md-x { font-family: var(--font-display); font-size: 2.8rem; line-height: .9; color: var(--pampas); }
+  .md-x { font-family: var(--font-display); font-weight: 800; letter-spacing: -.02em; font-size: 2.41rem; line-height: .9; color: var(--pampas); }
   .md-x small { display: block; margin-top: 4px; font-family: var(--font-body); font-size: .62rem; font-weight: 800; letter-spacing: .14em; color: var(--brand-text); opacity: .85; }
   .md-meta { display: flex; justify-content: center; align-items: center; gap: 6px 14px; flex-wrap: wrap; font-size: .86rem; font-weight: 600; opacity: .95; }
   .md-meta span { display: inline-flex; align-items: center; gap: 5px; }
@@ -491,7 +491,7 @@
   .ts-head small { color: var(--muted); font-size: .75rem; }
   .ts-date { width: 46px; text-align: center; border-radius: 12px; background: color-mix(in srgb, var(--accent) 7%, var(--surface)); padding: 4px 0; flex: none; }
   .ts-date small { display: block; font-size: .6rem; font-weight: 800; letter-spacing: .1em; color: var(--muted); text-transform: uppercase; }
-  .ts-date b { font-family: var(--font-display); font-weight: 400; font-size: 1.35rem; line-height: 1.1; }
+  .ts-date b { font-family: var(--font-display); font-weight: 800; letter-spacing: -.02em; font-size: 1.16rem; line-height: 1.1; }
   .ts-ans { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 10px; }
   .ts-ans.two { grid-template-columns: 1fr auto; }
   .ts-ans button { justify-content: center; padding: 8px 10px; border-radius: 10px; }
@@ -502,7 +502,7 @@
     box-shadow: var(--shadow-sm); color: var(--text); text-decoration: none; }
   a.tile:hover { border-color: color-mix(in srgb, var(--accent) 40%, var(--border)); }
   .tile .tk { font-size: .66rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
-  .tile .tv { font-family: var(--font-display); font-size: 2.1rem; line-height: 1; margin-top: 10px; }
+  .tile .tv { font-family: var(--font-display); font-weight: 800; letter-spacing: -.02em; font-size: 1.81rem; line-height: 1; margin-top: 10px; }
   .tile .tv small { font-size: 1rem; color: var(--muted); }
   .tile .tv.sm { font-size: 1.35rem; }
   .tile .ts { font-size: .78rem; color: var(--muted); margin-top: 5px; }
@@ -564,9 +564,9 @@
   .rk-pod { position: relative; text-align: center; padding: 14px 6px 10px; border-radius: 20px; background: var(--surface); border: 1px solid var(--border); cursor: pointer; }
   .rk-pod .av { width: 46px; height: 46px; margin: 0 auto; font-size: .85rem; border: 0; }
   .rk-pod .pos { position: absolute; top: -11px; left: 50%; transform: translateX(-50%); width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center;
-    font-family: var(--font-display); font-size: .8rem; color: #fff; border: 2px solid var(--bg); background: #b9bec4; }
+    font-family: var(--font-display); font-weight: 800; letter-spacing: -.02em; font-size: 0.69rem; color: #fff; border: 2px solid var(--bg); background: #b9bec4; }
   .rk-pod b { display: block; font-size: .82rem; margin-top: 7px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .rk-pod .pts { font-family: var(--font-display); font-size: 1.55rem; line-height: 1.1; }
+  .rk-pod .pts { font-family: var(--font-display); font-weight: 800; letter-spacing: -.02em; font-size: 1.33rem; line-height: 1.1; }
   .rk-pod small { font-size: .64rem; color: var(--muted); font-weight: 700; }
   .rk-pod.p1 { background: var(--brand); border-color: var(--brand); color: var(--brand-text); padding-top: 20px; }
   .rk-pod.p1 .pts { color: var(--pampas); } .rk-pod.p1 small { color: color-mix(in srgb, var(--brand-text) 72%, transparent); }
@@ -576,7 +576,7 @@
   .rk-row { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 12px; border: 0; border-radius: 0; background: none; color: var(--text); text-align: left; font: inherit; }
   .rk-row + .rk-row { border-top: 1px solid var(--border); }
   button.rk-row:hover:not(:disabled) { background: color-mix(in srgb, var(--accent) 5%, var(--surface)); border: 0; }
-  .rk-row .rk { width: 22px; text-align: center; font-family: var(--font-display); font-size: 1.05rem; color: var(--muted); flex: none; }
+  .rk-row .rk { width: 22px; text-align: center; font-family: var(--font-display); font-weight: 800; letter-spacing: -.02em; font-size: 0.9rem; color: var(--muted); flex: none; }
   .rk-row .av { width: 34px; height: 34px; font-size: .7rem; border: 0; flex: none; }
   .rk-row .nm { flex: 1; min-width: 0; }
   .rk-row .nm b { display: block; font-size: .9rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -587,7 +587,7 @@
     background: color-mix(in srgb, var(--muted) 12%, var(--surface)); color: var(--muted); }
   .rk-form span.w { background: var(--pampas); color: var(--brand); }
   .rk-row .pt { min-width: 40px; text-align: right; flex: none; }
-  .rk-row .pt b { display: block; font-family: var(--font-display); font-weight: 400; font-size: 1.25rem; line-height: 1; }
+  .rk-row .pt b { display: block; font-family: var(--font-display); font-weight: 800; letter-spacing: -.02em; font-size: 1.07rem; line-height: 1; }
   .rk-row .pt small { font-size: .62rem; color: var(--muted); font-weight: 700; }
   .rk-row.me { background: color-mix(in srgb, var(--pampas) 22%, var(--surface)); }
   .rk-hist { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; overflow: hidden; max-width: 720px; }
@@ -596,7 +596,7 @@
   .rk-hist a:hover { background: color-mix(in srgb, var(--accent) 5%, var(--surface)); }
   .rk-hist .d { width: 44px; text-align: center; border-radius: 12px; padding: 4px 0; flex: none; background: color-mix(in srgb, var(--accent) 8%, var(--surface)); line-height: 1.05; }
   .rk-hist .d small { display: block; font-size: .56rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
-  .rk-hist .d b { font-family: var(--font-display); font-weight: 400; font-size: 1.2rem; }
+  .rk-hist .d b { font-family: var(--font-display); font-weight: 800; letter-spacing: -.02em; font-size: 1.03rem; }
   .rk-hist .o { flex: 1; min-width: 0; } .rk-hist .o b { display: block; font-size: .9rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .rk-hist .o small { font-size: .74rem; color: var(--muted); }
   .rk-hist .go { flex: none; font-size: .78rem; font-weight: 800; padding: 7px 12px; border-radius: 12px; background: var(--brand); color: var(--brand-text); }
@@ -606,11 +606,11 @@
   .rk-note { font-size: .78rem; color: var(--muted); line-height: 1.5; max-width: 720px; margin: 12px 0 0; }
   .rk-stats { display: grid; grid-template-columns: repeat(3, 1fr); margin: 14px 0 6px; border: 1px solid var(--border); border-radius: 16px; }
   .rk-stats div { text-align: center; padding: 10px 4px; } .rk-stats div + div { border-left: 1px solid var(--border); }
-  .rk-stats b { display: block; font-family: var(--font-display); font-weight: 400; font-size: 1.35rem; }
+  .rk-stats b { display: block; font-family: var(--font-display); font-weight: 800; letter-spacing: -.02em; font-size: 1.16rem; }
   .rk-stats small { font-size: .62rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
   .rk-res { display: flex; align-items: center; gap: 10px; padding: 10px 2px; border-top: 1px solid var(--border); font-size: .85rem; }
   .rk-res .o { flex: 1; min-width: 0; } .rk-res .o b { display: block; } .rk-res .o small { color: var(--muted); font-size: .74rem; }
-  .rk-res .pl { font-weight: 800; } .rk-res .pp { font-family: var(--font-display); font-size: 1.1rem; min-width: 34px; text-align: right; }
+  .rk-res .pl { font-weight: 800; letter-spacing: -.02em; } .rk-res .pp { font-family: var(--font-display); font-size: 0.95rem; min-width: 34px; text-align: right; }
   .rk-head { display: flex; gap: 12px; align-items: center; padding-right: 40px; }
   .rk-head .av { width: 54px; height: 54px; font-size: 1rem; border: 0; }
   .rk-head b { display: block; font-size: 1.05rem; } .rk-head small { color: var(--muted); font-size: .8rem; }
