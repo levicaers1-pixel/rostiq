@@ -798,7 +798,7 @@
   .greet h1 span { display: block; color: var(--muted); }
   .hero.md { margin-top: 16px; border-radius: 30px; padding: 16px;
     background: radial-gradient(120% 90% at 100% 0%, color-mix(in srgb, var(--pampas) 42%, transparent), transparent 55%),
-                radial-gradient(90% 80% at 0% 100%, color-mix(in srgb, #7c5cff 50%, transparent), transparent 60%),
+                radial-gradient(90% 80% at 0% 100%, color-mix(in srgb, var(--pampas) 20%, transparent), transparent 60%),
                 linear-gradient(160deg, var(--brand), color-mix(in srgb, var(--brand) 62%, #000)); }
   .hero.md::after { background: radial-gradient(color-mix(in srgb, var(--brand-text) 10%, transparent) 1px, transparent 1px) 0 0 / 14px 14px;
     -webkit-mask-image: linear-gradient(180deg, #000, transparent 70%); mask-image: linear-gradient(180deg, #000, transparent 70%); }
@@ -831,6 +831,25 @@
   .md-bar i { background: #3ddc84; } .md-bar u { background: #f5b84b; }
   .hero.md .hero-btn { border-radius: 14px; }
   .hero-btn.md-open { border-radius: 16px; padding: 12px; }
+  /* The card's two halves: the match, and my answer. Stacked on a phone, side by side on a wide screen. */
+  .md-cols, .md-a, .md-b { display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr); }
+  .md-b:empty { display: none; }
+  .md-role .md-ic { flex: none; width: 34px; height: 34px; border-radius: 12px; display: grid; place-items: center; font-size: 1rem; background: color-mix(in srgb, var(--brand-text) 16%, transparent); }
+  .md-role .md-ic svg.i { width: 18px; height: 18px; }
+  .md-role .md-ic.yes { background: #3ddc84; color: #06281a; } .md-role .md-ic.maybe { background: #f5b84b; color: #2b1d00; } .md-role .md-ic.no { background: #ff6b78; color: #3a0409; }
+  .md-role .md-ic.role { background: var(--pampas); color: var(--brand); }
+  @media (min-width: 760px) {
+    .hero.md:not(.mh) { padding: 22px; gap: 16px; }
+    .md-cols:has(.md-b:not(:empty)) { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 22px; align-items: center; }
+    .md-cols:has(.md-b:not(:empty)) .md-b { padding: 14px; border-radius: 24px; background: rgb(0 0 0 / .24); gap: 12px; }
+    .md-cols:has(.md-b:not(:empty)) .md-role { padding: 0; background: none; }
+    .md-cols:has(.md-b:not(:empty)) .hero-answer { background: rgb(0 0 0 / .3); }
+    .md-cols .md-foot { flex-wrap: wrap; }
+    .md-meta > span:not(.pill) { border-radius: 14px; text-align: left; }
+    .hero.md:not(.mh) .hero-btns { align-items: center; }
+    .hero.md:not(.mh) .hero-btn { flex: 0 0 auto; padding: 9px 14px; }
+    .hero.md:not(.mh) .hero-btn.md-open { flex: 0 0 auto; margin-left: auto; padding: 10px 20px; }
+  }
   .home-label { font-family: var(--font-mono); font-size: .68rem; font-weight: 600; margin: 24px 2px 10px; }
   .tile { border: 0; border-radius: 24px; box-shadow: var(--shadow-sm); }
   a.tile { transition: transform .15s var(--ease), box-shadow .15s var(--ease); }
@@ -1389,6 +1408,7 @@ function matchCardHtml(e, players, onPage) {
   return `
     <div class="hero-top"><span class="hero-kicker">${ic("flag")} ${onPage ? esc(isPast(e) ? t("mp.played") : t("mp.match")) : t("hero.next")}</span>
       <span class="hero-top-r">${session.admin ? `<button class="hero-icon" data-history="${e.date}" title="${t("hist.button")}" aria-label="${t("hist.button")}">${ic("clock")}</button><button class="hero-icon" data-select="${e.date}" title="${t("sel.button")}" aria-label="${t("sel.button")}">${ic("users")}</button><button class="hero-icon" data-edit="${e.date}" title="${t("details.edit")}" aria-label="${t("details.edit")}">${ic("pencil")}</button>` : ""}${days < 0 ? "" : days >= 1 && e.home != null ? `<span class="hero-side">${ic(e.home ? "home" : "car")} ${esc(t(e.home ? "match.home" : "match.away"))}</span>` : days >= 1 ? "" : `<span class="hero-when">${when}</span>`}</span></div>
+    <div class="md-cols"><div class="md-a">
     <${vsTag} class="md-vs"${onPage ? "" : ` href="#m/${e.date}" aria-label="${esc(t("mp.open"))}"`}>
       <div class="md-team"><div class="md-crest">${us}</div><span>${esc(TEAM.shortName || TEAM.brand)}</span></div>
       ${days >= 1 ? `<div class="md-x count" aria-label="${esc(when)}">${days}<small>${esc(t("hero.daysUnit", { n: days }))}</small></div>`
@@ -1396,10 +1416,11 @@ function matchCardHtml(e, players, onPage) {
       <div class="md-team"><div class="md-crest them">${esc(crestText(e.opp))}</div><span>${esc(e.opp)}</span></div>
     </${vsTag}>
     <div class="md-meta"><span>${ic("calendar")} ${esc(fmt(e.date, { weekday: "short", day: "numeric", month: "short" }))}</span>${matchInfo(e).start ? `<span>${ic("clock")} ${esc(timeText(e))}</span>` : ""}${v ? `<span>${ic("pin")} ${esc(venueShort(v))}</span>` : ""}${statusPill(e)}${e.final ? `<span class="pill violet">${ic("trophy")} ${t("final")}</span>` : ""}</div>
-    ${mine !== null ? `<div class="md-role"><span class="md-ic">${role ? "⭐" : { yes: "✅", maybe: "❓", no: "❌" }[mine] || "👋"}</span><div><b>${esc(status)}</b>${small ? `<small>${esc(small)}</small>` : ""}</div></div>
+    </div><div class="md-b">${(`
+    ${mine !== null ? `<div class="md-role"><span class="md-ic ${role ? "role" : mine || "none"}">${ic(role ? "users" : { yes: "check", no: "x" }[mine] || "help")}</span><div><b>${esc(status)}</b>${small ? `<small>${esc(small)}</small>` : ""}</div></div>
     ${isPast(e) ? "" : `<div class="answer hero-answer" role="group" aria-label="${t("match.mine")}">${["yes", "maybe", "no"].map(a =>
       `<button data-answer="${a}" data-date="${e.date}" data-a="${a}" aria-pressed="${mine === a}">${ic({ yes: "check", maybe: "help", no: "x" }[a])} ${t("answer." + a)}</button>`).join("")}</div>`}` : ""}
-    ${onPage || isPast(e) ? "" : comingLine(e, players)}
+    ${onPage || isPast(e) ? "" : comingLine(e, players)}`).trim()}</div></div>
     ${selLine(e, players)}
     ${more ? `<details class="hero-more"${heroMoreOpen ? " open" : ""}><summary>${t("hero.more")} ${ic("chevron-down")}</summary>${more}</details>` : ""}
     <div class="hero-btns">
