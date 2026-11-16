@@ -134,6 +134,19 @@
   .hub-cell.warn .ic { background: var(--no-bg); color: var(--no); }
   .hub-cell.danger { color: var(--no); }
   .hub-cell.danger .ic { background: var(--no-bg); color: var(--no); }
+  /* ---- Redesign, step 5: Beheer ---- */
+  .hub-health { background: var(--surface); color: var(--text); box-shadow: var(--shadow-sm); }
+  html.dark .hub-health { border: 0; }
+  .hub-ring { width: 86px; height: 86px; background: conic-gradient(color-mix(in srgb, var(--pampas) 55%, var(--text)) 0 var(--p), color-mix(in srgb, var(--muted) 16%, transparent) var(--p)); }
+  .hub-ring::after { inset: 8px; background: var(--surface); }
+  .hub-ring b { color: var(--text); font-size: 1.45rem; }
+  .hub-health h3 { font-family: var(--font-display); font-weight: 700; letter-spacing: -.01em; }
+  .hub-health p { color: var(--muted); opacity: 1; }
+  .hub-label { font-family: var(--font-mono); font-size: .68rem; font-weight: 600; letter-spacing: .12em; }
+  .hub-qa a { font-weight: 600; }
+  .hub-qa a > span:first-child { border: 0; border-radius: 20px; color: var(--text); }
+  .hub-group { border: 0; border-radius: 24px; }
+  .hub-cell .ic { border-radius: 12px; }
   #admin .panel h2 { display: flex; align-items: center; gap: 10px; }
   #admin .panel h2 .h-ic { width: 32px; height: 32px; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center;
     background: color-mix(in srgb, var(--accent) 9%, var(--surface)); color: var(--accent); }

@@ -103,6 +103,39 @@
   .p-sheet .p-ring, .p-sheet .p-tags { display: none !important; }
   .p-sheet .sheet-close { display: flex; justify-content: flex-end; margin-top: 10px; }
 
+  /* ---- Redesign, step 5: Ploeg ---- */
+  .toolbar input { border: 0; border-radius: 18px; padding: 12px 14px; box-shadow: var(--shadow-sm); }
+  .toolbar button { border: 0; border-radius: 999px; box-shadow: var(--shadow-sm); }
+  .card { border: 0; border-radius: 24px; }
+  .card.me { box-shadow: 0 0 0 2px var(--text), var(--shadow-sm); }
+  .name { font-family: var(--font-display); font-weight: 700; letter-spacing: -.01em; }
+  .p-spark { display: flex; gap: 3px; margin-top: 7px; }
+  .p-spark i { width: 14px; height: 5px; border-radius: 3px; background: color-mix(in srgb, var(--muted) 20%, transparent); }
+  .p-spark i.yes { background: var(--yes); } .p-spark i.maybe { background: var(--maybe); } .p-spark i.no { background: var(--no); }
+  .p-pct { display: none; text-align: right; flex: none; }
+  .p-pct b { display: block; font-family: var(--font-mono); font-weight: 600; font-size: .92rem; }
+  .p-pct small { display: block; font-size: .62rem; color: var(--muted); }
+  @media (max-width: 700px) {
+    /* One player per row: face, name and place, the last answers, the share of matches. */
+    #grid { grid-template-columns: 1fr; gap: 8px; }
+    #grid .card .head { flex-direction: row; align-items: center; gap: 12px; padding: 12px 14px; }
+    #grid .card .avatar { width: 46px; height: 46px; border-radius: 17px; font-size: .9rem; }
+    #grid .card .name { font-size: .98rem; }
+    #grid .card .who { width: auto; }
+    #grid .card .p-ring { display: none; }
+    #grid .card .p-pct { display: block; }
+    #grid .card .p-tags { display: none; }
+    #grid .card.me { background: var(--text); box-shadow: var(--shadow-sm); }
+    #grid .card.me .head { color: var(--bg); }
+    #grid .card.me .place, #grid .card.me .p-pct small { color: color-mix(in srgb, var(--bg) 62%, transparent); }
+    #grid .card.me .av-wrap .dot { border-color: var(--text); }
+    #grid .card.me .p-spark i:not(.yes):not(.maybe):not(.no) { background: color-mix(in srgb, var(--bg) 22%, transparent); }
+  }
+  .season-top h3 { font-family: var(--font-mono); font-size: .68rem; font-weight: 600; letter-spacing: .12em; }
+  .lb { border: 0; border-radius: 24px; }
+  .lb-row { font-weight: 600; }
+  .lb-row .v { font-family: var(--font-mono); font-weight: 600; letter-spacing: 0; }
+
   /* Edit dialog: photo */
   .photo-row { display: flex; align-items: center; gap: 16px; margin: 4px 0 6px; }
   .avatar.big { width: 72px; height: 72px; font-size: 1.6rem; }
@@ -206,6 +239,9 @@ let render = function () {
       : emptyState("users", t("empty.noPlayers"), t(session.admin ? "empty.noPlayersAdmin" : "empty.noPlayersPlayer"));
     return;
   }
+  // The six matches up to the next one: each player's answers to them as small bars (green, amber, red, or empty).
+  const on = EVENTS.filter(e => !e.cancelled), nextAt = on.findIndex(e => e.date >= TODAY), end = Math.max(nextAt < 0 ? on.length : nextAt + 1, Math.min(6, on.length));
+  const recent = on.slice(Math.max(0, end - 6), end);
   grid.innerHTML = players.map(p => {
     const st = statsFor(p), mine = AUTH_ON && p.id === session.pid, editable = canEdit(p.id);
     const place = (p.geo && p.geo.label) || p.gemeente;
@@ -223,13 +259,15 @@ let render = function () {
     const pct = EVENTS.length ? Math.round(100 * st.yes / EVENTS.length) : 0;
     const f1 = customFields().find(([k]) => (p.extra || {})[k]);
     const tags = [f1 && `<span>${esc(p.extra[f1[0]])}</span>`, st.drove && `<span>🚗 ${st.drove}</span>`].filter(Boolean);
+    const spark = recent.map(e => `<i class="${p.avail[e.date] || "e"}" title="${esc(shortDate(e.date) + " · " + e.opp)}"></i>`).join("");
     return `<article class="card ${mine ? "me" : ""}">
       <div class="head">
         <span class="av-wrap"><div class="avatar" style="${avatarBg(p)}">${photoOf(p) ? "" : esc(initials(p.name))}</div>${dot ? `<span class="dot ${dot}"></span>` : ""}</span>
         <div class="who"><div class="name">${esc(p.name)}${mine ? `<span class="you">${t("team.you")}</span>` : ""}</div>
           <div class="place">${awayNow ? esc(t("away.label", { when: awayText(awayNext(p)) })) : place ? esc(place) : ""}</div>
-          ${tags.length ? `<div class="p-tags">${tags.join("")}</div>` : ""}</div>
-        <div class="p-ring" style="--p:${pct}%" title="${esc(t("team.statYes"))}"><b>${pct}%</b></div>
+          ${tags.length ? `<div class="p-tags">${tags.join("")}</div>` : ""}
+          ${spark ? `<div class="p-spark" aria-hidden="true">${spark}</div>` : ""}</div>
+        <div class="p-pct"><b>${EVENTS.length ? pct + "%" : "–"}</b><small>${esc(t("team.statYes"))}</small></div>
         <div class="icons">
           ${p.phone && !mine ? `<a class="icon-btn wa" href="https://wa.me/${p.phone}" target="_blank" rel="noopener" title="WhatsApp" aria-label="WhatsApp">${ic("message")}</a>` : ""}
           ${editable ? `<button class="icon-btn" data-edit="${p.id}" title="${t(mine ? "team.editMine" : "team.edit")}" aria-label="${t(mine ? "team.editMine" : "team.edit")}">${ic("pencil")}</button>` : ""}
