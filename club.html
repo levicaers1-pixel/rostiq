@@ -45,7 +45,14 @@
   .club-tabs { display: flex; gap: 6px; margin: 0 0 16px; overflow-x: auto; }
   .club-tabs button { font: inherit; font-weight: 700; font-size: .88rem; padding: 8px 14px; border-radius: 999px; border: 1px solid var(--border);
     background: var(--surface); color: var(--muted); cursor: pointer; white-space: nowrap; }
-  .club-tabs button[aria-pressed=true] { background: var(--brand); color: var(--brand-text, #fff); border-color: var(--brand); }
+  .club-tabs button[aria-pressed=true] { background: var(--text); color: var(--bg); border-color: var(--text); }
+  /* ---- Redesign, step 7: the club page ---- */
+  .club-tabs button { border-color: transparent; box-shadow: var(--shadow-sm); font-weight: 600; }
+  .club-label { font-family: var(--font-mono); font-size: .68rem; font-weight: 600; letter-spacing: .12em; }
+  .club-bill { border-radius: 24px; background: radial-gradient(120% 90% at 100% 0%, color-mix(in srgb, var(--pampas) 42%, transparent), transparent 55%),
+      radial-gradient(90% 80% at 0% 100%, color-mix(in srgb, #7c5cff 50%, transparent), transparent 60%),
+      linear-gradient(160deg, var(--brand), color-mix(in srgb, var(--brand) 62%, #000)); }
+  .club-bill .big { color: var(--brand-text); }
   .cal-day { margin: 16px 0 6px; font-size: .74rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
   .cal-m { display: grid; grid-template-columns: 54px 1fr auto; gap: 2px 12px; align-items: center; padding: 11px 14px; border-top: 1px solid var(--border); }
   .cal-m:first-child { border-top: 0; }

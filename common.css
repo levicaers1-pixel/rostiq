@@ -612,3 +612,10 @@ body.sel-off [data-select] { display: none !important; }
 .lang button { color: var(--muted); opacity: 1; }
 .lang button[aria-pressed="true"] { background: var(--text); color: var(--bg); }
 @media (max-width: 700px) { .brand-inner { min-height: 56px; } }
+
+/* ---- Redesign, step 7: the same controls on every page ---- */
+/* A chosen option in a row of options is dark (ink), like the current tab; small labels in the mono font. */
+html .segmented button[aria-pressed="true"] { background: var(--text); color: var(--bg); box-shadow: none; }
+.segmented { border-radius: 16px; padding: 4px; } .segmented button { border-radius: 12px; }
+.countdown { font-weight: 600; }
+.form-card { border-color: transparent; box-shadow: var(--shadow-sm); background: var(--surface); }

@@ -166,8 +166,31 @@
   .mine .segmented button { display: grid; justify-items: center; gap: 6px; padding: 12px 6px; border-radius: 16px; border: 1px solid var(--border);
     background: var(--surface); color: var(--muted); font-size: .8rem; font-weight: 700; line-height: 1.2; }
   .mine .segmented button svg.i { width: 22px; height: 22px; }
-  .mine .segmented button[aria-pressed="true"] { background: var(--pampas); color: var(--brand); border-color: transparent; box-shadow: 0 8px 18px -10px rgb(0 0 0 / .5); }
-  html.dark .mine .segmented button[aria-pressed="true"] { color: #0b0d14; }
+  .mine .segmented button[aria-pressed="true"] { background: var(--text); color: var(--bg); border-color: transparent; box-shadow: none; }
+  html.dark .mine .segmented button[aria-pressed="true"] { color: var(--bg); }
+  /* ---- Redesign, step 7: the season's carpool overview ---- */
+  h4 { font-family: var(--font-mono); font-size: .68rem; font-weight: 600; letter-spacing: .12em; }
+  .mine .segmented { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; padding: 0; background: none; }
+  .mine .segmented button { display: grid; justify-items: center; gap: 6px; padding: 14px 4px 12px; border-radius: 18px; font-size: .78rem; font-weight: 600;
+    background: color-mix(in srgb, var(--muted) 13%, var(--surface)); color: var(--muted); }
+  .mine .segmented button svg.i { width: 20px; height: 20px; }
+  .car { border: 0; border-radius: 20px; background: color-mix(in srgb, var(--muted) 8%, var(--surface)); }
+  .car.me { box-shadow: 0 0 0 2px var(--text); }
+  .seat-row .av, .seat-empty { border-radius: 50%; }
+  .seat-empty { border-width: 1.5px; }
+  .cp-route { border-radius: 22px; background: radial-gradient(120% 90% at 100% 0%, color-mix(in srgb, var(--pampas) 42%, transparent), transparent 55%),
+      radial-gradient(90% 80% at 0% 100%, color-mix(in srgb, #7c5cff 50%, transparent), transparent 60%),
+      linear-gradient(160deg, var(--brand), color-mix(in srgb, var(--brand) 62%, #000)); }
+  .cp-route svg path { stroke: var(--brand-text); }
+  .cp-route .to { background: var(--brand-text); border-color: transparent; } .cp-route .from { border-color: transparent; }
+  .cp-route .tag { border-radius: 16px; }
+  .cp-route .tag2 { flex-wrap: wrap; justify-content: flex-end; max-width: 60%; }
+  .cp-route .tag2 span { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; font-weight: 600;
+    background: color-mix(in srgb, var(--brand-text) 16%, transparent); color: var(--brand-text); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+  .cp-route .tag2 span.wait { background: #f5b84b; color: #2b1d00; }
+  .cp-route .tag2 svg { position: static; width: 14px; height: 14px; flex: none; }
+  .mine .segmented button { border: 0; }
+  .home-note { border-radius: 18px; }
   .car { border-radius: 18px; padding: 14px; }
   .car.me { box-shadow: 0 0 0 1px var(--accent); }
   .seat-row .av, .seat-empty { width: 32px; height: 32px; border-radius: 11px; }
