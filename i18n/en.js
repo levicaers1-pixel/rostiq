@@ -1107,4 +1107,11 @@ Now: *${when}*
   "big.bar": ({ n }) => `${n} players: a big team. Free stays free at any size; Pro makes a big squad easier.`,
   "pro.f.big": "Pro for big teams", "pro.f.big.why": "Email reminders for those who haven't answered, selections, the answer log and more admins. A whole club in one team? The Club plan is made for that.",
   "num.big": ({ n, hint, biggest }) => `Free teams with more than ${hint} players: ${n} · biggest team: ${biggest} players`,
+  "cp.how": "How are you getting to the match?", "cp.season": "Season overview and map", "cp.you": "Your car",
+  "cp.carsFree": ({ n, free }) => `${n} ${n === 1 ? "car" : "cars"} · ${free} free`, "cp.nFree": ({ n }) => `${n} free`,
+  "cp.waTo": ({ name }) => `WhatsApp ${name}`, "cp.take": "Take along", "cp.share": "Share the carpool",
+  "cp.noPlayer": "Link your account to a player to join the carpool.",
+  "cp.placeTitle": "Where do you usually leave from?", "cp.placeWhy": "So teammates can see who lives nearby. Only your town, no address. You only fill it in once.",
+  "cp.phoneOptional": "Mobile number for WhatsApp (optional)", "cp.later": "Later",
+  "cp.placeSaved": ({ place }) => `Saved: ${place}`,
 };

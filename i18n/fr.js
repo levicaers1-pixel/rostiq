@@ -1106,4 +1106,11 @@ Maintenant : *${when}*
   "big.bar": ({ n }) => `${n} joueurs : une grande équipe. Free reste gratuit, quelle que soit la taille ; Pro facilite la gestion d'un grand groupe.`,
   "pro.f.big": "Pro pour les grandes équipes", "pro.f.big.why": "Rappels par e-mail pour ceux qui n'ont pas répondu, sélections, l'historique des réponses et plus d'administrateurs. Tout un club dans une équipe ? L'abonnement Club est fait pour ça.",
   "num.big": ({ n, hint, biggest }) => `Équipes Free de plus de ${hint} joueurs : ${n} · plus grande équipe : ${biggest} joueurs`,
+  "cp.how": "Comment vas-tu au match ?", "cp.season": "Aperçu de la saison et carte", "cp.you": "Ta voiture",
+  "cp.carsFree": ({ n, free }) => `${n} ${n === 1 ? "voiture" : "voitures"} · ${free} libre${free === 1 ? "" : "s"}`, "cp.nFree": ({ n }) => `${n} libre${n === 1 ? "" : "s"}`,
+  "cp.waTo": ({ name }) => `WhatsApp ${name}`, "cp.take": "Emmener", "cp.share": "Partager le covoiturage",
+  "cp.noPlayer": "Relie ton compte à un joueur pour participer au covoiturage.",
+  "cp.placeTitle": "D'où pars-tu en général ?", "cp.placeWhy": "Ainsi, tes coéquipiers voient qui habite près de chez toi. Seulement ta commune, pas d'adresse. Tu ne le remplis qu'une fois.",
+  "cp.phoneOptional": "Numéro de GSM pour WhatsApp (facultatif)", "cp.later": "Plus tard",
+  "cp.placeSaved": ({ place }) => `Enregistré : ${place}`,
 };

@@ -262,6 +262,25 @@ await plans("free-big-team", null, "/admin.html?t=golf#sec-players", async page 
 }, BIG);
 await plans("pro-big-team", { plan: "pro", until: "2099-12-31", src: "paid" }, "/admin.html?t=golf#sec-players", async page =>
   await page.evaluate(shown("#big-bar")) ? ["Pro: the big-team hint is shown"] : [], BIG);
+// The match's Carpool tab: I ride with Julie; I switch to driving (asked once where I leave from), take Louise along.
+await plans("carpool-tab", null, `/?t=full#m/${next("full")}/c`, async page => {
+  const r = [], pane = () => page.evaluate(`document.querySelector(".mp-pane").innerText`);
+  if (!/rijdt mee met/i.test(await pane())) r.push("my ride with Julie isn't shown");
+  await page.screenshot({ path: path.join(OUT, "carpool-tab-rider.png"), fullPage: true });
+  await page.click('[data-cp="role"][data-role="driver"]');
+  await page.waitForTimeout(700);
+  if (!await page.evaluate(shown("#cp-place"))) r.push("no question where I leave from");
+  await page.screenshot({ path: path.join(OUT, "carpool-tab-place.png") });
+  await page.click("#cp-place-later");
+  await page.waitForTimeout(300);
+  if (!await page.evaluate(shown(".cp-step"))) r.push("driving: no seats");
+  await page.click('[data-cp="take"]');
+  await page.waitForTimeout(700);
+  const mine = await page.evaluate(`(document.querySelector(".mp-car.me") || {}).innerText || ""`);
+  if (!/Louise/.test(mine)) r.push("Louise isn't in my car: " + mine.slice(0, 80));
+  await page.screenshot({ path: path.join(OUT, "carpool-tab-driver.png"), fullPage: true });
+  return r;
+});
 // A team's own logo and colours: hidden on Free (the team name as text, RostiQ's colours), back with Pro.
 const LOGO = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
 const OWN = { "teams/golf/info/logo": LOGO, "teams/golf/info/colors": { main: "#123456", highlight: "#abcdef", light: { "--brand": "#123456" }, dark: { "--brand": "#0a0a0a" } } };

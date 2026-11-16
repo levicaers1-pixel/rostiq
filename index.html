@@ -534,7 +534,7 @@
   #view-match { max-width: 860px; margin: 0 auto; }
   .mp-back { display: inline-flex; margin: 10px 0 0; font-weight: 700; font-size: .88rem; color: var(--muted); text-decoration: none; }
   .mp-hero { margin-top: 10px !important; }
-  .mp-tabs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; padding: 4px; margin: 14px 0 6px; border-radius: 16px; background: var(--surface); border: 1px solid var(--border); position: sticky; top: 8px; z-index: 5; box-shadow: var(--shadow-sm); }
+  .mp-tabs { scroll-margin-top: 12px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; padding: 4px; margin: 14px 0 6px; border-radius: 16px; background: var(--surface); border: 1px solid var(--border); position: sticky; top: 8px; z-index: 5; box-shadow: var(--shadow-sm); }
   .mp-tabs button { border: 0; border-radius: 12px; padding: 9px 0; font-size: .8rem; font-weight: 800; color: var(--muted); background: none; }
   .mp-tabs button[aria-selected="true"] { background: var(--brand); color: var(--brand-text); }
   .mp-pane { display: grid; gap: 8px; padding-top: 6px; }
@@ -652,6 +652,46 @@
   .mp-seats span { flex: 1 1 70px; text-align: center; padding: 8px 6px; border-radius: 10px; font-size: .8rem; font-weight: 700; border: 1px dashed var(--border); color: var(--muted); }
   .mp-seats span.f { border: 0; background: var(--yes-bg); color: var(--yes); }
   .mp-wait { min-height: 0 !important; }
+  .cp-how { display: grid; gap: 10px; padding: 12px; border-radius: 18px; background: var(--surface); border: 1px solid var(--border); margin-bottom: 4px; }
+  .cp-how > b { font-size: .9rem; }
+  .cp-seg button { padding: 10px 6px; }
+  .cp-drive { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding-top: 10px; border-top: 1px dashed var(--border); font-size: .88rem; font-weight: 600; }
+  .cp-step { display: inline-flex; align-items: center; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+  .cp-step button { border: 0; border-radius: 0; background: transparent; min-width: 40px; padding: 6px 0; font-size: 1.1rem; font-weight: 800; }
+  .cp-step b { min-width: 34px; text-align: center; border-left: 1px solid var(--border); border-right: 1px solid var(--border); padding: 6px 0; }
+  .cp-note, .cp-place input { width: 100%; min-width: 0; font: inherit; font-size: .92rem; padding: 10px 12px; border: 1px solid var(--border); border-radius: 12px; background: var(--bg); color: var(--text); }
+  .cp-place .ff { display: grid; gap: 6px; } .cp-place .ff-label { font-size: .84rem; font-weight: 700; }
+  .cp-place .ff-inline { display: flex; gap: 8px; } .cp-place .ff-inline button { flex: none; }
+  .cp-place .ff-err { color: var(--no); font-size: .8rem; }
+  .cp-how .mp-mine { font-weight: 600; }
+  .cp-how .mp-mine span { flex: 1; } .cp-how .mp-mine small { display: block; font-weight: 500; color: var(--muted); }
+  .mp-mine.cp-ok { background: var(--yes-bg); color: var(--yes); }
+  .mp-mine.cp-wait { background: var(--maybe-bg); color: var(--maybe); }
+  .cp-cars { display: grid; gap: 8px; }
+  .mp-car.me { border: 2px solid var(--brand); }
+  .mp-car-h > div { flex: 1; min-width: 0; }
+  .cp-free { font-size: .72rem; font-weight: 800; padding: 3px 9px; border-radius: 999px; background: var(--yes-bg); color: var(--yes); white-space: nowrap; }
+  .cp-free.full { background: var(--no-bg); color: var(--no); }
+  .mp-seats span.f { display: inline-flex; align-items: center; justify-content: center; gap: 4px; }
+  .mp-seats span.you { background: var(--brand); color: #fff; }
+  .cp-x { border: 0; background: transparent; padding: 0 2px; min-height: 0; color: inherit; line-height: 1; }
+  .cp-x svg { width: 13px; height: 13px; }
+  .mp-car .mp-acts { margin-top: 10px; }
+  .btn.cp-wa { background: #1f9d55; border-color: #1f9d55; color: #fff; }
+  .cp-list { border-radius: 18px; background: var(--surface); border: 1px solid var(--border); padding: 2px 12px; }
+  .cp-row { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-top: 1px solid var(--border); }
+  .cp-row:first-child { border-top: 0; }
+  .cp-row > div { flex: 1; min-width: 0; } .cp-row b { display: block; font-size: .9rem; } .cp-row small { color: var(--muted); font-size: .76rem; }
+  .cp-row .btn.cp-wa { padding: 7px 10px; border-radius: 10px; display: inline-flex; }
+  .cp-open { font-size: .84rem; color: var(--muted); margin: 12px 2px 0; }
+  .cp-foot { margin: 14px 2px 0; font-size: .86rem; } .cp-foot a { font-weight: 700; }
+  .cp-place { max-width: 420px; width: calc(100% - 24px); border: 0; border-radius: 22px; padding: 20px; }
+  .cp-place form { display: grid; gap: 12px; }
+  .cp-place h3 { margin: 0; } .cp-place p { margin: 0; font-size: .88rem; }
+  .cp-hits { display: flex; flex-wrap: wrap; gap: 6px; }
+  .cp-hits button { font-size: .82rem; padding: 6px 10px; border-radius: 10px; }
+  .cp-hits button[aria-pressed="true"] { background: var(--brand); color: #fff; border-color: var(--brand); }
+  .cp-place .row { display: flex; justify-content: flex-end; gap: 8px; }
   .mp-hist { margin: 0; max-height: none; padding: 4px 14px; border-radius: 16px; background: var(--surface); border: 1px solid var(--border); }
   .link-danger { background: none; border: none; padding: 0; color: var(--no); text-decoration: underline; font-size: .85rem; }
 </style>
@@ -838,6 +878,7 @@
 <script src="team.js"></script>
 <script src="i18n.js"></script>
 <script src="common.js"></script>
+<script src="carpool-core.js"></script>
 <script>
 const CYCLE = ["", "yes", "maybe", "no"];
 const SYMBOL = { "": "–", yes: "✓", maybe: "?", no: "✗" };
@@ -1157,7 +1198,7 @@ function matchCardHtml(e, players, onPage) {
     ${more ? `<details class="hero-more"${heroMoreOpen ? " open" : ""}><summary>${t("hero.more")} ${ic("chevron-down")}</summary>${more}</details>` : ""}
     <div class="hero-btns">
       <button class="hero-btn" data-ics="${e.date}">${ic("calendar-plus")} ${t("hero.calendar")}</button>
-      <a class="hero-btn" href="${carpoolUrl(e.date)}">${ic("car")} ${t("hero.carpool")}</a>
+      <a class="hero-btn" href="#m/${e.date}/c">${ic("car")} ${t("hero.carpool")}</a>
       <button class="hero-btn" data-share="${e.date}" title="${t("share.match")}" aria-label="${t("share.match")}">${ic("share")}</button>
       ${onPage ? "" : `<a class="hero-btn md-open" href="#m/${e.date}">${esc(t("mp.open"))} ${ic("arrow-right")}</a>`}
     </div>`;
@@ -1413,7 +1454,6 @@ document.getElementById("view-match").addEventListener("click", async ev => {
 
 // ---- The match page (#m/<date>[/o|l|c|h]): the matchday card, then Overzicht · Opstelling · Carpool · Log ----
 var mpDate = "", mpTab = "o", mpHist = { date: "", html: "" };
-const carpoolUrl = date => { const u = new URL(pageUrl("carpool.html")); u.searchParams.set("d", date); return u.pathname.split("/").pop() + u.search; };
 function renderMatchPage(players) {
   const box = document.getElementById("view-match");
   if (!box || box.hidden || !dataLoaded) return;
@@ -1467,16 +1507,7 @@ function renderMatchPage(players) {
   } else if (mpTab === "r") {
     pane = resultPane(e, players);
   } else if (mpTab === "c") {
-    const cp = (root.carpool || {})[e.date] || {}, nm = id => root.players[id] ? firstName(root.players[id].name) : "?";
-    const drivers = Object.keys(cp).filter(id => cp[id] && cp[id].role === "driver" && root.players[id]);
-    const waiting = Object.keys(cp).filter(id => cp[id] && cp[id].role === "rider" && !cp[id].with && root.players[id]);
-    pane = (myRideText(e) ? `<div class="mp-mine">${ic("car")} ${esc(myRideText(e))}</div>` : "") +
-      (drivers.map(id => { const riders = Object.keys(cp).filter(r => cp[r] && cp[r].role === "rider" && cp[r].with === id); const seats = Math.max(cp[id].seats || 0, riders.length);
-        return `<div class="mp-car"><div class="mp-car-h">${avatar(root.players[id], players.findIndex(x => x.id === id))}<div><b>${esc(root.players[id].name)}</b><small>${esc(root.players[id].gemeente || "")}${cp[id].note ? " · " + esc(cp[id].note) : ""}</small></div></div>
-          <div class="mp-seats">${[...Array(seats)].map((_, i) => riders[i] ? `<span class="f">${esc(nm(riders[i]))}</span>` : `<span>${esc(t("mp.free"))}</span>`).join("")}</div></div>`; }).join("")
-        || `<div class="ts-done">${ic("car")} ${esc(t("mp.noCars"))}</div>`) +
-      (waiting.length ? `<div class="tile wide team mp-wait"><div class="tk">${esc(t("mp.waiting"))}</div><div>${esc(waiting.map(nm).join(", "))}</div></div>` : "") +
-      `<div class="mp-acts"><a class="btn primary" href="${carpoolUrl(e.date)}">${ic("car")} ${esc(t("mp.toCarpool"))}</a></div>`;
+    pane = carpoolPane(e);
   } else {
     if (!session.admin) pane = `<div class="ts-done">${ic("clock")} ${esc(t("mp.logAdmin"))}</div>`;
     else if (!isPro()) pane = proLock("log");
@@ -1488,7 +1519,7 @@ function renderMatchPage(players) {
     }
   }
   const typing = document.activeElement && box.contains(document.activeElement) ? document.activeElement : null;
-  const focusKey = typing && (typing.dataset.scS ? `[data-sc-s="${typing.dataset.scS}"]` : typing.dataset.scH ? `[data-sc-h="${typing.dataset.scH}"]` : "");
+  const focusKey = typing && (typing.dataset.scS ? `[data-sc-s="${typing.dataset.scS}"]` : typing.dataset.scH ? `[data-sc-h="${typing.dataset.scH}"]` : typing.dataset.cpNote != null ? "[data-cp-note]" : "");
   if (focusKey && scDraft) scRecalc(); // keep what's being typed in the draft before the page is redrawn
   box.innerHTML = `<a class="mp-back" href="#kalender">← ${esc(t("tab.calendar").replace(/^\S+\s/, ""))}</a>
     <section class="hero md mp-hero">${matchCardHtml(e, players, true)}</section>
@@ -1501,8 +1532,146 @@ function renderMatchPage(players) {
 document.getElementById("view-match").addEventListener("click", ev => {
   const tb = ev.target.closest("[data-mt]");
   if (tb) { mpTab = tb.dataset.mt; history.replaceState(null, "", location.pathname + location.search + `#m/${mpDate}/${mpTab}`); return renderMatchPage(sortedPlayers()); }
+  if (carpoolClick(ev)) return;
   onMatchClick(ev);
 });
+document.getElementById("view-match").addEventListener("input", ev => {
+  if (ev.target.dataset.cpNote == null) return;
+  const e = EVENTS.find(x => x.date === mpDate), v = ev.target.value;
+  cpNote = { date: mpDate, v };
+  clearTimeout(cpNoteTimer);
+  cpNoteTimer = setTimeout(() => e && cpMe() && write(`carpool/${e.date}/${cpMe()}/note`, v.trim() || null), 500);
+});
+
+// ---- The match's Carpool tab: how I go (drive, need a ride, not needed), the cars, and who still needs a ride ----
+// Same data and actions as the season overview (carpool.html, through carpool-core.js); here for one match only.
+let cpNote = null, cpNoteTimer = 0, cpHomeAnyway = new Set();
+const cpMe = () => (session.pid && root.players && root.players[session.pid] ? session.pid : "");
+function carpoolPane(e) {
+  const me = cpMe(), st = matchState(e), my = me ? st.all[me] : null, role = my ? my.role : "";
+  const free = st.cars.reduce((n, c) => n + Math.max(0, c.seats - c.riders.length), 0);
+  const nearMe = (a, b) => (km(me, a) ?? 1e9) - (km(me, b) ?? 1e9);
+  const away = id => { if (!me || id === me) return ""; const d = km(me, id); return d === null ? "" : d < 1 ? t("sameArea") : t("kmFrom", { km: Math.round(d) }); };
+  const av = id => avatar(root.players[id], sortedPlayers().findIndex(x => x.id === id));
+  const wa = (id, label) => { const u = me && cpDmUrl(e, me, id, st); return u ? `<a class="btn cp-wa" href="${u}" target="_blank" rel="noopener" aria-label="${esc(t("dm.title", { name: nameOf(id) }))}">${ic("message")}${label ? " " + esc(label) : ""}</a>` : ""; };
+  const foot = `<div class="cp-foot"><a href="${pageUrl("carpool.html")}">${esc(t("cp.season"))} →</a></div>`;
+  // A home match: usually no carpool needed, unless someone asks for it (or already arranged something).
+  if (e.home === true && !cpHomeAnyway.has(e.date) && !Object.keys(st.all).length)
+    return `<div class="ts-done">${ic("home")} ${esc(t("cp.homeNote"))}</div><div class="mp-acts"><button data-cp="home">${esc(t("cp.homeAnyway"))}</button></div>${foot}`;
+  let html = "";
+  if (me && isOn(e)) {
+    const seg = (r, label) => `<button data-cp="role" data-role="${r}" aria-pressed="${role === r}">${esc(label)}</button>`;
+    html += `<div class="cp-how"><b>${esc(t("cp.how"))}</b><div class="segmented cp-seg">${seg("driver", t("carpool.drive"))}${seg("rider", t("carpool.ride"))}${seg("", t("carpool.notNeeded"))}</div>`;
+    if (role === "driver") {
+      const note = cpNote && cpNote.date === e.date ? cpNote.v : my.note || "";
+      html += `<div class="cp-drive"><span>${esc(t("carpool.seats"))}</span><span class="cp-step"><button data-cp="seats" data-d="-1" aria-label="−" ${(my.seats || 1) <= 1 ? "disabled" : ""}>−</button><b>${my.seats || 1}</b><button data-cp="seats" data-d="1" aria-label="+" ${(my.seats || 1) >= 8 ? "disabled" : ""}>+</button></span></div>
+        <input class="cp-note" data-cp-note maxlength="120" placeholder="${esc(t("carpool.notePh"))}" value="${esc(note)}">`;
+    } else if (role === "rider") {
+      const car = st.cars.find(c => c.id === my.with);
+      html += car ? `<div class="mp-mine cp-ok">${ic("car")} <span>${t("carpool.rideWith", { name: esc(nameOf(car.id)) })}${car.note ? `<small>${esc(car.note)}</small>` : ""}</span><button class="small" data-cp="leave">${esc(t("carpool.leave"))}</button></div>`
+        : `<div class="mp-mine cp-wait">${ic("help")} <span>${esc(t("carpool.pickCar"))}</span></div>`;
+    }
+    html += `</div>`;
+  } else if (!me) html += `<div class="ts-done">${ic("car")} ${esc(t("cp.noPlayer"))}</div>`;
+  // Cars: mine first, then nearest to me.
+  const cars = [...st.cars].sort((a, b) => (b.id === me) - (a.id === me) || nearMe(a.id, b.id));
+  html += `<div class="home-label"><span>${esc(t("carpool.cars"))}</span><span>${esc(t("cp.carsFree", { n: cars.length, free }))}</span></div>`;
+  html += cars.length ? `<div class="cp-cars">${cars.map(c => {
+    const left = c.seats - c.riders.length, mine = c.id === me;
+    const canJoin = me && isOn(e) && !mine && left > 0 && role !== "driver" && !(role === "rider" && my.with === c.id);
+    const seats = Array.from({ length: Math.max(c.seats, c.riders.length) }, (_, i) => c.riders[i]
+      ? `<span class="f${c.riders[i] === me ? " you" : ""}">${esc(firstName(nameOf(c.riders[i])))}${mine && isOn(e) ? ` <button class="cp-x" data-cp="drop" data-id="${c.riders[i]}" title="${esc(t("carpool.dropTitle"))}" aria-label="${esc(t("carpool.dropTitle"))}">${ic("x")}</button>` : ""}</span>`
+      : `<span>${esc(t("mp.free"))}</span>`).join("");
+    const where = [placeText(c.id), away(c.id)].filter(Boolean).join(" · ");
+    const acts = [canJoin && `<button class="primary" data-cp="join" data-id="${c.id}">${esc(t("carpool.join"))}</button>`,
+      !mine && wa(c.id, t("cp.waTo", { name: firstName(nameOf(c.id)) }))].filter(Boolean);
+    return `<div class="mp-car${mine ? " me" : ""}"><div class="mp-car-h">${av(c.id)}<div><b>${esc(mine ? t("cp.you") : nameOf(c.id))}</b><small>${esc(where)}${c.note ? ` · ${esc(c.note)}` : ""}</small></div>
+      <span class="cp-free${left > 0 ? "" : " full"}">${esc(left > 0 ? t("cp.nFree", { n: left }) : t("carpool.full"))}</span></div>
+      <div class="mp-seats">${seats}</div>${acts.length ? `<div class="mp-acts">${acts.join("")}</div>` : ""}</div>`;
+  }).join("")}</div>` : `<div class="ts-done">${ic("car")} ${esc(t("mp.noCars"))}</div>`;
+  // Who still needs a ride: nearest to me first, so a driver can take them along.
+  const myCar = st.cars.find(c => c.id === me), room = myCar && myCar.seats - myCar.riders.length > 0 && isOn(e);
+  if (st.waiting.length) html += `<div class="home-label"><span>${esc(t("mp.waiting"))}</span><span>${st.waiting.length}</span></div>
+    <div class="cp-list">${[...st.waiting].sort(nearMe).map(id => `<div class="cp-row">${av(id)}<div><b>${esc(nameOf(id))}</b><small>${esc([placeText(id), away(id)].filter(Boolean).join(" · "))}</small></div>
+      ${room ? `<button class="primary small" data-cp="take" data-id="${id}">${esc(t("cp.take"))}</button>` : wa(id, "")}</div>`).join("")}</div>`;
+  // Players who play but haven't said how they get there.
+  if (st.open.length) html += `<p class="cp-open"><b>${esc(t("carpool.open"))}:</b> ${esc([...st.open].sort(nearMe).map(id => firstName(nameOf(id))).join(", "))}</p>`;
+  if (st.cars.length || st.waiting.length) html += `<div class="mp-acts"><button class="cp-share" data-cp="share">${ic("share")} ${esc(t("cp.share"))}</button></div>`;
+  return html + foot;
+}
+// One tap on the Carpool tab. Returns true when it was one.
+function carpoolClick(ev) {
+  const b = ev.target.closest("[data-cp]");
+  if (!b) return false;
+  const e = EVENTS.find(x => x.date === mpDate), me = cpMe();
+  if (!e) return true;
+  const act = b.dataset.cp;
+  if (act === "home") { cpHomeAnyway.add(e.date); renderMatchPage(sortedPlayers()); return true; }
+  if (act === "share") { openShare(t("share.carpoolTitle", { opp: e.opp }), carpoolMessage(e)); return true; }
+  if (!me) return true;
+  if (act === "role") {
+    const role = b.dataset.role || null;
+    cpSetRole(e, me, role);
+    if (role && !geoOf(me)) openCpPlace(); // once: where I leave from, so distances work
+  } else if (act === "seats") {
+    const my = matchState(e).all[me] || {};
+    write(`carpool/${e.date}/${me}/seats`, Math.max(1, Math.min(8, (my.seats || 1) + Number(b.dataset.d))));
+  } else if (act === "join") { cpJoin(e, me, b.dataset.id); if (!geoOf(me)) openCpPlace(); }
+  else if (act === "leave") cpLeave(e, me);
+  else if (act === "take") cpTake(e, me, b.dataset.id);
+  else if (act === "drop") cpDrop(e, b.dataset.id);
+  return true;
+}
+// Once, when my place is missing: a small window for my gemeente (and my number for WhatsApp). My choice is already saved.
+let cpPlace = { status: "idle", results: [] };
+function openCpPlace() {
+  let d = document.getElementById("cp-place");
+  if (!d) {
+    document.body.insertAdjacentHTML("beforeend", `<dialog id="cp-place" class="cp-place" aria-labelledby="cp-place-h"><form method="dialog">
+      <h3 id="cp-place-h"></h3><p class="muted" id="cp-place-p"></p>
+      <label class="ff"><span class="ff-label" id="cp-place-l"></span><span class="ff-inline"><input id="cp-place-q" autocomplete="address-level2" enterkeyhint="search" maxlength="60"><button type="button" id="cp-place-find"></button></span></label>
+      <div class="cp-hits" id="cp-place-hits"></div>
+      <label class="ff"><span class="ff-label" id="cp-phone-l"></span><input id="cp-phone" type="tel" autocomplete="tel" inputmode="tel"><span class="ff-err" id="cp-phone-err" hidden></span></label>
+      <div class="row"><button value="later" id="cp-place-later"></button><button type="button" class="primary" id="cp-place-save"></button></div></form></dialog>`);
+    d = document.getElementById("cp-place");
+    const find = async () => {
+      const q = document.getElementById("cp-place-q").value.trim();
+      if (q.length < 2) return;
+      cpPlace = { status: "loading", results: [] }; drawCpHits();
+      try { const r = await searchPlaces(q); cpPlace = { status: r.length ? "results" : "none", results: r, pick: r.length === 1 ? 0 : -1 }; }
+      catch { cpPlace = { status: "error", results: [] }; }
+      drawCpHits();
+    };
+    document.getElementById("cp-place-find").onclick = find;
+    document.getElementById("cp-place-q").addEventListener("keydown", ev => { if (ev.key === "Enter") { ev.preventDefault(); find(); } });
+    document.getElementById("cp-place-hits").addEventListener("click", ev => { const h = ev.target.closest("[data-hit]"); if (h) { cpPlace.pick = Number(h.dataset.hit); drawCpHits(); } });
+    document.getElementById("cp-place-save").onclick = async () => {
+      const me = cpMe(), raw = document.getElementById("cp-phone").value.trim(), n = raw ? normPhone(raw) : null, err = document.getElementById("cp-phone-err");
+      if (raw && !n) { err.textContent = t("phone.invalid"); err.hidden = false; return; }
+      err.hidden = true;
+      const hit = cpPlace.results[cpPlace.pick];
+      if (!hit) { const q = document.getElementById("cp-place-q"); if (q.value.trim().length >= 2 && cpPlace.status !== "results") return find(); q.focus(); return; }
+      if (me) { await setPlace(me, hit); if (n && n !== phoneOf(me)) await write(`players/${me}/phone`, n); }
+      d.close(); toast(t("cp.placeSaved", { place: hit.name }));
+    };
+  }
+  const set = (id, text) => { document.getElementById(id).textContent = text; };
+  set("cp-place-h", t("cp.placeTitle")); set("cp-place-p", t("cp.placeWhy")); set("cp-place-l", t("carpool.gemeente"));
+  set("cp-place-find", t("carpool.find")); set("cp-phone-l", t("cp.phoneOptional")); set("cp-place-later", t("cp.later")); set("cp-place-save", t("phone.save"));
+  document.getElementById("cp-place-q").placeholder = t("carpool.gemeentePh");
+  document.getElementById("cp-phone").placeholder = t("phone.ph");
+  document.getElementById("cp-phone").value = phoneOf(cpMe()) ? "+" + phoneOf(cpMe()) : "";
+  document.getElementById("cp-place-q").value = placeOf(cpMe());
+  cpPlace = { status: "idle", results: [] }; drawCpHits();
+  d.showModal();
+}
+function drawCpHits() {
+  const box = document.getElementById("cp-place-hits");
+  box.innerHTML = cpPlace.status === "loading" ? `<small class="muted">${esc(t("carpool.searching"))}</small>`
+    : cpPlace.status === "none" ? `<small class="warn">${esc(t("carpool.noPlace"))}</small>`
+    : cpPlace.status === "error" ? `<small class="warn">${esc(t("carpool.searchFailed"))}</small>`
+    : cpPlace.results.map((r, i) => `<button type="button" data-hit="${i}" aria-pressed="${cpPlace.pick === i}">${esc(r.label)}</button>`).join("");
+}
 
 // Home, Kalender (#kalender, also #trainings) or a match (#m/<date>): three views of this page.
 function applyView() {
@@ -1520,7 +1689,12 @@ function applyView() {
   if (m) { mpDate = m[1]; if (m[2]) mpTab = m[2]; if (typeof dataLoaded !== "undefined" && dataLoaded) renderMatchPage(sortedPlayers()); }
   if (typeof markTabs === "function") markTabs();
 }
-window.addEventListener("hashchange", () => { applyView(); window.scrollTo(0, 0); });
+window.addEventListener("hashchange", () => {
+  applyView();
+  // "Vervoer regelen" (#m/<date>/c): straight to the Carpool tab, below the match card.
+  const tabs = /^#m\/[\d-]+\/c/.test(location.hash) && document.querySelector("#view-match .mp-tabs");
+  if (tabs) tabs.scrollIntoView({ block: "start" }); else window.scrollTo(0, 0);
+});
 applyView();
 // Home ↔ Kalender on this page: switch the view, no reload.
 document.addEventListener("click", ev => {

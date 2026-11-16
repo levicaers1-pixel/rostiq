@@ -1094,4 +1094,11 @@ Nu: *${when}*
   "big.bar": ({ n }) => `${n} spelers: een grote ploeg. Free blijft gratis, hoe groot ook; Pro maakt een grote groep makkelijker.`,
   "pro.f.big": "Pro voor grote ploegen", "pro.f.big.why": "Herinneringen per mail voor wie nog niet antwoordde, selecties, het antwoordlogboek en meer beheerders. Een hele club in één ploeg? Daarvoor is het Club-abonnement.",
   "num.big": ({ n, hint, biggest }) => `Free-ploegen met meer dan ${hint} spelers: ${n} · grootste ploeg: ${biggest} spelers`,
+  "cp.how": "Hoe ga jij naar de wedstrijd?", "cp.season": "Seizoensoverzicht en kaart", "cp.you": "Jouw auto",
+  "cp.carsFree": ({ n, free }) => `${n} ${n === 1 ? "auto" : "auto's"} · ${free} vrij`, "cp.nFree": ({ n }) => `${n} vrij`,
+  "cp.waTo": ({ name }) => `WhatsApp ${name}`, "cp.take": "Neem mee", "cp.share": "Deel de carpool",
+  "cp.noPlayer": "Koppel je account aan een speler om mee te doen aan de carpool.",
+  "cp.placeTitle": "Waar vertrek je meestal?", "cp.placeWhy": "Zo zien ploegmaten wie dicht bij jou woont. Enkel je gemeente, geen adres. Je vult het maar één keer in.",
+  "cp.phoneOptional": "Gsm-nummer voor WhatsApp (mag leeg blijven)", "cp.later": "Later",
+  "cp.placeSaved": ({ place }) => `Bewaard: ${place}`,
 };
