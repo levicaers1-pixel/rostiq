@@ -1101,4 +1101,7 @@ Nu: *${when}*
   "cp.placeTitle": "Waar vertrek je meestal?", "cp.placeWhy": "Zo zien ploegmaten wie dicht bij jou woont. Enkel je gemeente, geen adres. Je vult het maar één keer in.",
   "cp.phoneOptional": "Gsm-nummer voor WhatsApp (mag leeg blijven)", "cp.later": "Later",
   "cp.placeSaved": ({ place }) => `Bewaard: ${place}`,
+  "greet.hi": ({ name }) => `Hoi ${name}.`, "greet.today": "Vandaag spelen we.", "greet.tomorrow": "Morgen spelen we.",
+  "greet.weekday": ({ Day }) => `${Day} spelen we.`, "greet.inDays": ({ n, opp }) => `Nog ${n} dagen tot ${opp}.`, "greet.none": "Geen wedstrijd gepland.",
+  "hero.daysUnit": ({ n }) => n === 1 ? "dag" : "dagen", "hero.coming": ({ n, total }) => `${n} van ${total}`,
 };

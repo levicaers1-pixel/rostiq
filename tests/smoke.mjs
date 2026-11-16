@@ -34,7 +34,8 @@ const PAGES = [
       if (!vis(document.getElementById("hero"))) r.push("match card missing");
       if (!vis(document.getElementById("welcome"))) r.push("welcome checklist missing");
       if (/selecti|opstelling/i.test(document.querySelector("main").innerText)) r.push("selection text while selections are off");
-      if (document.querySelector("#hero .md-x small") && document.querySelector("#hero .md-x small").textContent.trim()) r.push("home/away shown for golf");
+      if (document.querySelector("#hero .hero-side") || (document.querySelector("#hero .md-x:not(.count) small") || {}).textContent) r.push("home/away shown for golf");
+      if (!vis(document.querySelector("#greet h1"))) r.push("no greeting");
       return r;` },
   { name: "fresh-kalender", url: "/?t=fresh#kalender", check: `
       const n = document.querySelectorAll("#matches .match").length;

@@ -694,6 +694,56 @@
   .cp-place .row { display: flex; justify-content: flex-end; gap: 8px; }
   .mp-hist { margin: 0; max-height: none; padding: 4px 14px; border-radius: 16px; background: var(--surface); border: 1px solid var(--border); }
   .link-danger { background: none; border: none; padding: 0; color: var(--no); text-decoration: underline; font-size: .85rem; }
+
+  /* ---- Redesign, step 2: Home ---- */
+  /* The greeting replaces the page title; the status line only shows when something is wrong. */
+  body.on-home main > h1 { display: none; }
+  body.on-home main > .sub:has(.status.live) { display: none; }
+  .greet h1 { font-size: clamp(1.9rem, 1.4rem + 2.6vw, 2.8rem); line-height: 1.02; letter-spacing: -.03em; margin: 0; }
+  .greet h1 span { display: block; color: var(--muted); }
+  .hero.md { margin-top: 16px; border-radius: 30px; padding: 16px;
+    background: radial-gradient(120% 90% at 100% 0%, color-mix(in srgb, var(--pampas) 42%, transparent), transparent 55%),
+                radial-gradient(90% 80% at 0% 100%, color-mix(in srgb, #7c5cff 50%, transparent), transparent 60%),
+                linear-gradient(160deg, var(--brand), color-mix(in srgb, var(--brand) 62%, #000)); }
+  .hero.md::after { background: radial-gradient(color-mix(in srgb, var(--brand-text) 10%, transparent) 1px, transparent 1px) 0 0 / 14px 14px;
+    -webkit-mask-image: linear-gradient(180deg, #000, transparent 70%); mask-image: linear-gradient(180deg, #000, transparent 70%); }
+  .hero.md .hero-kicker { font-family: var(--font-mono); font-size: .68rem; font-weight: 600; letter-spacing: .1em; }
+  .hero-side { display: inline-flex; align-items: center; gap: 5px; padding: 4px 11px; border-radius: 999px; font-size: .74rem; font-weight: 600;
+    background: color-mix(in srgb, var(--brand-text) 14%, transparent); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+  .hero-side svg.i { width: 14px; height: 14px; }
+  .md-vs { margin: 6px 0 2px; }
+  .md-crest { width: 62px; height: 62px; border-radius: 22px; color: var(--brand); background: linear-gradient(140deg, var(--pampas), color-mix(in srgb, var(--pampas) 55%, #5b7cff)); box-shadow: none; }
+  .md-crest:has(img) { background: color-mix(in srgb, var(--brand-text) 92%, transparent); }
+  .md-crest.them { background: color-mix(in srgb, var(--brand-text) 12%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--brand-text) 22%, transparent); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+  .md-x.count { font-size: 3.2rem; letter-spacing: -.04em; color: var(--brand-text); min-width: 1.6em; }
+  .md-x.count small { font-family: var(--font-mono); font-size: .62rem; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; opacity: .7; margin-top: 5px; }
+  .md-meta { gap: 6px; font-size: .78rem; opacity: 1; }
+  .md-meta > span:not(.pill) { padding: 4px 10px; border-radius: 999px; background: color-mix(in srgb, var(--brand-text) 13%, transparent); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+  .md-meta svg.i { width: 14px; height: 14px; }
+  .hero.md .hero-answer { grid-template-columns: 1.25fr 1fr 1fr; gap: 6px; padding: 5px; border-radius: 22px; background: rgb(0 0 0 / .28); }
+  .hero.md .hero-answer button { padding: 12px 4px; border-radius: 17px; background: transparent; font-weight: 600; color: color-mix(in srgb, var(--brand-text) 76%, transparent); }
+  .hero.md .hero-answer button[aria-pressed="true"] { background: #fff; box-shadow: 0 6px 16px -6px rgb(0 0 0 / .5); font-weight: 700; }
+  .hero.md .hero-answer button[aria-pressed="true"][data-a="yes"] { color: #0b6b3c; }
+  .hero.md .hero-answer button[aria-pressed="true"][data-a="maybe"] { color: #8a5a00; }
+  .hero.md .hero-answer button[aria-pressed="true"][data-a="no"] { color: #b3261e; }
+  .hero.md .hero-answer:has([aria-pressed="true"]) button[aria-pressed="false"] { opacity: .8; }
+  .md-foot { display: flex; align-items: center; gap: 10px; font-size: .8rem; color: color-mix(in srgb, var(--brand-text) 85%, transparent); text-decoration: none; }
+  .md-avs { display: flex; }
+  .md-avs .av { width: 24px; height: 24px; font-size: .52rem; margin-left: -8px; border: 2px solid var(--brand); }
+  .md-avs .av:first-child { margin-left: 0; }
+  .md-bar { flex: 1; display: flex; height: 6px; border-radius: 6px; overflow: hidden; background: color-mix(in srgb, var(--brand-text) 16%, transparent); }
+  .md-bar i { background: #3ddc84; } .md-bar u { background: #f5b84b; }
+  .hero.md .hero-btn { border-radius: 14px; }
+  .hero-btn.md-open { border-radius: 16px; padding: 12px; }
+  .home-label { font-family: var(--font-mono); font-size: .68rem; font-weight: 600; margin: 24px 2px 10px; }
+  .tile { border: 0; border-radius: 24px; box-shadow: var(--shadow-sm); }
+  a.tile { transition: transform .15s var(--ease), box-shadow .15s var(--ease); }
+  a.tile:hover { transform: translateY(-1px); box-shadow: var(--shadow); }
+  .tile .tk { font-family: var(--font-mono); font-weight: 600; letter-spacing: .1em; }
+  .tile.accent { background: color-mix(in srgb, var(--pampas) 16%, var(--surface)); box-shadow: none; }
+  .tile.accent .tk, .tile.accent .ts { color: color-mix(in srgb, var(--pampas) 45%, var(--text)); }
+  .tile.team { border-radius: 24px; }
+  .todo button { font-weight: 700; }
 </style>
 <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/12.12.0/firebase-app.js" crossorigin>
 <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/12.12.0/firebase-auth.js" crossorigin>
@@ -712,6 +762,7 @@
   <p class="banner" id="banner" hidden data-i18n-html="banner.noDb"></p>
 
   <div class="view" id="view-home">
+  <div class="greet" id="greet" hidden></div>
   <section class="hero" id="hero" hidden aria-live="polite"></section>
   <section class="news" id="news" hidden aria-live="polite"></section>
   <section class="onboard setup" id="setup" hidden></section>
@@ -1163,7 +1214,20 @@ function myRideText(e) {
   if (mine.role === "rider") return mine.with && root.players[mine.with] ? t("home.rideWith", { name: firstName(root.players[mine.with].name) }) : t("home.rideNeed");
   return "";
 }
+// Home opens with a greeting and what's coming: "Hoi Test. Zaterdag spelen we."
+function renderGreet() {
+  const el = document.getElementById("greet");
+  el.hidden = !dataLoaded;
+  if (!dataLoaded) return;
+  const me = myRow(), e = EVENTS.find(isOn);
+  const days = e ? Math.round((parse(e.date) - parse(TODAY)) / 864e5) : -1;
+  const day = e ? fmt(e.date, { weekday: "long" }) : "";
+  const next = !e ? t("greet.none") : days <= 0 ? t("greet.today") : days === 1 ? t("greet.tomorrow")
+    : days < 7 ? t("greet.weekday", { day, Day: day.charAt(0).toUpperCase() + day.slice(1) }) : t("greet.inDays", { n: days, opp: e.opp });
+  el.innerHTML = `<h1>${esc(me && me.name ? t("greet.hi", { name: firstName(me.name) }) : seasonName())}<span>${esc(next)}</span></h1>`;
+}
 function renderHero(players) {
+  renderGreet();
   const el = document.getElementById("hero");
   const e = dataLoaded ? EVENTS.find(isOn) : null;
   el.hidden = !e;
@@ -1184,16 +1248,18 @@ function matchCardHtml(e, players, onPage) {
   const vsTag = onPage ? "div" : "a";
   return `
     <div class="hero-top"><span class="hero-kicker">${ic("flag")} ${onPage ? esc(isPast(e) ? t("mp.played") : t("mp.match")) : t("hero.next")}</span>
-      <span class="hero-top-r">${session.admin ? `<button class="hero-icon" data-history="${e.date}" title="${t("hist.button")}" aria-label="${t("hist.button")}">${ic("clock")}</button><button class="hero-icon" data-select="${e.date}" title="${t("sel.button")}" aria-label="${t("sel.button")}">${ic("users")}</button><button class="hero-icon" data-edit="${e.date}" title="${t("details.edit")}" aria-label="${t("details.edit")}">${ic("pencil")}</button>` : ""}${days < 0 ? "" : `<span class="hero-when">${when}</span>`}</span></div>
+      <span class="hero-top-r">${session.admin ? `<button class="hero-icon" data-history="${e.date}" title="${t("hist.button")}" aria-label="${t("hist.button")}">${ic("clock")}</button><button class="hero-icon" data-select="${e.date}" title="${t("sel.button")}" aria-label="${t("sel.button")}">${ic("users")}</button><button class="hero-icon" data-edit="${e.date}" title="${t("details.edit")}" aria-label="${t("details.edit")}">${ic("pencil")}</button>` : ""}${days < 0 ? "" : days >= 1 && e.home != null ? `<span class="hero-side">${ic(e.home ? "home" : "car")} ${esc(t(e.home ? "match.home" : "match.away"))}</span>` : days >= 1 ? "" : `<span class="hero-when">${when}</span>`}</span></div>
     <${vsTag} class="md-vs"${onPage ? "" : ` href="#m/${e.date}" aria-label="${esc(t("mp.open"))}"`}>
       <div class="md-team"><div class="md-crest">${us}</div><span>${esc(TEAM.shortName || TEAM.brand)}</span></div>
-      <div class="md-x">VS<small>${e.home === true ? t("home.atHome") : e.home === false ? t("home.away") : ""}</small></div>
+      ${days >= 1 ? `<div class="md-x count" aria-label="${esc(when)}">${days}<small>${esc(t("hero.daysUnit", { n: days }))}</small></div>`
+        : `<div class="md-x">VS<small>${e.home === true ? t("home.atHome") : e.home === false ? t("home.away") : ""}</small></div>`}
       <div class="md-team"><div class="md-crest them">${esc(crestText(e.opp))}</div><span>${esc(e.opp)}</span></div>
     </${vsTag}>
     <div class="md-meta"><span>${ic("calendar")} ${esc(fmt(e.date, { weekday: "short", day: "numeric", month: "short" }))}</span>${matchInfo(e).start ? `<span>${ic("clock")} ${esc(timeText(e))}</span>` : ""}${v ? `<span>${ic("pin")} ${esc(venueShort(v))}</span>` : ""}${statusPill(e)}${e.final ? `<span class="pill violet">${ic("trophy")} ${t("final")}</span>` : ""}</div>
     ${mine !== null ? `<div class="md-role"><span class="md-ic">${role ? "⭐" : { yes: "✅", maybe: "❓", no: "❌" }[mine] || "👋"}</span><div><b>${esc(status)}</b>${small ? `<small>${esc(small)}</small>` : ""}</div></div>
     ${isPast(e) ? "" : `<div class="answer hero-answer" role="group" aria-label="${t("match.mine")}">${["yes", "maybe", "no"].map(a =>
       `<button data-answer="${a}" data-date="${e.date}" data-a="${a}" aria-pressed="${mine === a}">${ic({ yes: "check", maybe: "help", no: "x" }[a])} ${t("answer." + a)}</button>`).join("")}</div>`}` : ""}
+    ${onPage || isPast(e) ? "" : comingLine(e, players)}
     ${selLine(e, players)}
     ${more ? `<details class="hero-more"${heroMoreOpen ? " open" : ""}><summary>${t("hero.more")} ${ic("chevron-down")}</summary>${more}</details>` : ""}
     <div class="hero-btns">
@@ -1223,6 +1289,14 @@ function renderTodoStrip(players) {
     : `<div class="ts-done">${ic("check")} ${esc(t("home.allDone"))}</div>`);
 }
 
+// Under the answer buttons: a few faces, "4 of 6" and a bar (yes, then maybe).
+function comingLine(e, players) {
+  const named = players.filter(p => p.name), n = named.length, c = tally(e, players);
+  if (!n) return "";
+  const coming = named.filter(p => p.avail[e.date] === "yes");
+  return `<a class="md-foot" href="#m/${e.date}"><span class="md-avs">${coming.slice(0, 4).map(p => avatar(p, players.indexOf(p))).join("")}</span>
+    <span>${esc(t("hero.coming", { n: c.yes, total: n }))}</span><span class="md-bar"><i style="width:${100 * c.yes / n}%"></i><u style="width:${100 * c.maybe / n}%"></u></span></a>`;
+}
 // Tiles for the next match: who's coming, weather, carpool, the next training, and the admin's to-dos.
 function renderBento(players) {
   const box = document.getElementById("bento"), e = dataLoaded ? EVENTS.find(isOn) : null;
@@ -1255,7 +1329,7 @@ function renderBento(players) {
       <div class="tile${alerts.length ? " warn" : ""}"><div class="tk">${esc(t("tile.weather"))}</div>
         ${wx ? `<div class="tv">${wx.max}°</div><div class="ts">${WX_ICON(wx.code)} ${esc(wx.min + "° · 💨 " + wx.wind + " " + t("unit.kmh") + (wx.rain != null ? " · 💧 " + wx.rain + "%" : ""))}</div>${alerts.length ? `<div class="ts strong">⚠️ ${esc(wxWarnText(alerts))}</div>` : ""}`
           : `<div class="tv sm">${v ? "🌤️" : "📍"}</div><div class="ts">${esc(v ? t("tile.wxLater", { when: wxFrom }) : t("tile.wxNoPlace"))}</div>`}</div>
-      <a class="tile" href="#m/${e.date}/c"><div class="tk">${esc(t("tile.carpool"))}</div><div class="tv sm">🚗 ${cars}</div><div class="ts">${esc(myRideText(e) || (lookingRide ? t("tile.looking", { n: lookingRide }) : t("tile.cars", { n: cars })))}</div></a>
+      <a class="tile accent" href="#m/${e.date}/c"><div class="tk">${esc(t("tile.carpool"))}</div><div class="tv sm">🚗 ${cars}</div><div class="ts">${esc(myRideText(e) || (lookingRide ? t("tile.looking", { n: lookingRide }) : t("tile.cars", { n: cars })))}</div></a>
       ${tr ? `<a class="tile" href="#kalender"><div class="tk">${esc(t("tile.training"))}</div><div class="tv sm">${esc(fmt(tr.date, { weekday: "short" }).replace(".", ""))} ${esc(tr.start)}</div><div class="ts">${esc(t("tr.count", { n: trComing }))}${me ? " · " + esc(trainComing(me, tr) ? t("tr.yes") : (me.tr || {})[tr.date] === "no" ? t("tr.noBtn") : "?") : ""}</div></a>`
         : session.admin ? `<a class="tile" href="${pageUrl("admin.html")}#sec-train"><div class="tk">${esc(t("tile.training"))}</div><div class="tv sm">🏃</div><div class="ts">${esc(t("tile.trainingSetup"))}</div></a>`
         : `<div class="tile"><div class="tk">${esc(t("tile.season"))}</div><div class="tv">${EVENTS.filter(isOn).length}</div><div class="ts">${esc(t("tile.seasonSub"))}</div></div>`}
@@ -1682,6 +1756,7 @@ function applyView() {
   document.getElementById("view-cal").hidden = !cal;
   document.getElementById("view-rank").hidden = !rank;
   document.getElementById("view-match").hidden = !m;
+  document.body.classList.toggle("on-home", !cal && !m && !rank);
   document.body.classList.toggle("on-cal", cal || !!m);
   document.body.classList.toggle("on-match", !!m);
   document.body.classList.toggle("on-rank", rank);

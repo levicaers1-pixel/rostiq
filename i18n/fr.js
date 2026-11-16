@@ -1113,4 +1113,7 @@ Maintenant : *${when}*
   "cp.placeTitle": "D'où pars-tu en général ?", "cp.placeWhy": "Ainsi, tes coéquipiers voient qui habite près de chez toi. Seulement ta commune, pas d'adresse. Tu ne le remplis qu'une fois.",
   "cp.phoneOptional": "Numéro de GSM pour WhatsApp (facultatif)", "cp.later": "Plus tard",
   "cp.placeSaved": ({ place }) => `Enregistré : ${place}`,
+  "greet.hi": ({ name }) => `Salut ${name}.`, "greet.today": "On joue aujourd'hui.", "greet.tomorrow": "On joue demain.",
+  "greet.weekday": ({ day }) => `On joue ${day}.`, "greet.inDays": ({ n, opp }) => `Encore ${n} jours avant ${opp}.`, "greet.none": "Aucun match prévu.",
+  "hero.daysUnit": ({ n }) => n === 1 ? "jour" : "jours", "hero.coming": ({ n, total }) => `${n} sur ${total}`,
 };
