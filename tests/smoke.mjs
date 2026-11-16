@@ -160,7 +160,7 @@ for (const run of RUNS) {
       await page.waitForTimeout(700);
       const found = [...await page.evaluate(new Function(pg.check)), ...await page.evaluate(new Function(GENERIC))];
       errors.push(...found);
-      await page.screenshot({ path: path.join(OUT, `${run.label}-${pg.name}.png`) });
+      await page.screenshot({ path: path.join(OUT, `${run.label}-${pg.name}.png`), fullPage: !!process.env.FULL }); // FULL=1: the whole page
     } catch (e) { errors.push("could not test: " + e.message.split("\n")[0]); }
     checked++;
     if (errors.length) failures.push({ where: `${run.label} ${pg.name}`, errors: [...new Set(errors)] });

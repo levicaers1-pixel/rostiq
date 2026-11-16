@@ -495,7 +495,6 @@ a.btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; 
    Light answer colours (yes/maybe/no) need dark text on top; selected states are a tint instead of a block of
    solid accent (one bright call to action per screen is enough); the next-match card keeps only a hint of glow. */
 /* dark: only when chosen in the account menu (html.dark) */
-html.dark .answer button[aria-pressed="true"], html.dark .q-ans button[aria-pressed="true"], html.dark .hero-answer button[aria-pressed="true"] { color: #0b0d14 !important; }
 html.dark .m-actions .count { color: #0b0d14; }
 html.dark .segmented button[aria-pressed="true"] { background: var(--pampas); color: #0b0d14; }
 html.dark button.primary:disabled, html.dark .btn.primary:disabled { background: color-mix(in srgb, var(--muted) 16%, var(--surface)); color: var(--muted);
@@ -558,12 +557,15 @@ html.font-serif .brand .logo-text { font-size: 1.6rem; }
   html.font-serif .brand .logo-text { font-size: 1.35rem; }
 }
 
-/* Answer buttons (Ja / Misschien / Nee, trainings), on every page. The chosen one is in the team's accent colour. */
-.answer[role="group"] { display: inline-flex; gap: 3px; padding: 3px; border-radius: 12px; background: color-mix(in srgb, var(--muted) 11%, var(--surface)); }
-.answer[role="group"] button { border: none; background: transparent; border-radius: 9px; padding: 7px 12px; font-weight: 600; color: var(--muted); }
-.answer[role="group"] button:hover:not(:disabled) { background: var(--surface); border: none; }
-.answer[role="group"] button[aria-pressed="true"], .q-ans button[aria-pressed="true"] { background: var(--pampas); color: var(--brand); font-weight: 800;
-  box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--brand) 30%, transparent), var(--shadow-sm); }
+/* Answer buttons (Ja / Misschien / Nee, trainings), on every page. The chosen one lifts out, in the colour of the answer. */
+.answer[role="group"] { display: inline-flex; gap: 4px; padding: 4px; border-radius: 17px; background: color-mix(in srgb, var(--muted) 13%, var(--surface)); }
+.answer[role="group"] button { border: none; background: transparent; border-radius: 13px; padding: 9px 12px; font-weight: 600; color: var(--muted); white-space: nowrap; }
+.answer[role="group"] button:hover:not(:disabled) { background: color-mix(in srgb, var(--surface) 60%, transparent); border: none; }
+.answer[role="group"] button[aria-pressed="true"], .q-ans button[aria-pressed="true"] { background: var(--surface); color: var(--text); font-weight: 700; box-shadow: var(--shadow-sm); }
+html.dark .answer[role="group"] button[aria-pressed="true"], html.dark .q-ans button[aria-pressed="true"] { background: color-mix(in srgb, var(--text) 14%, var(--surface)); }
+.answer[role="group"] button[aria-pressed="true"]:is([data-a="yes"], [data-tr="yes"]) { color: var(--yes); }
+.answer[role="group"] button[aria-pressed="true"][data-a="maybe"] { color: var(--maybe); }
+.answer[role="group"] button[aria-pressed="true"]:is([data-a="no"], [data-tr="no"]) { color: var(--no); }
 
 /* The close cross on every pop-up (added by common.js) */
 .dlg-x { position: absolute; top: 12px; right: 12px; z-index: 2; width: 34px; height: 34px; padding: 0; border: 0; border-radius: 50%;

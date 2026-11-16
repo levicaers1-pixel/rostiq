@@ -695,6 +695,52 @@
   .mp-hist { margin: 0; max-height: none; padding: 4px 14px; border-radius: 16px; background: var(--surface); border: 1px solid var(--border); }
   .link-danger { background: none; border: none; padding: 0; color: var(--no); text-decoration: underline; font-size: .85rem; }
 
+  /* ---- Redesign, step 3: Kalender ---- */
+  body.on-cal main > h1 { display: none; }
+  body.on-cal main > .sub:has(.status.live) { display: none; }
+  #view-cal .section-head h2 { font-size: 1.5rem; }
+  #view-cal > .section-head:first-child { margin-top: 4px; }
+  #view-cal > .section-head:first-child h2 { font-size: clamp(1.8rem, 1.4rem + 2vw, 2.4rem); letter-spacing: -.03em; }
+  #view-cal .head-actions button:not(.primary) { border: 0; border-radius: 999px; background: var(--surface); box-shadow: var(--shadow-sm); }
+  #view-cal .head-actions button.primary { border-radius: 999px; }
+  .cal-week { display: grid; grid-auto-flow: column; grid-auto-columns: calc((100% - 24px) / 7); gap: 4px; overflow-x: auto; scrollbar-width: none; scroll-snap-type: x mandatory; margin: 10px 0 12px; }
+  .cal-week::-webkit-scrollbar { display: none; }
+  .cw-day { display: grid; justify-items: center; gap: 4px; padding: 8px 0 9px; border: 0; border-radius: 16px; background: transparent; color: var(--muted); text-decoration: none;
+    font-family: var(--font-mono); font-size: .62rem; font-weight: 600; text-transform: uppercase; scroll-snap-align: start; min-height: 0; }
+  .cw-day b { font-family: var(--font-display); font-weight: 700; font-size: 1.02rem; color: var(--text); letter-spacing: -.01em; }
+  .cw-day i { width: 5px; height: 5px; border-radius: 50%; background: transparent; }
+  .cw-day.m i { background: color-mix(in srgb, var(--pampas) 60%, var(--text)); } .cw-day.t i { background: color-mix(in srgb, var(--muted) 55%, transparent); }
+  .cw-day.gone { opacity: .45; }
+  .cw-day.today { background: var(--text); color: var(--bg); opacity: 1; } .cw-day.today b { color: var(--bg); } .cw-day.today.m i { background: var(--pampas); }
+  a.cw-day:hover, button.cw-day:hover:not(.today) { background: color-mix(in srgb, var(--muted) 12%, transparent); }
+  @media (min-width: 701px) { .cal-week { max-width: 720px; grid-auto-columns: calc((100% - 52px) / 14); } }
+  .cal-filters button { border: 0; box-shadow: var(--shadow-sm); font-weight: 600; }
+  .cal-filters button[aria-pressed="true"], html.dark .cal-filters button[aria-pressed="true"] { background: var(--text); color: var(--bg); }
+  .cal-month { font-family: var(--font-mono); font-size: .68rem; font-weight: 600; letter-spacing: .12em; }
+  .match { border: 0; border-radius: 24px; box-shadow: var(--shadow-sm); }
+  .match.final { box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--final) 55%, transparent), var(--shadow-sm); }
+  .m-date { height: 64px; border-radius: 16px; background: color-mix(in srgb, var(--muted) 12%, var(--surface)); }
+  .m-date b { color: var(--text); }
+  .m-date span { font-family: var(--font-mono); font-weight: 600; font-size: .6rem; }
+  .m-title { font-family: var(--font-display); font-weight: 700; letter-spacing: -.01em; }
+  .m-title .pill { font-family: var(--font-body); letter-spacing: 0; }
+  .m-score { font-family: var(--font-mono); font-weight: 600; }
+  .m-foot .answer { flex: 1 1 100%; display: grid; grid-template-columns: repeat(3, 1fr); }
+  .m-actions { margin-left: auto; }
+  .m-team { border-top: 1px solid var(--border); }
+  /* No timeline next to the cards: the answer buttons already show where you stand. */
+  @media (max-width: 700px) {
+    .matches { padding-left: 0; }
+    .matches::before, .matches > .match::after { display: none; }
+    .matches > .empty-state, .matches > .cal-empty, .cal-month { margin-left: 0; }
+  }
+  /* Trainings: one calm row each, the answer under it on a phone. */
+  .tr-card { border: 0; border-radius: 24px; box-shadow: var(--shadow-sm); padding: 14px; align-items: center; }
+  .tr-card .m-date { width: 58px; flex: none; }
+  .tr-title b { font-family: var(--font-display); font-weight: 700; letter-spacing: -.01em; }
+  .tr-act { flex-direction: row; align-items: center; flex-wrap: wrap; }
+  @media (max-width: 700px) { .tr-act { flex: 1 1 100%; } .tr-act .answer { flex: 1; display: grid; grid-template-columns: 1fr 1fr; } }
+
   /* ---- Redesign, step 2: Home ---- */
   /* The greeting replaces the page title; the status line only shows when something is wrong. */
   body.on-home main > h1 { display: none; }
@@ -783,6 +829,7 @@
       <button id="ics-all" class="primary" data-i18n="ics.all" data-i18n-title="ics.allTitle">📅 Add all to calendar</button>
     </div>
   </div>
+  <div class="cal-week" id="cal-week" hidden></div>
   <div class="cal-filters" id="cal-filters" role="group" hidden></div>
   <div class="matches" id="matches"></div>
 
@@ -980,7 +1027,28 @@ const animStyle = (key, ms, extra = "") => {
   return t0 < ms ? `${extra}animation-delay:-${Math.round(t0)}ms;` : null;
 };
 
+// The week strip above the calendar: this week and the next, a dot for a match (cyan) or a training (grey).
+// A match day opens the match; a training day scrolls to the trainings.
+function renderWeek() {
+  const el = document.getElementById("cal-week");
+  el.hidden = !dataLoaded || !EVENTS.length;
+  if (el.hidden) return;
+  const monday = -((parse(TODAY).getDay() + 6) % 7), days = Array.from({ length: 14 }, (_, i) => isoPlus(monday + i));
+  const train = new Set(trainingDates(days[0], days[13]).filter(x => !x.off).map(x => x.date));
+  el.innerHTML = days.map(d => {
+    const e = EVENTS.find(x => x.date === d && !x.cancelled), tr = train.has(d);
+    const inner = `<span>${esc(fmt(d, { weekday: "short" }).replace(".", ""))}</span><b>${parse(d).getDate()}</b><i></i>`;
+    const cls = `cw-day${d === TODAY ? " today" : ""}${d < TODAY ? " gone" : ""}${e ? " m" : tr ? " t" : ""}`;
+    return e ? `<a class="${cls}" href="#m/${d}" aria-label="${esc(fmt(d, { weekday: "long", day: "numeric", month: "long" }) + ": " + e.opp)}">${inner}</a>`
+      : tr ? `<button type="button" class="${cls}" data-week-tr aria-label="${esc(fmt(d, { weekday: "long", day: "numeric", month: "long" }) + ": " + t("tr.one"))}">${inner}</button>`
+      : `<span class="${cls}">${inner}</span>`;
+  }).join("");
+}
+document.getElementById("cal-week").addEventListener("click", ev => {
+  if (ev.target.closest("[data-week-tr]")) document.getElementById("train-head").scrollIntoView({ behavior: "smooth", block: "start" });
+});
 function renderMatches(players, events) {
+  renderWeek();
   const box = document.getElementById("matches");
   document.getElementById("cal-filters").hidden = true; // shown again below when there's a list
   // No matches yet: one clear empty state instead of an empty list and an empty table.
