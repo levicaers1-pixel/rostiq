@@ -1116,4 +1116,5 @@ Maintenant : *${when}*
   "greet.hi": ({ name }) => `Salut ${name}.`, "greet.today": "On joue aujourd'hui.", "greet.tomorrow": "On joue demain.",
   "greet.weekday": ({ day }) => `On joue ${day}.`, "greet.inDays": ({ n, opp }) => `Encore ${n} jours avant ${opp}.`, "greet.none": "Aucun match prévu.",
   "hero.daysUnit": ({ n }) => n === 1 ? "jour" : "jours", "hero.coming": ({ n, total }) => `${n} sur ${total}`,
+  "mp.homeVs": ({ opp }) => `À domicile contre ${opp}`, "mp.awayAt": ({ opp }) => `En déplacement chez ${opp}`,
 };

@@ -1104,4 +1104,5 @@ Nu: *${when}*
   "greet.hi": ({ name }) => `Hoi ${name}.`, "greet.today": "Vandaag spelen we.", "greet.tomorrow": "Morgen spelen we.",
   "greet.weekday": ({ Day }) => `${Day} spelen we.`, "greet.inDays": ({ n, opp }) => `Nog ${n} dagen tot ${opp}.`, "greet.none": "Geen wedstrijd gepland.",
   "hero.daysUnit": ({ n }) => n === 1 ? "dag" : "dagen", "hero.coming": ({ n, total }) => `${n} van ${total}`,
+  "mp.homeVs": ({ opp }) => `Thuis tegen ${opp}`, "mp.awayAt": ({ opp }) => `Uit bij ${opp}`,
 };

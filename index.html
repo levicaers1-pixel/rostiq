@@ -695,6 +695,55 @@
   .mp-hist { margin: 0; max-height: none; padding: 4px 14px; border-radius: 16px; background: var(--surface); border: 1px solid var(--border); }
   .link-danger { background: none; border: none; padding: 0; color: var(--no); text-decoration: underline; font-size: .85rem; }
 
+  /* ---- Redesign, step 4: the match page and its carpool ---- */
+  .hero.md.mh { padding: 14px 16px; gap: 12px; border-radius: 26px; }
+  .mh .hero-top-r { gap: 6px; }
+  .mh .hero-when { font-size: .74rem; padding: 4px 11px; }
+  .mh-main { display: flex; align-items: center; gap: 12px; min-width: 0; }
+  .mh-main > div:last-child { min-width: 0; }
+  .mh-main .md-crest { width: 46px; height: 46px; border-radius: 16px; font-size: .9rem; flex: none; }
+  .mh-main h2 { margin: 0; font-family: var(--font-display); font-weight: 800; font-size: 1.28rem; line-height: 1.1; letter-spacing: -.02em; color: inherit; overflow-wrap: anywhere; }
+  .mh-main small { display: block; margin-top: 3px; font-size: .78rem; opacity: .78; }
+  .mh-pills { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+  .mh-me { font-size: .8rem; opacity: .88; }
+  .mp-tabs { border: 0; box-shadow: none; padding: 4px; border-radius: 16px; background: color-mix(in srgb, var(--muted) 14%, var(--bg)); }
+  .mp-tabs button { font-weight: 600; }
+  .mp-tabs button[aria-selected="true"] { background: var(--surface); color: var(--text); box-shadow: var(--shadow-sm); }
+  .mp-row, .mp-lrow, .mp-car, .cp-how, .cp-list, .mp-hist { border: 0; box-shadow: var(--shadow-sm); border-radius: 20px; }
+  .mp-row.warn { box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--no) 50%, transparent), var(--shadow-sm); }
+  .mp-row i { border-radius: 12px; background: color-mix(in srgb, var(--muted) 12%, var(--surface)); }
+  .mp-acts button, .mp-acts .btn { border-radius: 14px; }
+  .mp-pitch { position: relative; overflow: hidden; border-radius: 24px; padding: 22px 10px; gap: 18px; box-shadow: none;
+    background: repeating-linear-gradient(180deg, #0f7a4c 0 46px, #0d7046 46px 92px); }
+  .mp-pitch::before { content: ""; position: absolute; inset: 10px; border: 1.5px solid rgb(255 255 255 / .3); border-radius: 14px; }
+  .mp-pitch::after { content: ""; position: absolute; left: 50%; top: 50%; width: 70px; height: 70px; translate: -50% -50%; border: 1.5px solid rgb(255 255 255 / .3); border-radius: 50%; }
+  .mp-line { position: relative; z-index: 1; }
+  .mp-tok b { background: none; padding: 0; font-weight: 600; text-shadow: 0 1px 3px rgb(0 0 0 / .5); }
+  .mp-tok .av { box-shadow: none; }
+  /* Carpool: three big choices, seats as circles on a dotted route to the venue. */
+  .cp-how { padding: 14px; }
+  .cp-how > b { font-family: var(--font-display); font-weight: 700; font-size: 1rem; letter-spacing: -.01em; }
+  html .cp-how .cp-seg.segmented { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; padding: 0; background: none; }
+  html .cp-how .cp-seg.segmented button { display: grid; justify-items: center; gap: 6px; padding: 14px 4px 12px; border-radius: 18px; font-size: .78rem; font-weight: 600;
+    background: color-mix(in srgb, var(--muted) 13%, var(--surface)); color: var(--muted); box-shadow: none; }
+  html .cp-how .cp-seg.segmented button svg.i { width: 20px; height: 20px; }
+  html .cp-how .cp-seg.segmented button[aria-pressed="true"] { background: var(--text); color: var(--bg); }
+  .cp-step { border: 0; border-radius: 14px; background: color-mix(in srgb, var(--muted) 13%, var(--surface)); }
+  .cp-step b { border: 0; font-family: var(--font-mono); }
+  .mp-car { padding: 14px; }
+  .mp-car.me { border: 0; box-shadow: 0 0 0 2px var(--text), var(--shadow-sm); }
+  .cp-seats { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 12px; color: var(--muted); }
+  .cp-seat { position: relative; flex: none; width: 34px; height: 34px; border-radius: 50%; border: 1.5px dashed color-mix(in srgb, var(--muted) 55%, transparent); display: grid; place-items: center; }
+  .cp-seat.f { border: 0; }
+  .cp-seat .av { width: 34px; height: 34px; font-size: .68rem; border: 0; }
+  .cp-seat.you .av { box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--pampas); }
+  .cp-seat .cp-x { position: absolute; top: -5px; right: -6px; width: 18px; height: 18px; border-radius: 50%; display: grid; place-items: center; background: var(--text); color: var(--bg); }
+  .cp-seat .cp-x svg { width: 11px; height: 11px; }
+  .cp-route { flex: 1; min-width: 24px; height: 2px; margin: 0 4px; background: repeating-linear-gradient(90deg, color-mix(in srgb, var(--muted) 55%, transparent) 0 5px, transparent 5px 10px); }
+  .cp-seats > svg.i { width: 18px; height: 18px; flex: none; }
+  .cp-names { display: block; margin-top: 8px; font-size: .76rem; color: var(--muted); }
+  .cp-free { font-family: var(--font-mono); font-weight: 600; }
+
   /* ---- Redesign, step 3: Kalender ---- */
   body.on-cal main > h1 { display: none; }
   body.on-cal main > .sub:has(.status.live) { display: none; }
@@ -769,6 +818,7 @@
   .hero.md .hero-answer { grid-template-columns: 1.25fr 1fr 1fr; gap: 6px; padding: 5px; border-radius: 22px; background: rgb(0 0 0 / .28); }
   .hero.md .hero-answer button { padding: 12px 4px; border-radius: 17px; background: transparent; font-weight: 600; color: color-mix(in srgb, var(--brand-text) 76%, transparent); }
   .hero.md .hero-answer button[aria-pressed="true"] { background: #fff; box-shadow: 0 6px 16px -6px rgb(0 0 0 / .5); font-weight: 700; }
+  html.dark .hero.md .hero-answer button[aria-pressed="true"] { background: #fff; }
   .hero.md .hero-answer button[aria-pressed="true"][data-a="yes"] { color: #0b6b3c; }
   .hero.md .hero-answer button[aria-pressed="true"][data-a="maybe"] { color: #8a5a00; }
   .hero.md .hero-answer button[aria-pressed="true"][data-a="no"] { color: #b3261e; }
@@ -1282,6 +1332,28 @@ function myRideText(e) {
   if (mine.role === "rider") return mine.with && root.players[mine.with] ? t("home.rideWith", { name: firstName(root.players[mine.with].name) }) : t("home.rideNeed");
   return "";
 }
+// The match page's head: a compact card (who, where, when, my answer), so the tabs are in view right away.
+function matchHeadHtml(e, players) {
+  const days = Math.round((parse(e.date) - parse(TODAY)) / 864e5), past = isPast(e);
+  const when = past ? t("mp.played") : days <= 0 ? t("hero.today") : days === 1 ? t("hero.tomorrow") : t("hero.inDays", { n: days });
+  const me = myRow(), mine = me ? me.avail[e.date] || "" : null;
+  const sel = selOf(e), role = sel && sel.pub && session.pid ? roleOf(sel, session.pid) : null;
+  const status = role ? roleShort(role, players) : t("home.st." + (mine || "none"));
+  const small = [role || !selOn() ? "" : sel && sel.pub ? t("home.notSelected") : t("home.selNone"), myRideText(e)].filter(Boolean).join(" · ");
+  const m = matchInfo(e), v = m.venue;
+  const us = TEAM.logo ? `<img src="${esc(TEAM.logo)}" alt="">` : esc(crestText(TEAM.shortName || TEAM.brand));
+  const title = e.home === true ? t("mp.homeVs", { opp: e.opp }) : e.home === false ? t("mp.awayAt", { opp: e.opp }) : e.opp;
+  const sub = [v && venueShort(v), m.meet && `${t("meet")}: ${m.meet}`].filter(Boolean).join(" · ");
+  const icon = (attr, name, label) => `<button class="hero-icon" ${attr}="${e.date}" title="${esc(label)}" aria-label="${esc(label)}">${ic(name)}</button>`;
+  return `
+    <div class="hero-top"><span class="hero-kicker">${esc(fmt(e.date, { weekday: "short", day: "numeric", month: "short" }))}${m.start ? " · " + esc(timeText(e)) : ""}</span>
+      <span class="hero-top-r">${icon("data-ics", "calendar-plus", t("hero.calendar"))}${icon("data-share", "share", t("share.match"))}${session.admin ? icon("data-edit", "pencil", t("details.edit")) : ""}<span class="hero-when">${esc(when)}</span></span></div>
+    <div class="mh-main"><div class="md-crest">${us}</div><div><h2>${esc(title)}</h2>${sub ? `<small>${esc(sub)}</small>` : ""}
+      ${statusPill(e) || e.final ? `<div class="mh-pills">${statusPill(e)}${e.final ? `<span class="pill violet">${ic("trophy")} ${t("final")}</span>` : ""}</div>` : ""}</div></div>
+    ${mine !== null && !past ? `<div class="answer hero-answer" role="group" aria-label="${t("match.mine")}">${["yes", "maybe", "no"].map(a =>
+      `<button data-answer="${a}" data-date="${e.date}" data-a="${a}" aria-pressed="${mine === a}">${ic({ yes: "check", maybe: "help", no: "x" }[a])} ${t("answer." + a)}</button>`).join("")}</div>` : ""}
+    ${mine !== null ? `<div class="mh-me"><b>${esc(status)}</b>${small ? ` · ${esc(small)}` : ""}</div>` : ""}`;
+}
 // Home opens with a greeting and what's coming: "Hoi Test. Zaterdag spelen we."
 function renderGreet() {
   const el = document.getElementById("greet");
@@ -1664,7 +1736,7 @@ function renderMatchPage(players) {
   const focusKey = typing && (typing.dataset.scS ? `[data-sc-s="${typing.dataset.scS}"]` : typing.dataset.scH ? `[data-sc-h="${typing.dataset.scH}"]` : typing.dataset.cpNote != null ? "[data-cp-note]" : "");
   if (focusKey && scDraft) scRecalc(); // keep what's being typed in the draft before the page is redrawn
   box.innerHTML = `<a class="mp-back" href="#kalender">← ${esc(t("tab.calendar").replace(/^\S+\s/, ""))}</a>
-    <section class="hero md mp-hero">${matchCardHtml(e, players, true)}</section>
+    <section class="hero md mp-hero mh">${matchHeadHtml(e, players)}</section>
     <div class="mp-tabs" role="tablist">${tabs.map(([k, l]) => `<button role="tab" data-mt="${k}" aria-selected="${mpTab === k}">${esc(l)}</button>`).join("")}</div>
     <div class="mp-pane">${pane}</div>`;
   if (mpTab === "r" && session.admin) scRecalc();
@@ -1722,14 +1794,15 @@ function carpoolPane(e) {
     const left = c.seats - c.riders.length, mine = c.id === me;
     const canJoin = me && isOn(e) && !mine && left > 0 && role !== "driver" && !(role === "rider" && my.with === c.id);
     const seats = Array.from({ length: Math.max(c.seats, c.riders.length) }, (_, i) => c.riders[i]
-      ? `<span class="f${c.riders[i] === me ? " you" : ""}">${esc(firstName(nameOf(c.riders[i])))}${mine && isOn(e) ? ` <button class="cp-x" data-cp="drop" data-id="${c.riders[i]}" title="${esc(t("carpool.dropTitle"))}" aria-label="${esc(t("carpool.dropTitle"))}">${ic("x")}</button>` : ""}</span>`
-      : `<span>${esc(t("mp.free"))}</span>`).join("");
+      ? `<span class="cp-seat f${c.riders[i] === me ? " you" : ""}" title="${esc(nameOf(c.riders[i]))}">${av(c.riders[i])}${mine && isOn(e) ? `<button class="cp-x" data-cp="drop" data-id="${c.riders[i]}" title="${esc(t("carpool.dropTitle"))}" aria-label="${esc(t("carpool.dropTitle") + ": " + nameOf(c.riders[i]))}">${ic("x")}</button>` : ""}</span>`
+      : `<span class="cp-seat" title="${esc(t("mp.free"))}"></span>`).join("") + `<span class="cp-route"></span>${ic("pin")}`;
+    const names = c.riders.map(r => firstName(nameOf(r))).join(", ");
     const where = [placeText(c.id), away(c.id)].filter(Boolean).join(" · ");
     const acts = [canJoin && `<button class="primary" data-cp="join" data-id="${c.id}">${esc(t("carpool.join"))}</button>`,
       !mine && wa(c.id, t("cp.waTo", { name: firstName(nameOf(c.id)) }))].filter(Boolean);
     return `<div class="mp-car${mine ? " me" : ""}"><div class="mp-car-h">${av(c.id)}<div><b>${esc(mine ? t("cp.you") : nameOf(c.id))}</b><small>${esc(where)}${c.note ? ` · ${esc(c.note)}` : ""}</small></div>
       <span class="cp-free${left > 0 ? "" : " full"}">${esc(left > 0 ? t("cp.nFree", { n: left }) : t("carpool.full"))}</span></div>
-      <div class="mp-seats">${seats}</div>${acts.length ? `<div class="mp-acts">${acts.join("")}</div>` : ""}</div>`;
+      <div class="cp-seats">${seats}</div>${names ? `<small class="cp-names">${esc(names)}</small>` : ""}${acts.length ? `<div class="mp-acts">${acts.join("")}</div>` : ""}</div>`;
   }).join("")}</div>` : `<div class="ts-done">${ic("car")} ${esc(t("mp.noCars"))}</div>`;
   // Who still needs a ride: nearest to me first, so a driver can take them along.
   const myCar = st.cars.find(c => c.id === me), room = myCar && myCar.seats - myCar.riders.length > 0 && isOn(e);
