@@ -1304,9 +1304,9 @@ function applyBranding() {
   let style = document.getElementById("team-colors");
   if (!style) { style = document.createElement("style"); style.id = "team-colors"; document.head.append(style); }
   style.textContent = c ? `:root { ${vars(c.light)} } html.dark { ${vars(c.dark)} }` : "";
-  // Phone status bar / browser bar in the header colour.
+  // Phone status bar / browser bar in the page colour (the header is light, or near-black in dark mode).
   const theme = document.querySelector('meta[name="theme-color"]');
-  if (theme) theme.content = (c && c.light && HEX.test(c.light["--brand"] || "") && c.light["--brand"]) || BRAND_PRESETS[0][1];
+  if (theme) theme.content = document.documentElement.classList.contains("dark") ? "#0a0918" : "#f4f3ef";
   const title = document.querySelector("title[data-i18n-doc]");
   if (title) document.title = t(title.dataset.i18nDoc); // e.g. "IC Heren 1 · Beschikbaarheid"
 }
@@ -1548,6 +1548,7 @@ function injectAuthUI() {
     if (ev.target.closest("[data-theme]")) {
       const dark = document.documentElement.classList.toggle("dark");
       pref.set("theme", dark ? "dark" : "light");
+      const tc = document.querySelector('meta[name="theme-color"]'); if (tc) tc.content = dark ? "#0a0918" : "#f4f3ef";
       return renderAccount();
     }
     if (ev.target.closest("#acct-menu [data-feedback]")) { ev.preventDefault(); acctOpen = false; renderAccount(); openFeedback(); return; }
@@ -1575,7 +1576,7 @@ function gateMessage(text, err) { gateMsg = { text, err }; renderAuth(); }
 const appUrl = file => location.href.split(/[?#]/)[0].replace(/[^/]*$/, file);
 
 // ---- Feedback to RostiQ (account menu, footer): only the RostiQ admin reads it ----
-const APP_VERSION = "2026.11.90";
+const APP_VERSION = "2026.11.91";
 function deviceText() {
   const ua = navigator.userAgent;
   const os = /iPhone/.test(ua) ? "iPhone" : /iPad/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1) ? "iPad"

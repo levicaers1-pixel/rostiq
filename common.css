@@ -593,3 +593,22 @@ body.sel-off [data-select] { display: none !important; }
 .plan-receipts { list-style: none; margin: 0 0 8px; padding: 0; display: grid; gap: 4px; font-size: .9rem; }
 .plan-receipts li { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; padding: 6px 0; border-top: 1px solid var(--border); }
 .plan-receipts li span:first-child { color: var(--muted); }
+
+/* ---- Redesign, step 6: a light header. The team (its logo or name) sits in a chip in the team's own colour,
+   so a logo made for the brand colour still reads; the tabs and the account button are on the page colour. ---- */
+.brand { background: var(--bg); color: var(--text); border-bottom: 0; }
+.brand-inner { min-height: 64px; }
+.brand-inner > a { display: inline-flex; align-items: center; min-height: 40px; max-width: 100%; padding: 6px 15px; border-radius: 999px;
+  background: var(--brand); color: var(--brand-text); box-shadow: var(--shadow-sm); }
+.brand .logo, html .brand .logo.rostiq-logo { height: 26px; }
+.brand .logo-text, html.font-serif .brand .logo-text { font-size: 1rem; line-height: 1.3; letter-spacing: -.01em; }
+.tabs a { color: var(--muted); opacity: 1; font-weight: 600; }
+.tabs a:hover { color: var(--text); }
+.tabs a[aria-current="page"] { background: var(--text); color: var(--bg); box-shadow: none; }
+.account { color: var(--text); }
+.acct-btn { color: var(--text); background: var(--surface); border-color: transparent; box-shadow: var(--shadow-sm); }
+.acct-btn:hover:not(:disabled) { background: var(--surface); border-color: var(--border); }
+.lang { border-color: var(--border); background: var(--surface); }
+.lang button { color: var(--muted); opacity: 1; }
+.lang button[aria-pressed="true"] { background: var(--text); color: var(--bg); }
+@media (max-width: 700px) { .brand-inner { min-height: 56px; } }
