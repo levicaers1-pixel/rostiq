@@ -75,7 +75,8 @@
 
   window.buildDemo = function (kind, today) {
     const S = SPEC[kind], r = rng(kind.length * 7919 + 17);
-    const youName = { nl: "Jij (demo)", fr: "Toi (démo)", en: "You (demo)" }[typeof LANG === "string" ? LANG : "nl"] || "Jij (demo)";
+    // A real first name, so the greeting reads "Hoi Robin." and not "Hoi Jij."; Robin isn't in the other players' names.
+    const youName = { nl: "Robin (demo)", fr: "Robin (démo)", en: "Robin (demo)" }[typeof LANG === "string" ? LANG : "nl"] || "Robin (demo)";
     // Matches: two in the past, the next one soon, and three more.
     const first = nextWeekday(today, S.weekday);
     const dates = [-21, -14, 0, 7, 14, 21].map(n => addDays(first, n)); // the first is 2–8 days away, so the two past ones are before today
